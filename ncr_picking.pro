@@ -246,7 +246,6 @@ HEADERS += \
 
 FORMS += \
     mainwindow.ui \
-    src/form/add_device_wizard.ui \
     src/form/camera/basler_cam_select_dialog.ui \
     src/form/camera/basler_camera_widget.ui \
     src/form/navigate_form.ui \

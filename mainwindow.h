@@ -103,6 +103,12 @@ private slots:
     void onTaskCreated(const QString &id);
     void onTaskDeleted(const QString &id);
 
+    // New tree actions
+    void onAddDeviceToTaskRequested(const QString &taskId);
+    void onMoveDeviceRequested(const QString &taskId, const QString &deviceId);
+    void onDeleteDeviceRequested(const QString &taskId, const QString &deviceId);
+    void onDeleteTaskRequested(const QString &taskId);
+
 private:
     Ui::MainWindow *ui;
 

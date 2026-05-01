@@ -48,10 +48,6 @@ public:
 
 
     // ── Task management ────────────────────────────────
-    /**
-     * @brief addTask
-     * @param task
-     */
     bool addTask(ITask* task);
     bool removeTask(const QString& id);
     std::shared_ptr<vc::model::ITask> taskById(const QString& id) const;
@@ -60,6 +56,11 @@ public:
     const QMap<QString, std::shared_ptr<vc::model::ITask>>& getCurrentTasks() const {
         return m_tasks;
     }
+
+    // Move device ownership from one task to another.
+    bool moveDeviceToTask(const QString &deviceId,
+                          const QString &fromTaskId,
+                          const QString &toTaskId);
 
     // ── Device management ──────────────────────────────
     /**

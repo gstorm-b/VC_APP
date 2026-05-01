@@ -2,58 +2,58 @@
 #define ADD_DEVICE_WIZARD_H
 
 #include <QDialog>
+#include <QFrame>
+#include <QPushButton>
+#include <QLineEdit>
 #include <QComboBox>
-#include <QLabel>
+#include <QMap>
 #include "device/device_manager.h"
 
-namespace Ui {
-class AddDeviceWizard;
-}
-
-class AddDeviceWizard : public QDialog
-{
+class AddDeviceWizard : public QDialog {
     Q_OBJECT
 
 public:
-    explicit AddDeviceWizard(std::shared_ptr<vc::device::DeviceManager> mng, QWidget *parent = nullptr);
-    ~AddDeviceWizard();
+    explicit AddDeviceWizard(std::shared_ptr<vc::device::DeviceManager> mng,
+                             const QString &taskName = QString(),
+                             QWidget *parent = nullptr);
 
     int showWizard();
 
-    QString getDeviceId() const;
+    QString getDeviceId()   const { return m_pendingDeviceId; }
     QString getDeviceName() const;
     QString getDeviceType() const;
 
     void reject() override;
 
-private slots:
-    void onDeviceTypeChanged(int index);
-    void onFinishClicked();
-    void onDeviceNameTextChanged(const QString &text);
-    void onStackWidgetChanged(int index);
-
-    void McFrameTypeChanged(QString text);
-
 protected:
+    bool eventFilter(QObject *obj, QEvent *ev) override;
     void keyPressEvent(QKeyEvent *event) override;
 
-private:
-    QJsonObject createDeviceJsonObject(vc::device::DeviceType type);
-    QWidget* createCameraConfigWidget();
-    QWidget* createMcDeviceConfigWidget();
-    QWidget* createOutputConfigWidget();
+private slots:
+    void onCardClicked(vc::device::DeviceType type);
+    void onAddClicked();
+    void onNameChanged(const QString &text);
 
 private:
-    Ui::AddDeviceWizard *ui;
-    std::shared_ptr<vc::device::DeviceManager> manager;
-    QString pendingDeviceId;
+    void buildUi(const QString &taskName);
+    void selectCard(vc::device::DeviceType type);
+    QJsonObject buildDeviceJson(vc::device::DeviceType type);
 
-    QComboBox *cbx_camera_type{nullptr};
-    QComboBox *cbx_camera_interface{nullptr};
+    std::shared_ptr<vc::device::DeviceManager> m_manager;
+    QString                    m_pendingDeviceId;
+    vc::device::DeviceType     m_selectedType{vc::device::DeviceType::Camera};
 
-    QComboBox *cbx_mc_frame_type{nullptr};
-    QLabel *lb_mc_interface{nullptr};
-    QComboBox *cbx_mc_code{nullptr};
+    QMap<vc::device::DeviceType, QFrame *>  m_cards;
+    QMap<vc::device::DeviceType, QString>   m_defaultNames;
+    QMap<vc::device::DeviceType, QColor>    m_cardColors;
+
+    QLineEdit   *m_nameEdit{nullptr};
+    QPushButton *m_addBtn{nullptr};
+
+    // Hidden widgets for type-specific config defaults
+    QComboBox *m_cbxCameraType{nullptr};
+    QComboBox *m_cbxMcFrameType{nullptr};
+    QComboBox *m_cbxMcCode{nullptr};
 };
 
 #endif // ADD_DEVICE_WIZARD_H

@@ -233,5 +233,20 @@ bool Project::fromJson(const QJsonObject &json) {
 //     return true;
 // }
 
+bool Project::moveDeviceToTask(const QString &deviceId,
+                               const QString &fromTaskId,
+                               const QString &toTaskId)
+{
+    auto fromTask = taskById(fromTaskId);
+    auto toTask   = taskById(toTaskId);
+    if (!fromTask || !toTask) return false;
+    if (!fromTask->hasDevice(deviceId)) return false;
+    if (toTask->hasDevice(deviceId))   return false;
+
+    fromTask->unassignDevice(deviceId);
+    toTask->assignDevice(deviceId);
+    emit projectModificationOccurred();
+    return true;
+}
 
 }

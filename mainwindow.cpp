@@ -17,6 +17,9 @@
 
 #include "form/navigate_form.h"
 #include "form/new_project_dialog.h"
+#include "form/add_device_wizard.h"
+
+#include <QInputDialog>
 
 #include "device/device_factory.h"
 #include "device/camera/camera_device.h"
@@ -59,6 +62,14 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::onDeviceDoubleClicked);
     connect(ui->proj_treeview_wg, &ProjectTreeWidget::taskDoubleClicked,
             this, &MainWindow::onTaskDoubleClicked);
+    connect(ui->proj_treeview_wg, &ProjectTreeWidget::addDeviceToTaskRequested,
+            this, &MainWindow::onAddDeviceToTaskRequested);
+    connect(ui->proj_treeview_wg, &ProjectTreeWidget::moveDeviceRequested,
+            this, &MainWindow::onMoveDeviceRequested);
+    connect(ui->proj_treeview_wg, &ProjectTreeWidget::deleteDeviceRequested,
+            this, &MainWindow::onDeleteDeviceRequested);
+    connect(ui->proj_treeview_wg, &ProjectTreeWidget::deleteTaskRequested,
+            this, &MainWindow::onDeleteTaskRequested);
 }
 
 MainWindow::~MainWindow() {
@@ -337,8 +348,7 @@ void MainWindow::refreshUIForProject(const QString &path) {
     updateWindowTitle();
     addRecentPath(path);
     ui->proj_treeview_wg->changeProjectName(m_project->name());
-    ui->proj_treeview_wg->refreshDeviceBranch();
-    ui->proj_treeview_wg->refreshTaskBranch();
+    ui->proj_treeview_wg->refreshTree();
 }
 
 void MainWindow::connectProjectSignals() {
@@ -351,15 +361,22 @@ void MainWindow::connectProjectSignals() {
             this, &MainWindow::onDeviceCreated);
     connect(m_project->deviceManager().get(), &vc::device::DeviceManager::deviceDeleted,
             this, &MainWindow::onDeviceDeleted);
+    // Device manager changes (rename, etc.) refresh the tree
     connect(m_project->deviceManager().get(), &vc::device::DeviceManager::devicesChanged,
-            ui->proj_treeview_wg, &ProjectTreeWidget::refreshDeviceBranch);
+            ui->proj_treeview_wg, &ProjectTreeWidget::refreshTree);
 
     connect(m_project.get(), &vc::model::Project::taskCreated,
             this, &MainWindow::onTaskCreated);
     connect(m_project.get(), &vc::model::Project::taskDeleted,
             this, &MainWindow::onTaskDeleted);
     connect(m_project.get(), &vc::model::Project::tasksChanged,
-            ui->proj_treeview_wg, &ProjectTreeWidget::refreshTaskBranch);
+            ui->proj_treeview_wg, &ProjectTreeWidget::refreshTree);
+
+    // Connect existing tasks' device-assignment changes (project loaded from file)
+    for (const auto &taskPair : m_project->getCurrentTasks()) {
+        connect(taskPair.get(), &vc::model::ITask::devicesChanged,
+                ui->proj_treeview_wg, &ProjectTreeWidget::refreshTree);
+    }
 }
 
 void MainWindow::createProjectInfoDock() {
@@ -493,14 +510,11 @@ void MainWindow::onSaveAsProject() {
 void MainWindow::onCloseProject() {
     if (!m_project) return;
 
-    ui->proj_treeview_wg->clearManager();
+    ui->proj_treeview_wg->clearProject();
     m_project.reset();
     removeProjectInfoDock();
     closeAllDockTabs();
     updateWindowTitle();
-    ui->proj_treeview_wg->changeProjectName(tr("Vision project"));
-    ui->proj_treeview_wg->refreshDeviceBranch();
-    ui->proj_treeview_wg->refreshTaskBranch();
 
     m_projectFilePath = QString();
     m_isDirty         = false;
@@ -541,10 +555,8 @@ void MainWindow::onThemeChanged(const QString &styleId, bool isDark) {
         QSignalBlocker blocker(act);
         act->setChecked(act->data().toString() == styleId);
     }
-    if (m_project) {
-        ui->proj_treeview_wg->refreshDeviceBranch();
-        ui->proj_treeview_wg->refreshTaskBranch();
-    }
+    if (m_project)
+        ui->proj_treeview_wg->refreshTree();
 }
 
 void MainWindow::onThemeStyleRegistered(ThemeStyle style) {
@@ -668,6 +680,12 @@ void MainWindow::onTaskCreated(const QString &id) {
     }
 
     std::shared_ptr<vc::model::ITask> task = m_project->taskById(id);
+    if (!task) return;
+
+    // Propagate device-assignment changes to the tree
+    connect(task.get(), &vc::model::ITask::devicesChanged,
+            ui->proj_treeview_wg, &ProjectTreeWidget::refreshTree);
+
     UITaskEntry entry = createTaskEntry(task, m_anchorDock.get());
     if (!entry.widget) return;
 
@@ -686,6 +704,106 @@ void MainWindow::onTaskDeleted(const QString &id) {
         m_dockManager->removeDockWidget(it->dockWidget);
 
     m_taskEntries.erase(it);
+}
+
+// ── New tree action slots ─────────────────────────────────────────────────────
+
+void MainWindow::onAddDeviceToTaskRequested(const QString &taskId) {
+    if (!m_project) return;
+
+    auto task = m_project->taskById(taskId);
+    if (!task) return;
+
+    AddDeviceWizard wizard(m_project->deviceManager(), task->name(), this);
+    if (wizard.showWizard() != QDialog::Accepted) return;
+
+    const QString deviceId = wizard.getDeviceId();
+    task->assignDevice(deviceId);    // emits devicesChanged → refreshTree
+    LOG_USER_INFO << QString("Device %1 assigned to task %2").arg(deviceId, taskId);
+}
+
+void MainWindow::onMoveDeviceRequested(const QString &taskId,
+                                       const QString &deviceId)
+{
+    if (!m_project) return;
+
+    // Build list of candidate tasks (all except current)
+    QStringList taskNames;
+    QStringList taskIds;
+    for (const auto &pair : m_project->getCurrentTasks()) {
+        if (pair->id() != taskId) {
+            taskNames.append(pair->name());
+            taskIds.append(pair->id());
+        }
+    }
+
+    if (taskIds.isEmpty()) {
+        QMessageBox::information(this, tr("Move Device"),
+                                 tr("No other tasks available."));
+        return;
+    }
+
+    bool ok = false;
+    const QString chosen = QInputDialog::getItem(
+        this, tr("Move Device"),
+        tr("Select destination task:"),
+        taskNames, 0, false, &ok);
+
+    if (!ok || chosen.isEmpty()) return;
+
+    const QString targetId = taskIds.value(taskNames.indexOf(chosen));
+    if (m_project->moveDeviceToTask(deviceId, taskId, targetId)) {
+        LOG_USER_INFO << QString("Device %1 moved from task %2 to %3")
+                             .arg(deviceId, taskId, targetId);
+    }
+}
+
+void MainWindow::onDeleteDeviceRequested(const QString &taskId,
+                                         const QString &deviceId)
+{
+    if (!m_project) return;
+
+    auto task   = m_project->taskById(taskId);
+    auto device = m_project->deviceById(deviceId);
+    if (!task || !device) return;
+
+    const auto reply = QMessageBox::question(
+        this, tr("Remove Device"),
+        tr("Remove device '%1' from task '%2'?\nThis cannot be undone.")
+            .arg(device->name(), task->name()),
+        QMessageBox::Yes | QMessageBox::No);
+
+    if (reply != QMessageBox::Yes) return;
+
+    task->unassignDevice(deviceId);                      // emits devicesChanged → refreshTree
+    m_project->deviceManager()->releaseDevice(deviceId); // emits deviceDeleted → closes dock
+    LOG_USER_INFO << QString("Device %1 removed from task %2").arg(deviceId, taskId);
+}
+
+void MainWindow::onDeleteTaskRequested(const QString &taskId)
+{
+    if (!m_project) return;
+
+    auto task = m_project->taskById(taskId);
+    if (!task) return;
+
+    const auto reply = QMessageBox::question(
+        this, tr("Delete Task"),
+        tr("Delete task '%1' and all its devices?\nThis cannot be undone.")
+            .arg(task->name()),
+        QMessageBox::Yes | QMessageBox::No);
+
+    if (reply != QMessageBox::Yes) return;
+
+    // Release all devices owned by this task first
+    const QStringList devIds = task->assignedDeviceIds();
+    for (const QString &devId : devIds) {
+        task->unassignDevice(devId);
+        m_project->deviceManager()->releaseDevice(devId);
+    }
+
+    m_project->removeTask(taskId);  // emits taskDeleted → onTaskDeleted + tasksChanged → refreshTree
+    LOG_USER_INFO << QString("Task %1 deleted").arg(taskId);
 }
 
 // ── Widget factories ──────────────────────────────────────────────────────────

@@ -1,184 +1,429 @@
 #include "add_device_wizard.h"
-#include "ui_add_device_wizard.h"
 
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QMouseEvent>
 #include <QMessageBox>
+#include <QJsonObject>
+#include <QApplication>
+#include <QStyle>
+#include <QFont>
+#include <QLabel>
 
 #include "logger/app_logger.h"
 #include "device/device_factory.h"
 #include "device/camera/camera_device.h"
 #include "device/plc/mc_protocol_device.h"
+#include "windows_helper.h"
 
-AddDeviceWizard::AddDeviceWizard(std::shared_ptr<vc::device::DeviceManager> mng, QWidget *parent)
-    : QDialog(parent),
-    ui(new Ui::AddDeviceWizard),
-    manager(mng) {
+// ──────────────────────────────────────────────────────────────────────────────
+//  Static card metadata
+// ──────────────────────────────────────────────────────────────────────────────
+struct CardMeta {
+    vc::device::DeviceType type;
+    QString                label;
+    QString                desc;
+    QString                defaultName;
+    QString                iconPath;
+    QColor                 color;
+};
 
-    ui->setupUi(this);
+static const QList<CardMeta> kCards = {
+    { vc::device::DeviceType::Camera,
+      "Camera",
+      "Basler GigE / USB3 Vision",
+      "Basler_cam_01",
+      ":/resrc/icon/camera.svg",
+      QColor(0x2b, 0x8c, 0xe8) },
 
-    setWindowTitle(tr("Add New Device Wizard"));
-    setMinimumWidth(450);
+    { vc::device::DeviceType::McDevice,
+      "PLC",
+      "Mitsubishi / Omron / Siemens",
+      "PLC_Mitsu_01",
+      ":/resrc/icon/plc_icon.svg",
+      QColor(0x22, 0xd1, 0x7a) },
 
-    if (!mng) {
-        LOG_USER_ERR << tr("System error, cannot initialize Add Device Wizard (Input Device Manager is null).");
-        return;
+    { vc::device::DeviceType::Robot,
+      "Robot Controller",
+      "Fanuc / KUKA / ABB",
+      "Robot_Fanuc_01",
+      ":/resrc/icon/robot_movement.svg",
+      QColor(0xf5, 0xa6, 0x23) },
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  Constructor
+// ──────────────────────────────────────────────────────────────────────────────
+AddDeviceWizard::AddDeviceWizard(std::shared_ptr<vc::device::DeviceManager> mng,
+                                 const QString &taskName,
+                                 QWidget *parent)
+    : QDialog(parent), m_manager(mng)
+{
+    setWindowTitle(tr("Add Device"));
+    setMinimumWidth(520);
+    setModal(true);
+
+    for (const auto &c : kCards) {
+        m_defaultNames.insert(c.type, c.defaultName);
+        m_cardColors.insert(c.type, c.color);
     }
 
+    if (mng) {
+        m_cbxCameraType = new QComboBox(this);
+        m_cbxCameraType->addItems(mng->getSubDeviceTypeList(vc::device::Camera));
+        m_cbxCameraType->hide();
 
-    ui->ledit_dv_name->setPlaceholderText(tr("Input device name..."));
-    ui->ledit_dv_id->setReadOnly(true);
+        m_cbxMcFrameType = new QComboBox(this);
+        m_cbxMcFrameType->addItems(mng->getSubDeviceTypeList(vc::device::McDevice));
+        m_cbxMcFrameType->hide();
 
-    ui->cbx_dv_type->addItems(manager->getDeviceTypeList());
+        m_cbxMcCode = new QComboBox(this);
+        m_cbxMcCode->addItem(
+            vc::device::mc::McDataCodeToString(vc::device::mc::McDataCode::Binary));
+        m_cbxMcCode->hide();
+    }
 
-    ui->config_stack_wg->addWidget(createCameraConfigWidget());  // Index 0
-    ui->config_stack_wg->addWidget(createMcDeviceConfigWidget());     // Index 1
-
-    connect(ui->ledit_dv_name, &QLineEdit::textChanged, this, &AddDeviceWizard::onDeviceNameTextChanged);
-    connect(ui->cbx_dv_type, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &AddDeviceWizard::onDeviceTypeChanged);
-    connect(ui->config_stack_wg, &QStackedWidget::currentChanged,
-            this, &AddDeviceWizard::onStackWidgetChanged);
-
-    connect(ui->btn_finish, &QPushButton::clicked, this, &AddDeviceWizard::onFinishClicked);
-    connect(ui->btn_cancel, &QPushButton::clicked, this, &AddDeviceWizard::reject);
-
-    // update stack widget for first widget
-    onDeviceTypeChanged(0);
+    buildUi(taskName);
+    selectCard(vc::device::DeviceType::Camera);
 }
 
-AddDeviceWizard::~AddDeviceWizard() {
-    delete ui;
+// ──────────────────────────────────────────────────────────────────────────────
+//  UI construction
+// ──────────────────────────────────────────────────────────────────────────────
+void AddDeviceWizard::buildUi(const QString &taskName)
+{
+    auto *root = new QVBoxLayout(this);
+    root->setContentsMargins(0, 0, 0, 0);
+    root->setSpacing(0);
+
+    // ── Dialog header ────────────────────────────────────────────────────────
+    auto *headerFrame = new QFrame(this);
+    headerFrame->setObjectName("adwHeader");
+    headerFrame->setStyleSheet(
+        "#adwHeader { background: #0e1520; border-bottom: 1px solid #1a2540; }");
+
+    auto *headerLayout = new QHBoxLayout(headerFrame);
+    headerLayout->setContentsMargins(20, 14, 20, 14);
+    headerLayout->setSpacing(0);
+
+    auto *titleCol = new QVBoxLayout();
+    titleCol->setSpacing(2);
+
+    auto *titleLbl = new QLabel(tr("Add Device"), headerFrame);
+    QFont titleFont = titleLbl->font();
+    titleFont.setPointSize(11);
+    titleFont.setBold(true);
+    titleLbl->setFont(titleFont);
+    titleLbl->setStyleSheet("color: #dce8f5;");
+    titleCol->addWidget(titleLbl);
+
+    if (!taskName.isEmpty()) {
+        auto *subLbl = new QLabel(tr("Task: ") + taskName, headerFrame);
+        QFont subFont = subLbl->font();
+        subFont.setPointSize(9);
+        subLbl->setFont(subFont);
+        subLbl->setStyleSheet("color: #3a4f6a;");
+        titleCol->addWidget(subLbl);
+    }
+
+    headerLayout->addLayout(titleCol);
+    headerLayout->addStretch();
+    root->addWidget(headerFrame);
+
+    // ── Body ─────────────────────────────────────────────────────────────────
+    auto *bodyWidget = new QWidget(this);
+    auto *body = new QVBoxLayout(bodyWidget);
+    body->setContentsMargins(24, 22, 24, 22);
+    body->setSpacing(16);
+
+    auto makeSectionLabel = [&](const QString &text) -> QLabel * {
+        auto *lbl = new QLabel(text, bodyWidget);
+        QFont f = lbl->font();
+        f.setPointSizeF(8.0);
+        f.setBold(true);
+        f.setLetterSpacing(QFont::AbsoluteSpacing, 0.8);
+        lbl->setFont(f);
+        lbl->setStyleSheet("color: #6b7ea0;");
+        return lbl;
+    };
+
+    // Device type section
+    body->addWidget(makeSectionLabel(tr("DEVICE TYPE")));
+
+    auto *cardsLayout = new QHBoxLayout();
+    cardsLayout->setSpacing(8);
+
+    for (const auto &info : kCards) {
+        auto *card = new QFrame(bodyWidget);
+        card->setFixedHeight(116);
+        card->setCursor(Qt::PointingHandCursor);
+        card->installEventFilter(this);
+
+        auto *cardLayout = new QVBoxLayout(card);
+        cardLayout->setContentsMargins(12, 14, 12, 10);
+        cardLayout->setSpacing(5);
+        cardLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+
+        auto *iconLbl = new QLabel(card);
+        iconLbl->setPixmap(svgIcon(info.iconPath).pixmap(22, 22));
+        iconLbl->setAlignment(Qt::AlignCenter);
+        iconLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
+        cardLayout->addWidget(iconLbl);
+
+        auto *nameLbl = new QLabel(info.label, card);
+        QFont nf = nameLbl->font();
+        nf.setPointSizeF(9.5);
+        nf.setBold(true);
+        nameLbl->setFont(nf);
+        nameLbl->setAlignment(Qt::AlignCenter);
+        nameLbl->setObjectName("cardTitle");
+        nameLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
+        cardLayout->addWidget(nameLbl);
+
+        auto *descLbl = new QLabel(info.desc, card);
+        QFont df = descLbl->font();
+        df.setPointSizeF(7.5);
+        descLbl->setFont(df);
+        descLbl->setAlignment(Qt::AlignCenter);
+        descLbl->setWordWrap(true);
+        descLbl->setStyleSheet("color: #3a4f6a;");
+        descLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
+        cardLayout->addWidget(descLbl);
+
+        m_cards.insert(info.type, card);
+        cardsLayout->addWidget(card);
+    }
+
+    body->addLayout(cardsLayout);
+
+    // Device name section
+    body->addWidget(makeSectionLabel(tr("DEVICE NAME")));
+
+    m_nameEdit = new QLineEdit(bodyWidget);
+    QFont monoFont("JetBrains Mono");
+    if (!monoFont.exactMatch())
+        monoFont.setFamily("Consolas");
+    monoFont.setPointSizeF(10);
+    m_nameEdit->setFont(monoFont);
+    m_nameEdit->setStyleSheet(
+        "QLineEdit {"
+        "  background: #0d1420; border: 1px solid #243044;"
+        "  border-radius: 5px; padding: 8px 11px; color: #dce8f5;"
+        "}"
+        "QLineEdit:focus { border-color: #2b8ce8; }");
+    connect(m_nameEdit, &QLineEdit::textChanged, this, &AddDeviceWizard::onNameChanged);
+    body->addWidget(m_nameEdit);
+
+    // Info strip
+    auto *infoFrame = new QFrame(bodyWidget);
+    infoFrame->setStyleSheet(
+        "QFrame { background: #0a1018; border: 1px solid #1a2540; border-radius: 6px; }");
+    auto *infoLayout = new QHBoxLayout(infoFrame);
+    infoLayout->setContentsMargins(14, 10, 14, 10);
+    infoLayout->setSpacing(10);
+
+    auto *warnIcon = new QLabel(infoFrame);
+    warnIcon->setPixmap(
+        QApplication::style()->standardIcon(QStyle::SP_MessageBoxWarning).pixmap(14, 14));
+    warnIcon->setStyleSheet("border: none;");
+
+    auto *infoText = new QLabel(
+        tr("Device can be configured after adding. You can move it to another task at any time."),
+        infoFrame);
+    QFont infoFont = infoText->font();
+    infoFont.setPointSizeF(8.5);
+    infoText->setFont(infoFont);
+    infoText->setWordWrap(true);
+    infoText->setStyleSheet("color: #6b7ea0; border: none;");
+
+    infoLayout->addWidget(warnIcon, 0, Qt::AlignTop);
+    infoLayout->addWidget(infoText, 1);
+    body->addWidget(infoFrame);
+
+    // Button row
+    auto *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(10);
+    btnRow->addStretch();
+
+    auto *cancelBtn = new QPushButton(tr("Cancel"), bodyWidget);
+    cancelBtn->setStyleSheet(
+        "QPushButton {"
+        "  background: transparent; border: 1px solid #243044;"
+        "  border-radius: 5px; padding: 9px 22px; color: #6b7ea0; font-size: 12px;"
+        "}"
+        "QPushButton:hover { border-color: #4a6080; color: #8aabcc; }");
+    connect(cancelBtn, &QPushButton::clicked, this, &AddDeviceWizard::reject);
+    btnRow->addWidget(cancelBtn);
+
+    m_addBtn = new QPushButton(tr("Add Device"), bodyWidget);
+    m_addBtn->setEnabled(false);
+    connect(m_addBtn, &QPushButton::clicked, this, &AddDeviceWizard::onAddClicked);
+    btnRow->addWidget(m_addBtn);
+
+    body->addLayout(btnRow);
+    root->addWidget(bodyWidget);
 }
 
-int AddDeviceWizard::showWizard() {
-    pendingDeviceId = manager->allocatePendingId();
-    ui->ledit_dv_id->setText(pendingDeviceId);
-    ui->ledit_dv_name->setFocus();
-    return this->exec();
+// ──────────────────────────────────────────────────────────────────────────────
+//  Card selection
+// ──────────────────────────────────────────────────────────────────────────────
+void AddDeviceWizard::selectCard(vc::device::DeviceType type)
+{
+    m_selectedType = type;
+
+    for (auto it = m_cards.cbegin(); it != m_cards.cend(); ++it) {
+        QFrame *card  = it.value();
+        bool   active = (it.key() == type);
+        QColor col    = m_cardColors.value(it.key());
+
+        if (active) {
+            card->setStyleSheet(QString(
+                "QFrame {"
+                "  border: 1px solid %1;"
+                "  background-color: rgba(%2, %3, %4, 18);"
+                "  border-radius: 7px;"
+                "}")
+                .arg(col.name())
+                .arg(col.red()).arg(col.green()).arg(col.blue()));
+
+            auto *titleLbl = card->findChild<QLabel *>("cardTitle");
+            if (titleLbl) titleLbl->setStyleSheet("color: #dce8f5;");
+        } else {
+            card->setStyleSheet(
+                "QFrame {"
+                "  border: 1px solid #1f2d42;"
+                "  background-color: #0d1420;"
+                "  border-radius: 7px;"
+                "}");
+            auto *titleLbl = card->findChild<QLabel *>("cardTitle");
+            if (titleLbl) titleLbl->setStyleSheet("color: #6b7ea0;");
+        }
+    }
+
+    // Auto-populate device name
+    if (m_nameEdit)
+        m_nameEdit->setText(m_defaultNames.value(type));
+
+    // Recolor Add Device button to match selected type
+    if (m_addBtn) {
+        QColor col   = m_cardColors.value(type);
+        QColor hover = col.lighter(115);
+        m_addBtn->setStyleSheet(QString(
+            "QPushButton {"
+            "  background: %1; border: none;"
+            "  border-radius: 5px; padding: 9px 22px; color: #fff;"
+            "  font-size: 12px; font-weight: bold;"
+            "}"
+            "QPushButton:hover { background: %2; }"
+            "QPushButton:disabled { background-color: rgba(%3, %4, %5, 60); color: #ffffff60; }")
+            .arg(col.name(), hover.name())
+            .arg(col.red()).arg(col.green()).arg(col.blue()));
+    }
 }
 
-QString AddDeviceWizard::getDeviceId() const {
-    return ui->ledit_dv_id->text();
+// ──────────────────────────────────────────────────────────────────────────────
+//  Public API
+// ──────────────────────────────────────────────────────────────────────────────
+int AddDeviceWizard::showWizard()
+{
+    if (!m_manager) return QDialog::Rejected;
+    m_pendingDeviceId = m_manager->allocatePendingId();
+    if (m_nameEdit) m_nameEdit->setFocus();
+    return exec();
 }
 
-QString AddDeviceWizard::getDeviceName() const {
-    return ui->ledit_dv_name->text();
+QString AddDeviceWizard::getDeviceName() const
+{
+    return m_nameEdit ? m_nameEdit->text().trimmed() : QString();
 }
 
-QString AddDeviceWizard::getDeviceType() const {
-    return ui->cbx_dv_type->currentText();
+QString AddDeviceWizard::getDeviceType() const
+{
+    return vc::device::DeviceTypeToString(m_selectedType);
 }
 
-void AddDeviceWizard::reject() {
-    // manager->releaseDevice(pendingDeviceId);
-    manager->releasePendingId(pendingDeviceId);
+void AddDeviceWizard::reject()
+{
+    if (m_manager && !m_pendingDeviceId.isEmpty())
+        m_manager->releasePendingId(m_pendingDeviceId);
+    m_pendingDeviceId.clear();
     QDialog::reject();
 }
 
-void AddDeviceWizard::onDeviceTypeChanged(int index) {
-    ui->config_stack_wg->setCurrentIndex(index);
+// ──────────────────────────────────────────────────────────────────────────────
+//  Slots
+// ──────────────────────────────────────────────────────────────────────────────
+void AddDeviceWizard::onCardClicked(vc::device::DeviceType type)
+{
+    selectCard(type);
 }
 
-void AddDeviceWizard::onStackWidgetChanged(int index) {
-    if (index == 0) {
-        return;
-    } else if (index == 1) {
-        McFrameTypeChanged(cbx_mc_frame_type->currentText());
-    }
+void AddDeviceWizard::onNameChanged(const QString &text)
+{
+    if (m_addBtn)
+        m_addBtn->setEnabled(!text.trimmed().isEmpty());
 }
 
-void AddDeviceWizard::McFrameTypeChanged(QString text) {
-    vc::device::mc::McFrameType frame_type = vc::device::mc::McFrameTypeFromString(text);
-    QString interface_text = tr("Unknown");
-    if ((frame_type == vc::device::mc::McFrameType::Frame_1E) or
-        (frame_type == vc::device::mc::McFrameType::Frame_3E)) {
-        interface_text = vc::device::mc::McMsgItfTypeToString(vc::device::mc::McMsgItfType::EthernetTCPIP);
-    } else if ((frame_type == vc::device::mc::McFrameType::Frame_1C) or
-               (frame_type == vc::device::mc::McFrameType::Frame_3C)) {
-        interface_text = vc::device::mc::McMsgItfTypeToString(vc::device::mc::McMsgItfType::SerialPort);
-    }
+void AddDeviceWizard::onAddClicked()
+{
+    const QString name = m_nameEdit->text().trimmed();
 
-    lb_mc_interface->setText(interface_text);
-}
-
-void AddDeviceWizard::onFinishClicked() {
-    QString inputName = ui->ledit_dv_name->text().trimmed();
-
-    // validate data before close
-    if (inputName.isEmpty()) {
-        QMessageBox::warning(this,
-                             tr("Add device warning"),
-                             tr("Please input device name."));
-        ui->ledit_dv_name->setFocus();
+    if (name.isEmpty()) {
+        QMessageBox::warning(this, tr("Add Device"), tr("Please enter a device name."));
+        m_nameEdit->setFocus();
         return;
     }
 
-    if (manager->isNameExists(inputName)) {
-        QMessageBox::warning(this,
-                             tr("Add device warning"),
-                             tr("Device name already existed."));
-        ui->ledit_dv_name->selectAll();
+    if (m_manager->isNameExists(name)) {
+        QMessageBox::warning(this, tr("Add Device"), tr("Device name already exists."));
+        m_nameEdit->selectAll();
         return;
     }
 
-    vc::device::DeviceType type = vc::device::DeviceTypeFromString(ui->cbx_dv_type->currentText());
-    QJsonObject jobj = createDeviceJsonObject(type);
-    jobj[DEVICE_JSK_ID] = pendingDeviceId;
-    jobj[DEVICE_JSK_NAME] = inputName;
-    jobj[DEVICE_JSK_TYPE] = vc::device::DeviceTypeToString(type);
-    std::shared_ptr<vc::device::IDevice> dv(vc::device::DeviceFactory::create(type, jobj));
+    QJsonObject jobj = buildDeviceJson(m_selectedType);
+    jobj[DEVICE_JSK_ID]   = m_pendingDeviceId;
+    jobj[DEVICE_JSK_NAME] = name;
+    jobj[DEVICE_JSK_TYPE] = vc::device::DeviceTypeToString(m_selectedType);
 
-    if (manager->commitDevice(pendingDeviceId, inputName, dv)) {
+    std::shared_ptr<vc::device::IDevice> dv(
+        vc::device::DeviceFactory::create(m_selectedType, jobj));
+
+    if (m_manager->commitDevice(m_pendingDeviceId, name, dv)) {
+        LOG_USER_INFO << QString("Device added: %1 (%2)").arg(name, m_pendingDeviceId);
         accept();
     } else {
-        QMessageBox::critical(this,
-                              tr("Add device warning"),
-                              tr("Cannot register with this ID, please turn off wizard and try again."));
-    }
-
-    // accept();
-}
-
-void AddDeviceWizard::onDeviceNameTextChanged(const QString &text) {
-    if (text.trimmed().isEmpty()) {
-        ui->btn_cancel->setDefault(true);
-        ui->btn_finish->setDefault(false);
-    } else {
-        ui->btn_cancel->setDefault(false);
-        ui->btn_finish->setDefault(true);
+        QMessageBox::critical(this, tr("Add Device"),
+            tr("Failed to register device. Please close and try again."));
     }
 }
 
-void AddDeviceWizard::keyPressEvent(QKeyEvent *event) {
-    if (event->key() == Qt::Key_Escape) {
-        event->ignore();
-    } else {
-        QDialog::keyPressEvent(event);
-    }
-}
-
-QJsonObject AddDeviceWizard::createDeviceJsonObject(vc::device::DeviceType type) {
+// ──────────────────────────────────────────────────────────────────────────────
+//  Device JSON builder (uses defaults from hidden combo boxes)
+// ──────────────────────────────────────────────────────────────────────────────
+QJsonObject AddDeviceWizard::buildDeviceJson(vc::device::DeviceType type)
+{
     QJsonObject obj;
 
     switch (type) {
-    case vc::device::DeviceType::UserType:
-        return obj;
     case vc::device::DeviceType::Camera:
-        obj[DEVICE_JSK_CAM_TYPE] = cbx_camera_type->currentText();
+        if (m_cbxCameraType && m_cbxCameraType->count() > 0)
+            obj[DEVICE_JSK_CAM_TYPE] = m_cbxCameraType->currentText();
         break;
-    case vc::device::McDevice:
-    {
+
+    case vc::device::McDevice: {
         vc::device::McProtocolConfig config;
-        vc::device::mc::McFrameType frame_type = vc::device::mc::McFrameTypeFromString(cbx_mc_frame_type->currentText());
-        vc::device::mc::McDataCode data_code = vc::device::mc::McDataCodeFromString(cbx_mc_code->currentText());
-        config.configMcProtocol(frame_type, data_code);
+        auto frameType = (m_cbxMcFrameType && m_cbxMcFrameType->count() > 0)
+            ? vc::device::mc::McFrameTypeFromString(m_cbxMcFrameType->currentText())
+            : vc::device::mc::McFrameType::Frame_3E;
+        auto dataCode = (m_cbxMcCode && m_cbxMcCode->count() > 0)
+            ? vc::device::mc::McDataCodeFromString(m_cbxMcCode->currentText())
+            : vc::device::mc::McDataCode::Binary;
+        config.configMcProtocol(frameType, dataCode);
         obj[DEVICE_JSK_CONFIG] = config.toJson();
+        break;
     }
-        break;
-    case vc::device::TCPIP_DEVICE:
-        break;
-    case vc::device::Robot:
-        break;
+
     default:
         break;
     }
@@ -186,46 +431,30 @@ QJsonObject AddDeviceWizard::createDeviceJsonObject(vc::device::DeviceType type)
     return obj;
 }
 
-QWidget* AddDeviceWizard::createCameraConfigWidget() {
-    auto *widget = new QWidget();
-    auto *layout = new QFormLayout(widget);
-    layout->setContentsMargins(0, 0, 0, 0);
-
-    cbx_camera_type = new QComboBox();
-    cbx_camera_type->addItems(manager->getSubDeviceTypeList(vc::device::Camera));
-
-    layout->addRow(tr("Camera Type:"), cbx_camera_type);
-    // layout->addRow(tr("Interface"), cbx_camera_interface);
-
-    return widget;
+// ──────────────────────────────────────────────────────────────────────────────
+//  Event handling
+// ──────────────────────────────────────────────────────────────────────────────
+bool AddDeviceWizard::eventFilter(QObject *obj, QEvent *ev)
+{
+    if (ev->type() == QEvent::MouseButtonPress) {
+        for (auto it = m_cards.cbegin(); it != m_cards.cend(); ++it) {
+            if (obj == it.value()) {
+                onCardClicked(it.key());
+                return true;
+            }
+        }
+    }
+    return QDialog::eventFilter(obj, ev);
 }
 
-QWidget* AddDeviceWizard::createMcDeviceConfigWidget() {
-    auto *widget = new QWidget();
-    auto *layout = new QFormLayout(widget);
-    layout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel *mc_label = new QLabel("MC Protocol");
-    lb_mc_interface = new QLabel("");
-
-    cbx_mc_frame_type = new QComboBox();
-    cbx_mc_frame_type->addItems(manager->getSubDeviceTypeList(vc::device::McDevice));
-
-    cbx_mc_code = new QComboBox();
-    cbx_mc_code->addItem(vc::device::mc::McDataCodeToString(vc::device::mc::McDataCode::Binary));
-    // cbx_mc_code->addItem(vc::device::McDataCodeToString(vc::device::McDataCode::Ascii));
-
-    layout->addRow(tr("Protocol"), mc_label);
-    layout->addRow(tr("Frame type"), cbx_mc_frame_type);
-    layout->addRow(tr("Data code"), cbx_mc_code);
-    layout->addRow(tr("Interface"), lb_mc_interface);
-
-    connect(cbx_mc_frame_type, &QComboBox::currentTextChanged,
-            this, &AddDeviceWizard::McFrameTypeChanged);
-
-    return widget;
+void AddDeviceWizard::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape) {
+        event->ignore();
+    } else if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+               && m_addBtn && m_addBtn->isEnabled()) {
+        onAddClicked();
+    } else {
+        QDialog::keyPressEvent(event);
+    }
 }
-
-
-
-

@@ -1,465 +1,420 @@
 #include "project_tree_widget.h"
-#include "qlineedit.h"
-#include "qmenu.h"
+
+#include <QPainter>
 #include <QVBoxLayout>
+#include <QMenu>
+#include <QAction>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QFont>
 #include <QApplication>
 #include <QStyle>
 #include <QDebug>
-#include <QMessageBox>
 
-#include "form/add_device_wizard.h"
-// #include "device/device_factory.h"
 #include "model/task_localization.h"
 #include "logger/app_logger.h"
 #include "windows_helper.h"
-#include "model/task_factory.h"
 
-ProjectTreeWidget::ProjectTreeWidget(QWidget *parent) : QWidget(parent) {
+// ──────────────────────────────────────────────────────────────────────────────
+//  Chip appearance helpers
+// ──────────────────────────────────────────────────────────────────────────────
+
+struct ChipInfo { QString text; QString color; };
+
+static ChipInfo chipForDeviceType(vc::device::DeviceType t) {
+    switch (t) {
+    case vc::device::DeviceType::Camera:   return { "CAM", "#2b8ce8" };
+    case vc::device::DeviceType::McDevice: return { "PLC", "#22d17a" };
+    default:                               return { "DEV", "#f5a623" };
+    }
+}
+
+static ChipInfo chipForTaskType(vc::model::TaskType t) {
+    switch (t) {
+    case vc::model::TaskType::LocalizationTask: return { "LOC",  "#2b8ce8" };
+    case vc::model::TaskType::PickPlaceTask:    return { "PICK", "#22d17a" };
+    case vc::model::TaskType::InspectTask:      return { "INSP", "#f5a623" };
+    default:                                    return { "?",    "#6b7ea0" };
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  ProjectTreeDelegate
+// ──────────────────────────────────────────────────────────────────────────────
+static constexpr int kChipWidth  = 36;
+static constexpr int kChipHeight = 14;
+static constexpr int kChipMargin = 4;
+
+void ProjectTreeDelegate::paint(QPainter *painter,
+                                const QStyleOptionViewItem &option,
+                                const QModelIndex &index) const
+{
+    const QString chip      = index.data(TreeItemRole::ChipText).toString();
+    const QString chipColor = index.data(TreeItemRole::ChipColor).toString();
+
+    QStyleOptionViewItem opt = option;
+    initStyleOption(&opt, index);
+
+    if (chip.isEmpty()) {
+        QStyledItemDelegate::paint(painter, opt, index);
+        return;
+    }
+
+    // Shrink text rect to leave room for the chip on the right
+    opt.rect.adjust(0, 0, -(kChipWidth + kChipMargin * 2), 0);
+    QStyledItemDelegate::paint(painter, opt, index);
+
+    // Draw chip badge
+    const int cy = option.rect.top() + (option.rect.height() - kChipHeight) / 2;
+    QRect chipRect(option.rect.right() - kChipWidth - kChipMargin,
+                   cy, kChipWidth, kChipHeight);
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    QColor base(chipColor);
+    QColor bg = base;
+    bg.setAlpha(30);
+
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(bg);
+    painter->drawRoundedRect(chipRect, 3, 3);
+
+    QPen pen(base);
+    pen.setWidthF(0.8);
+    painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawRoundedRect(chipRect, 3, 3);
+
+    painter->setPen(base);
+    QFont f = painter->font();
+    f.setPointSizeF(6.5);
+    f.setWeight(QFont::Bold);
+    f.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
+    painter->setFont(f);
+    painter->drawText(chipRect, Qt::AlignCenter, chip);
+
+    painter->restore();
+}
+
+QSize ProjectTreeDelegate::sizeHint(const QStyleOptionViewItem &option,
+                                    const QModelIndex &index) const
+{
+    QSize s = QStyledItemDelegate::sizeHint(option, index);
+    s.setHeight(qMax(s.height(), 22));
+    return s;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  ProjectTreeWidget — constructor
+// ──────────────────────────────────────────────────────────────────────────────
+ProjectTreeWidget::ProjectTreeWidget(QWidget *parent)
+    : QWidget(parent)
+{
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
 
-    treeView = new QTreeView(this);
-    layout->addWidget(treeView);
+    m_treeView = new QTreeView(this);
+    m_treeView->setHeaderHidden(true);
+    m_treeView->setExpandsOnDoubleClick(false);
+    m_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_treeView->setItemDelegate(new ProjectTreeDelegate(m_treeView));
+    m_treeView->setIndentation(16);
+    m_treeView->setAnimated(true);
+    layout->addWidget(m_treeView);
 
-    model = new QStandardItemModel(this);
-    model->setHorizontalHeaderLabels({"Project Explorer"});
-    treeView->setModel(model);
+    m_model = new QStandardItemModel(this);
+    m_treeView->setModel(m_model);
 
-    // setup Root
-    QIcon rootIcon = style()->standardIcon(QStyle::SP_DirHomeIcon);
-    rootItem = new QStandardItem(rootIcon, tr("Vision Project"));
-    rootItem->setEditable(false);
-    model->appendRow(rootItem);
+    // Root item (project placeholder)
+    m_rootItem = new QStandardItem(svgIcon(":/resrc/icon/new_file.svg"),
+                                   tr("No Project"));
+    m_rootItem->setEditable(false);
+    m_rootItem->setData(0, TreeItemRole::ItemKind);
+    m_model->appendRow(m_rootItem);
+    m_treeView->expand(m_rootItem->index());
 
-    // Setup branches Devices and Tasks
-    QIcon devicesIcon = svgIcon(":/resrc/icon/plc_devices.svg");
-    devicesBranch = new QStandardItem(devicesIcon, tr("Devices"));
-    devicesBranch->setEditable(false);
-
-    QIcon tasksIcon = style()->standardIcon(QStyle::SP_FileDialogListView);
-    tasksBranch = new QStandardItem(tasksIcon, tr("Tasks"));
-    tasksBranch->setEditable(false);
-
-    rootItem->appendRow(devicesBranch);
-    rootItem->appendRow(tasksBranch);
-    treeView->expandAll();
-
-    treeView->setExpandsOnDoubleClick(false);
-
-    connect(treeView, &QTreeView::doubleClicked,
-            this, &ProjectTreeWidget::onTreeItemDoubleClicked);
-
-    treeView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(treeView, &QTreeView::customContextMenuRequested,
+    connect(m_treeView, &QTreeView::doubleClicked,
+            this, &ProjectTreeWidget::onItemDoubleClicked);
+    connect(m_treeView, &QTreeView::customContextMenuRequested,
             this, &ProjectTreeWidget::showContextMenu);
 
-    access_block = true;
-    dv_manager.reset();
-    this->setEnabled(false);
+    setEnabled(false);
 }
 
-void ProjectTreeWidget::clearManager() {
-    access_block = true;
-    dv_manager.reset();
-    this->setEnabled(false);
+// ──────────────────────────────────────────────────────────────────────────────
+//  Public API
+// ──────────────────────────────────────────────────────────────────────────────
+void ProjectTreeWidget::setProject(std::shared_ptr<vc::model::Project> proj)
+{
+    if (!proj) { clearProject(); return; }
+
+    m_project   = proj;
+    m_dvManager = proj->deviceManager();
+    m_accessBlock = false;
+    setEnabled(true);
+
+    m_rootItem->setText(proj->name().isEmpty() ? tr("Project") : proj->name());
+    refreshTree();
 }
 
-void ProjectTreeWidget::setProject(std::shared_ptr<vc::model::Project> proj) {
-    if (proj == nullptr) {
-        projectPtr.reset();
-        dv_manager.reset();
-        this->setEnabled(false);
-        LOG_DEV_ERR << "Device manager is null";
-        return;
+void ProjectTreeWidget::clearProject()
+{
+    m_accessBlock = true;
+    m_project.reset();
+    m_dvManager.reset();
+    m_taskItems.clear();
+
+    if (m_rootItem->hasChildren())
+        m_rootItem->removeRows(0, m_rootItem->rowCount());
+    m_rootItem->setText(tr("No Project"));
+
+    setEnabled(false);
+}
+
+void ProjectTreeWidget::changeProjectName(const QString &name)
+{
+    if (m_rootItem)
+        m_rootItem->setText(name.isEmpty() ? tr("Project") : name);
+}
+
+void ProjectTreeWidget::enableProjectTree(bool ena)
+{
+    m_accessBlock = !ena;
+    setEnabled(ena);
+}
+
+void ProjectTreeWidget::refreshTree()
+{
+    if (!m_rootItem) return;
+
+    // Clear all task children
+    if (m_rootItem->hasChildren())
+        m_rootItem->removeRows(0, m_rootItem->rowCount());
+    m_taskItems.clear();
+
+    if (!m_project) return;
+
+    // Rebuild from model
+    const auto &tasks = m_project->getCurrentTasks();
+    for (auto it = tasks.cbegin(); it != tasks.cend(); ++it) {
+        buildTaskItem(it->get());
     }
 
-    projectPtr = proj;
-    dv_manager = projectPtr->deviceManager();
-    access_block = false;
-    this->setEnabled(true);
+    m_treeView->expandAll();
 }
 
-void ProjectTreeWidget::addDevice(vc::device::IDevice *device) {
-    QIcon devIcon = style()->standardIcon(QStyle::SP_MessageBoxWarning);
+// ──────────────────────────────────────────────────────────────────────────────
+//  Tree builders
+// ──────────────────────────────────────────────────────────────────────────────
+void ProjectTreeWidget::buildTaskItem(vc::model::ITask *task)
+{
+    if (!task) return;
+
+    ChipInfo chip = chipForTaskType(task->taskType());
+
+    auto *item = new QStandardItem(svgIcon(":/resrc/icon/task_add.svg"),
+                                   task->name());
+    item->setEditable(false);
+    item->setData(task->id(),                       TreeItemRole::ItemId);
+    item->setData(static_cast<int>(TreeItemKind::Task), TreeItemRole::ItemKind);
+    item->setData(chip.text,                        TreeItemRole::ChipText);
+    item->setData(chip.color,                       TreeItemRole::ChipColor);
+
+    m_rootItem->appendRow(item);
+    m_taskItems.insert(task->id(), item);
+
+    // Add owned devices
+    if (!m_dvManager) return;
+    const auto &devices = m_dvManager->getCurrentDevices();
+    for (const QString &devId : task->assignedDeviceIds()) {
+        if (devices.contains(devId))
+            buildDeviceItem(item, devices.value(devId).get(), task->id());
+    }
+}
+
+void ProjectTreeWidget::buildDeviceItem(QStandardItem *taskItem,
+                                        vc::device::IDevice *device,
+                                        const QString &taskId)
+{
+    if (!device || !taskItem) return;
+
+    ChipInfo chip = chipForDeviceType(device->deviceType());
+
+    QIcon icon;
     switch (device->deviceType()) {
     case vc::device::DeviceType::Camera:
-        // devIcon = style()->standardIcon(QStyle::SP_DesktopIcon);
-        devIcon = svgIcon(":/resrc/icon/camera.svg");
-        break;
-    case vc::device::DeviceType::McDevice:
-        devIcon = style()->standardIcon(QStyle::SP_ComputerIcon);
+        icon = svgIcon(":/resrc/icon/camera.svg");
         break;
     default:
+        icon = QApplication::style()->standardIcon(QStyle::SP_ComputerIcon);
         break;
     }
 
-    auto *devItem = new QStandardItem(devIcon, QString("%1").arg(device->name()));
-    devItem->setEditable(false);
+    auto *item = new QStandardItem(icon, device->name());
+    item->setEditable(false);
+    item->setData(device->id(),                         TreeItemRole::ItemId);
+    item->setData(static_cast<int>(TreeItemKind::Device), TreeItemRole::ItemKind);
+    item->setData(taskId,                               TreeItemRole::ParentId);
+    item->setData(chip.text,                            TreeItemRole::ChipText);
+    item->setData(chip.color,                           TreeItemRole::ChipColor);
 
-    // Gán ID thiết bị vào UserRole để liên kết với các module traditional CV bên dưới
-    devItem->setData(device->id(), Qt::UserRole);
-
-    devicesBranch->appendRow(devItem);
-    deviceRegistry.insert(device->id(), devItem);
-
-    connect(device, &vc::device::IDevice::nameChanged, this, [this, device]() {
-        this->onDeviceNameChanged(device->id());
-    });
-
-    treeView->expand(devicesBranch->index());
+    taskItem->appendRow(item);
 }
 
-void ProjectTreeWidget::addTask(vc::model::ITask *task) {
-    QIcon devIcon = style()->standardIcon(QStyle::SP_MessageBoxWarning);
-    switch (task->taskType()) {
-    case vc::model::TaskType::LocalizationTask:
-    {
-        QStandardItem *taskItem = new QStandardItem(devIcon, QString("%1").arg(task->name()));
-        taskItem->setEditable(false);
-        taskItem->setData(task->id(), Qt::UserRole);
-
-        // LOG_DEV_DEBUG << "Added task:"
-        //               << task->name() << " - "
-        //               << taskItem->data(Qt::UserRole).toString();
-
-        QStandardItem *item_dashboard = new QStandardItem(devIcon, QString("Dashboard"));
-        QStandardItem *item_pattern = new QStandardItem(devIcon, QString("Patterns"));
-        QStandardItem *item_calibration = new QStandardItem(devIcon, QString("Calibration"));
-
-        item_dashboard->setEditable(false);
-        item_pattern->setEditable(false);
-        item_calibration->setEditable(false);
-
-        taskItem->setRowCount(3);
-        taskItem->setChild(0, item_dashboard);
-        taskItem->setChild(1, item_pattern);
-        taskItem->setChild(2, item_calibration);
-
-        tasksBranch->appendRow(taskItem);
-        taskRegistry.insert(task->id(), taskItem);
-        treeView->expand(tasksBranch->index());
-    }
-        break;
-    default:
-        return;
-    }
-
-    connect(task, &vc::model::ITask::nameChanged, this, [this, task]() {
-        this->onTaskNameChanged(task->id());
-    });
+QStandardItem *ProjectTreeWidget::findTaskItem(const QString &taskId) const
+{
+    return m_taskItems.value(taskId, nullptr);
 }
 
-void ProjectTreeWidget::assignDeviceToTask(const QString &deviceId, const QString &taskId) {
-    if (!deviceRegistry.contains(deviceId) || !taskRegistry.contains(taskId)) {
-        qWarning() << "Error: Device ID or Task ID not exists!";
-        return;
-    }
+// ──────────────────────────────────────────────────────────────────────────────
+//  Double-click navigation
+// ──────────────────────────────────────────────────────────────────────────────
+void ProjectTreeWidget::onItemDoubleClicked(const QModelIndex &index)
+{
+    if (m_accessBlock || !index.isValid()) return;
 
-    QStandardItem *originalDev = deviceRegistry.value(deviceId);
-    QStandardItem *taskItem = taskRegistry.value(taskId);
+    auto *item = m_model->itemFromIndex(index);
+    if (!item) return;
 
-    // create coppy of item, include icon and text
-    auto *clonedDevItem = new QStandardItem(originalDev->icon(), originalDev->text());
-    clonedDevItem->setEditable(false);
+    const int kind = item->data(TreeItemRole::ItemKind).toInt();
 
-    // QUAN TRỌNG: Gán cùng UserRole ID để định danh đây là cùng một phần cứng
-    clonedDevItem->setData(deviceId, Qt::UserRole);
+    if (kind == static_cast<int>(TreeItemKind::Task)) {
+        const QString taskId = item->data(TreeItemRole::ItemId).toString();
+        emit taskDoubleClicked(taskId, QString());
 
-    taskItem->appendRow(clonedDevItem);
-    treeView->expand(taskItem->index());
-}
-
-void ProjectTreeWidget::changeProjectName(QString name) {
-    if (rootItem == nullptr) {
-        return;
-    }
-
-    rootItem->setText(name);
-}
-
-void ProjectTreeWidget::enableProjectTree(bool ena) {
-    access_block = !ena;
-}
-
-void ProjectTreeWidget::refreshDeviceBranch() {
-    // remove all device items
-    if (devicesBranch->hasChildren()) {
-        devicesBranch->removeRows(0, devicesBranch->rowCount());
-    }
-
-    if (!dv_manager) {
-        return;
-    }
-
-    const QMap<QString, std::shared_ptr<vc::device::IDevice>>& instances = dv_manager->getCurrentDevices();
-    QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_start = instances.cbegin();
-    QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_end = instances.cend();
-    while (it_start != it_end) {
-        std::shared_ptr<vc::device::IDevice> dv = it_start.value();
-        // addDevice(dv->id(), dv->name(), dv->deviceType());
-        addDevice(dv.get());
-        it_start++;
+    } else if (kind == static_cast<int>(TreeItemKind::Device)) {
+        const QString deviceId = item->data(TreeItemRole::ItemId).toString();
+        emit deviceDoubleClicked(deviceId);
     }
 }
 
-void ProjectTreeWidget::refreshTaskBranch() {
-    if (tasksBranch->hasChildren()) {
-        tasksBranch->removeRows(0, tasksBranch->rowCount());
+// ──────────────────────────────────────────────────────────────────────────────
+//  Context menu
+// ──────────────────────────────────────────────────────────────────────────────
+void ProjectTreeWidget::showContextMenu(const QPoint &pos)
+{
+    if (m_accessBlock) return;
+
+    const QModelIndex index = m_treeView->indexAt(pos);
+    if (!index.isValid()) return;
+
+    auto *item = m_model->itemFromIndex(index);
+    if (!item) return;
+
+    const int kind = item->data(TreeItemRole::ItemKind).toInt();
+    QMenu menu(this);
+
+    if (kind == static_cast<int>(TreeItemKind::Root)) {
+        // Project root — add task
+        QAction *actNew = menu.addAction(
+            QApplication::style()->standardIcon(QStyle::SP_FileIcon),
+            tr("New Localization Task..."));
+        connect(actNew, &QAction::triggered, this, &ProjectTreeWidget::onContextNewTask);
+
+    } else if (kind == static_cast<int>(TreeItemKind::Task)) {
+        const QString taskId = item->data(TreeItemRole::ItemId).toString();
+
+        QAction *actAdd = menu.addAction(
+            QApplication::style()->standardIcon(QStyle::SP_ComputerIcon),
+            tr("Add Device..."));
+        connect(actAdd, &QAction::triggered, this, [this, taskId]() {
+            onContextAddDevice(taskId);
+        });
+
+        menu.addSeparator();
+
+        QAction *actDel = menu.addAction(
+            QApplication::style()->standardIcon(QStyle::SP_TrashIcon),
+            tr("Delete Task"));
+        connect(actDel, &QAction::triggered, this, [this, taskId]() {
+            onContextDeleteTask(taskId);
+        });
+
+    } else if (kind == static_cast<int>(TreeItemKind::Device)) {
+        const QString deviceId = item->data(TreeItemRole::ItemId).toString();
+        const QString taskId   = item->data(TreeItemRole::ParentId).toString();
+
+        QAction *actOpen = menu.addAction(
+            svgIcon(":/resrc/icon/setting.svg"),
+            tr("Open Configuration"));
+        connect(actOpen, &QAction::triggered, this, [this, deviceId]() {
+            emit deviceDoubleClicked(deviceId);
+        });
+
+        QAction *actMove = menu.addAction(
+            QApplication::style()->standardIcon(QStyle::SP_ArrowRight),
+            tr("Move to Task..."));
+        connect(actMove, &QAction::triggered, this, [this, taskId, deviceId]() {
+            onContextMoveDevice(taskId, deviceId);
+        });
+
+        menu.addSeparator();
+
+        QAction *actDel = menu.addAction(
+            QApplication::style()->standardIcon(QStyle::SP_TrashIcon),
+            tr("Remove Device"));
+        connect(actDel, &QAction::triggered, this, [this, taskId, deviceId]() {
+            onContextDeleteDevice(taskId, deviceId);
+        });
     }
 
-    if (!projectPtr) {
-        return;
-    }
-
-    const QMap<QString, std::shared_ptr<vc::model::ITask>>& instances = projectPtr->getCurrentTasks();
-    QMap<QString, std::shared_ptr<vc::model::ITask>>::const_iterator it_start = instances.cbegin();
-    QMap<QString, std::shared_ptr<vc::model::ITask>>::const_iterator it_end = instances.cend();
-    while (it_start != it_end) {
-        std::shared_ptr<vc::model::ITask> dv = it_start.value();
-        // addDevice(dv->id(), dv->name(), dv->deviceType());
-        addTask(dv.get());
-        it_start++;
-    }
+    if (!menu.isEmpty())
+        menu.exec(m_treeView->viewport()->mapToGlobal(pos));
 }
 
-bool ProjectTreeWidget::showInputTaskNameDialog(QString &name) {
+// ──────────────────────────────────────────────────────────────────────────────
+//  Context actions
+// ──────────────────────────────────────────────────────────────────────────────
+void ProjectTreeWidget::onContextNewTask()
+{
+    if (!m_project) return;
+
     bool ok = false;
+    QString name;
     while (true) {
-        name = QInputDialog::getText(this, tr("Create new task"),
+        name = QInputDialog::getText(this, tr("New Task"),
                                      tr("Task name:"), QLineEdit::Normal,
-                                     "", &ok);
-
-        if (!ok) return false;
+                                     QString(), &ok);
+        if (!ok) return;
 
         name = name.trimmed();
         if (name.isEmpty()) {
-            QMessageBox::warning(this, tr("Error"), tr("Task name can be empty!"));
+            QMessageBox::warning(this, tr("Error"), tr("Task name cannot be empty."));
             continue;
         }
-
-        if (projectPtr->isTaskNameOccupied(name)) {
-            QMessageBox::warning(this, tr("Error"), tr("Task name duplicated!"));
+        if (m_project->isTaskNameOccupied(name)) {
+            QMessageBox::warning(this, tr("Error"), tr("Task name already exists."));
             continue;
         }
-
-        return true;
+        break;
     }
-    return ok;
+
+    auto *task = new vc::model::TaskLocalization(name);
+    m_project->addTask(task);          // triggers tasksChanged → refreshTree via MainWindow
+    LOG_USER_INFO << QString("New task created: %1 (%2)").arg(name, task->id());
 }
 
-void ProjectTreeWidget::onTreeItemDoubleClicked(const QModelIndex &index) {
-    if (access_block) {
-        return;
-    }
-
-    if (!index.isValid()) {
-        return;
-    }
-
-    QStandardItem *clickedItem = model->itemFromIndex(index);
-    if (!clickedItem) {
-        return;
-    }
-
-    // clicked at device item
-    if (clickedItem->parent() == devicesBranch) {
-        QString deviceId = clickedItem->data(Qt::UserRole).toString();
-        LOG_DEV_DEBUG << "Clicked at devices item" << deviceId;
-        emit deviceDoubleClicked(deviceId);
-
-    // clicked at task item
-    } else if (clickedItem->parent() == tasksBranch) {
-        QString taskId = clickedItem->data(Qt::UserRole).toString();
-        LOG_DEV_DEBUG << "Clicked at task item" << taskId;
-        emit taskDoubleClicked(taskId, "");
-
-    // clicked at sub item
-    } else if ((clickedItem->parent() != nullptr) &&
-               (clickedItem->parent()->parent() == tasksBranch)) {
-        QStandardItem *taskItem = clickedItem->parent();
-        QString taskId = taskItem->data(Qt::UserRole).toString();
-        QString subId = clickedItem->data(Qt::UserRole).toString();
-        LOG_DEV_DEBUG << "Clicked at task's child item" << taskId << clickedItem;
-        emit taskDoubleClicked(taskId, clickedItem->text());
-    }
+void ProjectTreeWidget::onContextAddDevice(const QString &taskId)
+{
+    emit addDeviceToTaskRequested(taskId);
 }
 
-
-void ProjectTreeWidget::showContextMenu(const QPoint &pos) {
-    if (access_block) {
-        return;
-    }
-
-    QModelIndex index = treeView->indexAt(pos);
-    if (!index.isValid()) {
-        // ignore clicked on empty space
-        return;
-    }
-
-    QStandardItem *clickedItem = model->itemFromIndex(index);
-
-    // create Menu
-    QMenu contextMenu(this);
-    if (clickedItem == devicesBranch) {
-        QAction *addDeviceAction = contextMenu.addAction(
-            style()->standardIcon(QStyle::SP_ComputerIcon),
-            tr("Add new device..."));
-
-        connect(addDeviceAction, &QAction::triggered, this, [this]() {
-            this->createNewDeviceAction();
-        });
-
-    } else if (clickedItem == tasksBranch) {
-        QAction *addTaskLocalizationAction = contextMenu.addAction(
-            style()->standardIcon(QStyle::SP_FileIcon),
-            tr("Add new Localization task..."));
-
-        connect(addTaskLocalizationAction, &QAction::triggered, this, [this]() {
-            this->createNewTaskAction_Localization();
-        });
-
-        QAction *addTaskPickandPlaceAction = contextMenu.addAction(
-            style()->standardIcon(QStyle::SP_FileIcon),
-            tr("Add new Pick and place task..."));
-
-        connect(addTaskPickandPlaceAction, &QAction::triggered, this, [this]() {
-            this->createNewTaskAction_PickandPlace();
-        });
-
-    } else if (clickedItem->parent() == devicesBranch) {
-        QAction *deleteAction = contextMenu.addAction(
-            style()->standardIcon(QStyle::SP_TrashIcon),
-            tr("Remove device"));
-
-        // get device's ID from UserRole
-        QString deviceId = clickedItem->data(Qt::UserRole).toString();
-        connect(deleteAction, &QAction::triggered, this, [this, clickedItem, deviceId]() {
-            this->deleteDeviceAction(clickedItem, deviceId);
-        });
-
-    } else if (clickedItem->parent() == tasksBranch) {
-        QAction *deleteAction = contextMenu.addAction(
-            style()->standardIcon(QStyle::SP_TrashIcon),
-            tr("Remove task"));
-
-        // get task's ID from UserRole
-        QString taskId = clickedItem->data(Qt::UserRole).toString();
-        connect(deleteAction, &QAction::triggered, this, [this, clickedItem, taskId]() {
-            this->deleteTaskAction(clickedItem, taskId);
-        });
-    }
-
-    // show menu at clicked position, global position
-    if (!contextMenu.isEmpty()) {
-        contextMenu.exec(treeView->viewport()->mapToGlobal(pos));
-    }
+void ProjectTreeWidget::onContextDeleteTask(const QString &taskId)
+{
+    emit deleteTaskRequested(taskId);
 }
 
-void ProjectTreeWidget::createNewDeviceAction() {
-    if (!dv_manager) {
-        LOG_DEV_ERR << "Device manager is null.";
-        return;
-    }
-
-    AddDeviceWizard wizard(dv_manager, this);
-    if (wizard.showWizard() == QDialog::Accepted) {
-
-        QString newId = wizard.getDeviceId();
-        QString newName = wizard.getDeviceName();
-        QString devType = wizard.getDeviceType();
-
-        refreshDeviceBranch();
-        LOG_USER_INFO << QString("New device added: %1 - ID %2").arg(newName, newId);
-    }
+void ProjectTreeWidget::onContextDeleteDevice(const QString &taskId,
+                                              const QString &deviceId)
+{
+    emit deleteDeviceRequested(taskId, deviceId);
 }
 
-void ProjectTreeWidget::deleteDeviceAction(QStandardItem * clicked_item, QString dv_id) {
-    if (!dv_manager) {
-        LOG_DEV_ERR << "Device manager is null.";
-        return;
-    }
-
-    // deleted confirmation
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        this, tr("Delete device confirm"),
-        QString("Would you like to delete device '%1'?\nThis operate could not undo.")
-            .arg(clicked_item->text()),
-        QMessageBox::Yes | QMessageBox::No
-        );
-
-    if (reply == QMessageBox::Yes) {
-        this->devicesBranch->removeRow(clicked_item->row());
-        this->deviceRegistry.remove(dv_id);
-        dv_manager->releaseDevice(dv_id);
-        LOG_USER_INFO << QString("Device factory deleted device: %1").arg(dv_id);
-    }
+void ProjectTreeWidget::onContextMoveDevice(const QString &taskId,
+                                            const QString &deviceId)
+{
+    emit moveDeviceRequested(taskId, deviceId);
 }
-
-void ProjectTreeWidget::createNewTaskAction_Localization() {
-    QString task_name;
-    if (!showInputTaskNameDialog(task_name)) {
-        return;
-    }
-
-    vc::model::TaskLocalization *task = new vc::model::TaskLocalization(task_name);
-    projectPtr->addTask(task);
-
-    refreshTaskBranch();
-    LOG_USER_INFO << QString("New task added: %1 - ID %2").arg(task_name, task->id());
-}
-
-void ProjectTreeWidget::createNewTaskAction_PickandPlace() {
-
-}
-
-void ProjectTreeWidget::deleteTaskAction(QStandardItem * clicked_item, QString task_id) {
-    if (!projectPtr) {
-        LOG_DEV_ERR << "Project is null.";
-        return;
-    }
-
-    QString task_name = clicked_item->text();
-
-    // deleted confirmation
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        this, tr("Delete task confirm"),
-        QString("Would you like to delete task '%1'?\nThis operate could not undo.")
-            .arg(clicked_item->text()),
-        QMessageBox::Yes | QMessageBox::No
-        );
-
-    if (reply == QMessageBox::Yes) {
-        this->tasksBranch->removeRow(clicked_item->row());
-        this->taskRegistry.remove(task_id);
-        projectPtr->removeTask(task_id);
-        LOG_USER_INFO << QString("Device factory deleted device: %1 - %2").arg(task_name, task_id);
-    }
-}
-
-void ProjectTreeWidget::onDeviceNameChanged(QString id) {
-    std::shared_ptr<vc::device::IDevice> device = dv_manager->deviceById(id);
-    if (!device) {
-        return;
-    }
-
-    if (!deviceRegistry.contains(id)) {
-        return;
-    }
-
-    QStandardItem* dev_item = deviceRegistry[id];
-    dev_item->setText(QString("%1").arg(device->name()));
-}
-
-void ProjectTreeWidget::onTaskNameChanged(QString id) {
-    std::shared_ptr<vc::model::ITask> task = projectPtr->taskById(id);
-    if (!task) {
-        return;
-    }
-
-    if (!taskRegistry.contains(id)) {
-        return;
-    }
-
-    QStandardItem* task_item = taskRegistry[id];
-    task_item->setText(QString("%1").arg(task->name()));
-}
-

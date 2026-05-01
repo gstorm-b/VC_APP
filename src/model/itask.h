@@ -5,7 +5,9 @@
 #include <QString>
 #include <QJsonObject>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QVector>
+#include <QStringList>
 
 #include <opencv2/opencv.hpp>
 
@@ -85,6 +87,26 @@ public:
         m_ownedCameraId = v;
     }
 
+    // ── Device ownership ───────────────────────────────
+    void assignDevice(const QString &deviceId) {
+        if (m_assignedDeviceIds.contains(deviceId)) return;
+        m_assignedDeviceIds.append(deviceId);
+        emit devicesChanged();
+    }
+
+    void unassignDevice(const QString &deviceId) {
+        if (m_assignedDeviceIds.removeOne(deviceId))
+            emit devicesChanged();
+    }
+
+    bool hasDevice(const QString &deviceId) const {
+        return m_assignedDeviceIds.contains(deviceId);
+    }
+
+    QStringList assignedDeviceIds() const {
+        return m_assignedDeviceIds;
+    }
+
     virtual void setTaskConfig(ITaskConfig *cfg) {
         m_abstract_cfg = cfg;
         emit configChanged();
@@ -101,6 +123,11 @@ public:
         obj["taskType"] = qenumToString(taskType());
         obj["cameraSourceType"] = qenumToString(m_cameraSourceType);
         obj["ownedCameraId"] = m_ownedCameraId;
+
+        QJsonArray devIds;
+        for (const QString &id : m_assignedDeviceIds)
+            devIds.append(id);
+        obj["assignedDeviceIds"] = devIds;
 
         if (m_abstract_cfg) {
             obj["taskConfig"] = m_abstract_cfg->toJson();
@@ -128,11 +155,12 @@ public:
 
         m_id = obj["id"].toString();
         m_name = obj["name"].toString();
-        m_id = obj["id"].toString();
 
-        // obj["cameraSourceType"] = qenumToString(m_cameraSourceType);
-        // obj["ownedCameraId"] = m_ownedCameraId;
-        // obj["sourceTaskId"] = m_sourceTaskId;
+        if (obj.contains("assignedDeviceIds")) {
+            m_assignedDeviceIds.clear();
+            for (const QJsonValue &v : obj["assignedDeviceIds"].toArray())
+                m_assignedDeviceIds.append(v.toString());
+        }
 
         if (m_abstract_cfg) {
             return m_abstract_cfg->fromJson(obj["taskConfig"].toObject());
@@ -162,12 +190,14 @@ signals:
     void configChanged();
     void cameraSourceTypeChanged();
     void patternsChanged();
+    void devicesChanged();
 
 private:
     QString m_id;
     QString m_name;
     CameraSourceType m_cameraSourceType = CameraSourceType::Source_Owned;
     QString m_ownedCameraId;
+    QStringList m_assignedDeviceIds;
     ITaskConfig *m_abstract_cfg{nullptr};
     Project *m_proj{nullptr};
 };

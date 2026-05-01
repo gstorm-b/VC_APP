@@ -1,0 +1,40 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="styles/dark.qss">resrc/styles/dark.qss</file>
+        <file alias="styles/light.qss">resrc/styles/light.qss</file>
+        <file>resrc/icon/dashboard.svg</file>
+        <file>resrc/icon/dashboard_dark.svg</file>
+        <file>resrc/icon/edit_file.svg</file>
+        <file>resrc/icon/edit_file_dark.svg</file>
+        <file>resrc/icon/minus_square.svg</file>
+        <file>resrc/icon/minus_square_dark.svg</file>
+        <file>resrc/icon/new_file.svg</file>
+        <file>resrc/icon/new_file_dark.svg</file>
+        <file>resrc/icon/plc_icon.svg</file>
+        <file>resrc/icon/plc_icon_dark.svg</file>
+        <file>resrc/icon/plus_square.svg</file>
+        <file>resrc/icon/plus_square_dark.svg</file>
+        <file>resrc/icon/reload.svg</file>
+        <file>resrc/icon/reload_dark.svg</file>
+        <file>resrc/icon/robot_movement.svg</file>
+        <file>resrc/icon/robot_movement_dark.svg</file>
+        <file>resrc/icon/setting.svg</file>
+        <file>resrc/icon/setting_dark.svg</file>
+        <file>resrc/icon/software_icon.svg</file>
+        <file>resrc/icon/target.svg</file>
+        <file>resrc/icon/vision_target.svg</file>
+        <file>resrc/icon/vision_target_dark.svg</file>
+        <file>resrc/icon/task_add.svg</file>
+        <file>resrc/icon/task_save.svg</file>
+        <file>resrc/set/close.svg</file>
+        <file>resrc/set/create.svg</file>
+        <file>resrc/set/open.svg</file>
+        <file>resrc/set/save.svg</file>
+        <file>resrc/set/capture.svg</file>
+        <file>resrc/icon/camera.svg</file>
+        <file>resrc/icon/plc_devices.svg</file>
+        <file>resrc/icon/capture.svg</file>
+        <file>resrc/icon/plug_connected.svg</file>
+        <file>resrc/icon/plug_disconnected.svg</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,102 @@
+@startuml device camera
+
+skinparam backgroundColor #FAFAFA
+skinparam classBackgroundColor #EBF3FB
+skinparam classBorderColor #2E75B6
+skinparam classHeaderBackgroundColor #3e6d99
+skinparam classFontColor #FFFFFF
+skinparam classAttributeFontColor #1F1F1F
+skinparam arrowColor #1F4E79
+skinparam packageBackgroundColor #F5F5F5
+skinparam packageBorderColor #AAAAAA
+skinparam shadowing false
+
+package "vc::device" {
+
+    package "Camera" {
+        struct GrabResult {
+            + image : Image
+            + isGrabSuccess : bool
+            + msg : QString
+        }
+
+        enum CameraType {
+            RealSense
+            BalserGige
+            BaslerUsb
+        }
+
+        class CameraDevice {
+            + {abstract} cameraType() : CameraType
+            + {abstract} hasIOPort() : bool
+            + {abstract} isRGBCamera() : bool
+            + {abstract} hasIOPort() : bool
+            + {abstract} setGrabTimeout(int) : void
+            + {abstract} setExposure(int) : bool
+            + {abstract} setGain(int) : bool
+            + {abstract} setAutoBacklightControl(bool) : void 
+            + {abstract} reaadIO(QString) : bool
+            + {abstract} writeIO(QString, bool) : bool
+            + {abstract} applyParameters() : bool
+            
+            .. Grab image methods ..
+            + {abstract} grabSingleShot() : GrabResult
+            + {abstract} startAutoContinuousShot() : bool
+            + {abstract} stopAutoContinousShot() : void
+            + {abstract} startContinuousShot() : bool
+            + {abstract} stopContinuousShot() : void
+            + {abstract} softwareTriggerShot() : GrabResult
+            
+            .. Signals ..
+            + grabFinished(GrabResult) : void
+            + exposureChanged(double) : void
+            + gainChanged(double) : void
+            + backlightControlChanged(bool) : void
+            + parameterApplied(bool) : void
+        }
+
+        class CameraCfg {
+            + {abstract} enable_black_light_control(ena ool) : void
+            
+            + {abstract} get_exposure_time_limit(min: double&, max: double&) : void
+            + {abstract} set_exposure_time_limit(min: double&, max: double&) : void
+            + {abstract} set_exposure_time(value: double) : void
+            + {abstract} get_exposure_time() : double
+            
+            + {abstract} set_gain_limit(min: int&, max: int&) : void
+            + {abstract} get_gain_limit(min: int&, max: int&) : void
+            + {abstract} set_gain(value: int) : void
+            + {abstract} get_gain() : int
+            
+            + {abstract} set_acquisition_frame_rate(enable: bool, rate: double) : void
+            + {abstract} get_acquisition_frame_rate(enable: bool&, rate: double&) : void
+
+            + toJson() : QJsonObject
+            + fromJson(&QJsonObject) : bool
+        }
+
+        class BaslerGigECamera {
+            .. Basler GigE Camera implements ..
+        }
+
+        class BaslerGigeCfg {
+            .. Basler GigE camera configuration ..
+        }
+    }
+
+}
+
+' Inheritance
+IDevice             <|-- CameraDevice
+IDeviceCfg       <|-- CameraCfg
+
+CameraDevice        <|-- BaslerGigECamera
+CameraCfg           <|-- BaslerGigeCfg
+
+' Enum usage
+CameraDevice        --> CameraType              : camera type
+
+' Dependencies
+CameraDevice        ..> GrabResult              : returns
+
+@enduml

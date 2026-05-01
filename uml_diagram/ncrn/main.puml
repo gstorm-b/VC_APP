@@ -1,0 +1,34 @@
+@startuml NCRN Vision
+!include device_interface.puml
+!include device_camera.puml
+!include device_mc_protocol.puml
+
+skinparam backgroundColor #FAFAFA
+skinparam classBackgroundColor #EBF3FB
+skinparam classBorderColor #2E75B6
+skinparam classHeaderBackgroundColor #3e6d99
+skinparam classFontColor #FFFFFF
+skinparam classAttributeFontColor #1F1F1F
+skinparam arrowColor #1F4E79
+skinparam packageBackgroundColor #F5F5F5
+skinparam packageBorderColor #AAAAAA
+skinparam shadowing false
+
+package "Qt" {
+    class QMetaObject {
+
+    }
+}
+
+package "vc::model" {
+
+}
+
+' Inheritance
+
+' Enum usage
+
+' Dependencies
+IDeviceCfg          --> QMetaObject             : setting changed
+
+@enduml

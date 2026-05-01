@@ -1,0 +1,280 @@
+@startuml class_model
+title Class Diagram --vc::device
+
+skinparam backgroundColor #FAFAFA
+skinparam classBackgroundColor #EBF3FB
+skinparam classBorderColor #2E75B6
+skinparam classHeaderBackgroundColor #3e6d99
+skinparam classFontColor #FFFFFF
+skinparam classAttributeFontColor #1F1F1F
+skinparam arrowColor #1F4E79
+skinparam packageBackgroundColor #F5F5F5
+skinparam packageBorderColor #AAAAAA
+skinparam shadowing false
+
+package "vc::device" {
+
+    enum ConnectStatus {
+        NoConnection
+        Disconnected
+        Connected
+        LostConnected
+        ConnectFailed
+    }
+
+    enum DeviceType {
+        UserType
+        Camera
+        McProtocolDevice
+        RobotTcpDevice
+    }
+
+    class Device_Json_Object << Json >> {
+        + id : QString
+        + name : QString
+        + type : DeviceType
+        + config : QJsonObject 
+        .. note ..
+        * config format depend on device type
+    }
+
+    class DeviceFactory {
+        .. Allocate new device from Json object, depend on DeviceType ..
+        + {static} fromJson(&QJsonObject) : IDevice pointer
+    }
+
+    class IDevice << QObject, abstract >> {
+        .. Device connection method ..
+        + {abstract} deviceConnect() : bool
+        + {abstract} deviceDisconnect() : void
+        + {abstract} isDeviceConnected() : bool
+        .. Device configuration by Project ..
+        + {abstract} deviceType() : DeviceType 
+        + lastMsg() : QString
+        + id() : QString
+        + name() : QString
+        + setName(QString) : void
+        + connectionStatus() : ConnectStatus
+        .. Device configuration setter and getter ..
+        + setDeviceConfig() : bool
+        + deviceConfig() : IDeviceConfig pointer
+        .. Device manager ..
+        + setDeviceManager(DeviceManager) : void
+        + deviceManager() : DeviceManager 
+        .. Device initialize ..
+        + deviceInitialize() : bool
+        + deviceTerminate() : bool
+        .. Available IO setting (Not use for camera device) ..
+        + {abstract} getAvailableBits() : QStringList
+        + {abstract} getAvailabelWords() : QStringList
+        .. Device save and load method ..
+        + toJson() : QJsonObject
+        + fromJson(&QJsonObject) : bool
+        .. Signals ..
+        + nameChanged() : void
+        + configChanged() : void
+        + connectStatusChanged(ConnectStatus) : void
+        + connectionFailed(QString msg) : void
+        + errorOccurred(QString) : void 
+
+        .. Notes ..
+        * nameChanged auto emit when call setName()
+        * configChanged auto emit when call setDeviceConfig()
+        * connectStatusChanged auto emit when call setConnectStatus()
+        * connectionFailed auto emit when call setConnectStatus() if status input is ConnectFailed 
+        * don't need to override fromJson and toJson, all parameters will be parsed bydevice config instance
+        * call mutex locker before call fromJson or toJson for thread safe
+        * must override setDeviceConfig(IDeviceCfg *cfg) for each child class
+    }
+
+    note right of IDevice
+        DeviceId created via:
+            IDevice constructor
+            Device ID in system provided by DeviceManager 
+            or Device Fatory when open project
+    end note
+
+    class IDeviceConfig {
+        .. Signals contain all device setting parameters ..
+        + {abstract} deviceType() : DeviceType
+        + {abstract} toJson() : QJsonObject
+        + {abstract} fromJson(&QJsonObject) : bool
+        + {abstract} clone() : IDeviceConfig pointer
+    }
+
+    package "Camera" {
+        struct GrabResult {
+            + image : Image
+            + isGrabSuccess : bool
+            + msg : QString
+        }
+
+        enum CameraType {
+            RealSense
+            BalserGige
+            BaslerUsb
+        }
+
+        class CameraDevice {
+            + {abstract} cameraType() : CameraType
+            + {abstract} hasIOPort() : bool
+            + {abstract} isRGBCamera() : bool
+            + {abstract} hasIOPort() : bool
+            + {abstract} setGrabTimeout(int) : void
+            + {abstract} setExposure(int) : bool
+            + {abstract} setGain(int) : bool
+            + {abstract} setAutoBacklightControl(bool) : void 
+            + {abstract} reaadIO(QString) : bool
+            + {abstract} writeIO(QString, bool) : bool
+            + {abstract} applyParameters() : bool
+            
+            .. Grab image methods ..
+            + {abstract} grabSingleShot() : GrabResult
+            + {abstract} startAutoContinuousShot() : bool
+            + {abstract} stopAutoContinousShot() : void
+            + {abstract} startContinuousShot() : bool
+            + {abstract} stopContinuousShot() : void
+            + {abstract} softwareTriggerShot() : GrabResult
+            
+            .. Signals ..
+            + grabFinished(GrabResult) : void
+            + exposureChanged(double) : void
+            + gainChanged(double) : void
+            + backlightControlChanged(bool) : void
+            + parameterApplied(bool) : void
+        }
+
+        class CameraCfg {
+            + {abstract} enable_black_light_control(ena ool) : void
+            
+            + {abstract} get_exposure_time_limit(min: double&, max: double&) : void
+            + {abstract} set_exposure_time_limit(min: double&, max: double&) : void
+            + {abstract} set_exposure_time(value: double) : void
+            + {abstract} get_exposure_time() : double
+            
+            + {abstract} set_gain_limit(min: int&, max: int&) : void
+            + {abstract} get_gain_limit(min: int&, max: int&) : void
+            + {abstract} set_gain(value: int) : void
+            + {abstract} get_gain() : int
+            
+            + {abstract} set_acquisition_frame_rate(enable: bool, rate: double) : void
+            + {abstract} get_acquisition_frame_rate(enable: bool&, rate: double&) : void
+
+            + toJson() : QJsonObject
+            + fromJson(&QJsonObject) : bool
+        }
+
+        class BaslerGigECamera {
+            .. Basler GigE Camera implements ..
+        }
+
+        class BaslerGigeCfg {
+            .. Basler GigE camera configuration ..
+        }
+    }
+
+    package "MC Protocol (Mitsubishi PLC)" {
+
+        class MCProtocolDevice {
+            .. Handle IO polling query ..
+            + {abstract} intefaceType() : McItfType
+        }
+
+        class McContext {
+            + m_msg_itf : McMsgItf
+            + {static} ContextFactory : McContext
+        }
+
+        class McContext3E {
+            .. 3E Frame context (Ethernet TCP or UDP) ..
+            + m_network : quint8
+            + m_pc : quint8
+            + m_dest_module_io : quint16
+            + m_multi_station : quint8
+            + m_monitoring_time : quint16 
+            + m_sub_header : quint16 {const} = 0x5000
+        }
+        
+        class McContext1E {
+            .. 1E Frame context (Ethernet TCP or UDP) ..
+            
+        }
+
+        class McContext1C {
+            .. 1C Frame context (Serial port) ..
+            
+        }
+
+        class McContext3C {
+            .. 3C Frame context (Serial port) ..
+        }
+
+        class McMsgInterface {
+            + {abstract} setConnectTimeout() : bool
+            + {abstract} setWriteTimeout() : bool
+            + {abstract} setWaitResponseTimeout() : bool
+            + {abstract} connectionCheck() : void 
+            + {abstract} connectToDevice() : bool
+            + {abstract} disconnectFromDevice() : bool
+            + {abstract} currentState() : MsgItfState
+            + {abstract} sendMsg() : MsgItfState
+            + {abstract} receiveMsg() : MsgItfState
+            + {abstract} type() : McItfType
+            + {abstract} clone() : void
+
+            .. Signals ..
+            + connectionCheckingFinished(bool) : void
+        }
+
+        class McMsgEthernetTCP {
+            .. Ethernet TCP/IP message interface ..
+        }
+
+        class McMsgSerialPort {
+            .. Serial message interface via COM Port ..
+        }
+
+        class McEthernetTCPDevice {
+
+        }
+
+        class McSerialDevice {
+
+        }
+
+        class DeviceParse {
+            .. Giữ nguyên dạng dữ liệu đọc được ghi vào bytes ..
+            .. Khi đọc thì parse ra ..
+        }
+    }
+    
+}
+
+' Inheritance
+IDevice             <|-- CameraDevice
+IDevice             <|-- MCProtocolDevice
+MCProtocolDevice    <|-- McEthernetTCPDevice
+MCProtocolDevice    <|-- McSerialDevice
+McMsgInterface      <|-- McMsgEthernetTCP
+McMsgInterface      <|-- McMsgSerialPort
+McContext           <|-- McContext1C
+McContext           <|-- McContext1E
+McContext           <|-- McContext3C
+McContext           <|-- McContext3E
+
+CameraDevice        <|-- BaslerGigECamera
+IDeviceConfig       <|-- CameraCfg
+CameraCfg           <|-- BaslerGigeCfg
+
+' Enum usage
+IDevice             --> ConnectStatus           : status
+IDevice             --> DeviceType              : device type
+CameraDevice        --> CameraType              : camera type
+
+' Dependencies
+DeviceFactory       ..> IDevice                 : returns
+IDevice             ..> IDeviceConfig           : returns
+IDevice             ..> Device_Json_Object      : returns json format
+CameraDevice        ..> GrabResult              : returns
+
+@enduml

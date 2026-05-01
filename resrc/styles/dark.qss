@@ -1,0 +1,183 @@
+QToolTip {
+    color: #cccccc;
+    background-color: #252526;
+    border: 1px solid #555555;
+}
+
+QMenuBar {
+    background-color: #2d2d2d;
+    color: #cccccc;
+}
+QMenuBar::item:selected { background-color: #094771; }
+
+QMenu {
+    background-color: #252526;
+    color: #cccccc;
+    border: 1px solid #454545;
+}
+QMenu::item:selected { background-color: #094771; }
+QMenu::separator { height: 1px; background: #454545; margin: 2px 0; }
+
+QStatusBar { background-color: #007acc; color: #ffffff; }
+
+QToolBar {
+    background-color: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    spacing: 2px;
+}
+QToolButton {
+    color: #cccccc;
+    background-color: transparent;
+    border: none;
+    padding: 4px;
+    border-radius: 3px;
+}
+QToolButton:hover   { background-color: #3c3c3c; }
+QToolButton:pressed { background-color: #094771; }
+QToolButton:checked { background-color: #094771; color: #ffffff; }
+
+QTreeView {
+    background-color: #252526;
+    color: #cccccc;
+    border: none;
+}
+QTreeView::item:hover    { background-color: #2a2d2e; }
+QTreeView::item:selected { background-color: #094771; }
+
+QHeaderView::section {
+    background-color: #2d2d2d;
+    color: #cccccc;
+    border: 1px solid #454545;
+}
+
+QScrollBar:vertical {
+    background: #2d2d2d;
+    width: 10px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #555555;
+    border-radius: 4px;
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical { height: 0; }
+
+QScrollBar:horizontal {
+    background: #2d2d2d;
+    height: 10px;
+    margin: 0;
+}
+QScrollBar::handle:horizontal {
+    background: #555555;
+    border-radius: 4px;
+    min-width: 20px;
+}
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal { width: 0; }
+
+QGroupBox {
+    color: #cccccc;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    margin-top: 8px;
+    padding-top: 4px;
+}
+QGroupBox::title {
+    color: #cccccc;
+    subcontrol-origin: margin;
+    left: 8px;
+}
+
+QLineEdit {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+QLineEdit:focus { border-color: #007acc; }
+
+QTextEdit,
+QPlainTextEdit {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #3c3c3c;
+}
+
+QComboBox {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+QComboBox::drop-down { border-left: 1px solid #555555; }
+QComboBox QAbstractItemView {
+    background-color: #252526;
+    color: #cccccc;
+    selection-background-color: #094771;
+}
+
+QPushButton {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 4px 12px;
+}
+QPushButton:hover    { background-color: #4c4c4c; border-color: #007acc; }
+QPushButton:pressed  { background-color: #094771; }
+QPushButton:default  { border-color: #007acc; }
+QPushButton:disabled { color: #6e6e6e; border-color: #3c3c3c; }
+
+QCheckBox { color: #cccccc; }
+QLabel    { color: #cccccc; }
+
+QSpinBox,
+QDoubleSpinBox {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #555555;
+    border-radius: 3px;
+}
+
+QTabWidget::pane { border: 1px solid #454545; }
+QTabBar::tab {
+    background-color: #2d2d2d;
+    color: #cccccc;
+    border: 1px solid #454545;
+    padding: 4px 12px;
+}
+QTabBar::tab:selected { background-color: #1e1e1e; border-bottom-color: transparent; }
+QTabBar::tab:hover    { background-color: #3c3c3c; }
+
+QTableWidget,
+QTableView {
+    background-color: #252526;
+    color: #cccccc;
+    gridline-color: #454545;
+}
+QTableWidget::item:selected,
+QTableView::item:selected { background-color: #094771; }
+
+QSlider::groove:horizontal {
+    background: #3c3c3c;
+    height: 4px;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    background: #007acc;
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    margin: -4px 0;
+}
+
+QSplitter::handle { background-color: #3c3c3c; }
+
+QDialog     { background-color: #2d2d2d; }
+QWizard     { background-color: #2d2d2d; }
+QWizardPage { background-color: #2d2d2d; }
+
+QAbstractScrollArea { background-color: #252526; }

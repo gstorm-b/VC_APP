@@ -1,0 +1,25 @@
+@startuml localization task
+
+package localization_task {
+
+    class UI_Element {
+        + Dashboard screen
+        + Pattern setting screen
+        + Calibration setting screen
+        + Signal setting screen
+    }
+
+    class Dashboard {
+        + Main screen
+        + Matched object list
+        + Signal monitoring
+        + Running state
+    }
+
+    class Signal setting {
+        + 
+    }
+
+}
+
+@enduml

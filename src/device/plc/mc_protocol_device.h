@@ -1,0 +1,113 @@
+#ifndef MC_PROTOCOL_DEVICE_H
+#define MC_PROTOCOL_DEVICE_H
+
+#include "device/idevice.h"
+#include "device/plc/mc_protocol_config.h"
+#include "device/plc/mc_fame_3e.h"
+
+#include <QTimer>
+#include <chrono>
+
+#define MC_PROTOCOL_DEVICE_STR      "MC protocol device"
+
+namespace vc::device {
+
+class McProtocolDevice : public IDevice {
+    Q_OBJECT
+
+public:
+    explicit McProtocolDevice(QString id, QString name, QObject* parent = nullptr);
+    ~McProtocolDevice();
+
+    bool deviceConnect() override;
+    bool deviceDisconnect() override;
+    bool isDeviceConnected() const override {
+        return connectStatus() == device::ConnectStatus::Connected;
+    }
+
+    virtual DeviceType deviceType() const override {
+        return DeviceType::McDevice;
+    }
+
+    McFrameType currentFrameType() const {
+        return m_config.currentFrameType();
+    }
+
+    void setDeviceConfig(IDeviceCfg *cfg) override;
+    void setMcProtocolConfig(McProtocolConfig& cfg);
+    McProtocolConfig mcProtocolConfig() const;
+
+    QStringList getAvailableBits() override;
+    QStringList getAvailableWords() override;
+
+    bool pushRequest(IRequest *request) override;
+
+    bool fromJson(const QJsonObject &obj) override;
+
+public slots:
+    void deviceTerminate() override;
+
+private slots:
+    void onPollingTimerTimeOut();
+    void onMsgInterfaceReadReady();
+    void onSetCommActiveDevice();
+
+private:
+    bool initialize_mc_device();
+    void excute_request();
+    void polling_query();
+
+    void request_handle();
+    void response_handle();
+    void retry_request_handle();
+
+    void optimizeDeviceMap();
+    void update_m_map();
+    void update_d_map();
+    void check_device_changed();
+    void update_last_m_map();
+    void update_last_d_map();
+
+signals:
+    void requestFinished(vc::device::McResult result);
+    void pollingUpdate(vc::device::McDeviceMap device_map);
+    void deviceMChanged(int number, quint8 last_state, quint8 new_state);
+    void deviceDChanged(int number, qint16 last_val, qint16 new_val);
+
+private:
+    McProtocolConfig m_config;
+
+    std::unique_ptr<McMsgInterface> m_msg_interface;
+    std::unique_ptr<MCFrameAbstract> m_frame;
+
+    QList<std::shared_ptr<MCRequest>> m_request_queue;
+    QList<std::shared_ptr<MCRequest>> m_polling_request_queue;
+
+    std::shared_ptr<MCRequest> m_current_request;
+
+    McDeviceMap m_device_map;
+    QTimer *m_polling_timer;
+
+    std::chrono::high_resolution_clock::time_point m_sent_time_point;
+
+    bool m_comm_active_m_device_value{false};
+    int m_comm_active_m_device;
+    int m_update_command_index;
+    bool is_first_time_polling;
+    bool m_wait_for_response;
+    bool m_retry_by_timeout{false};
+    int m_retry_count{0};
+
+    std::map<int, quint8> m_last_device_M_map;
+    std::map<int, qint16> m_last_device_D_map;
+
+    QStringList m_m_device_names;
+    QStringList m_d_device_names;
+
+    QByteArray m_read_buffer;
+};
+
+
+} // namespace vc::device
+
+#endif // MC_PROTOCOL_DEVICE_H

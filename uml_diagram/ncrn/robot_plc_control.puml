@@ -1,0 +1,34 @@
+@startuml robot_plc_control
+
+participant "IDLE" as idle #LightBlue
+participant "CONDITION_CHECK" as condition #LightSeaGreen
+participant "SELECT_PROG" as sel_prog #LightSalmon
+participant "HOMING" as homing #LightGreen
+participant "RUNNING" as run #LightCoral
+
+
+note right of idle : Check robot playback run condition for run_condition
+
+== HOMING == 
+
+activate homing
+
+idle        -> condition : !Home_position && run_condition
+condition   -> sel_prog : active homing selection program bits
+sel_prog    -> homing : running homing program
+homing      -> idle : homing done (Homing_position signal is TRUE)
+
+deactivate homing
+
+==  RUNNING AUTO MODE ==
+
+activate run
+
+idle        -> condition : Home_position && run_condition
+condition   -> sel_prog : active main selection program bits
+sel_prog    -> run : running main program
+run         -> idle :  program stop or cycle stop
+
+deactivate run
+
+@enduml

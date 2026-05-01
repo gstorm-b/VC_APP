@@ -1,0 +1,327 @@
+QT       += core gui network sql
+
+greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
+
+CONFIG += c++17
+
+# You can make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+SOURCES += \
+    main.cpp \
+    mainwindow.cpp \
+    src/app_settings/app_settings.cpp \
+    src/device/camera/camera_basler_gige.cpp \
+    src/device/device_factory.cpp \
+    src/device/device_manager.cpp \
+    src/device/plc/mc_device_map.cpp \
+    src/device/plc/mc_fame_3e.cpp \
+    src/device/plc/mc_protocol_device.cpp \
+    src/device/plc/mitsubishi_ethernet_tcp_plc.cpp \
+    src/form/add_device_wizard.cpp \
+    src/form/camera/basler_cam_select_dialog.cpp \
+    src/form/camera/basler_camera_widget.cpp \
+    src/form/navigate_form.cpp \
+    src/form/new_project_dialog.cpp \
+    src/form/new_task_dialog.cpp \
+    src/form/pattern/add_pattern_image_dialog.cpp \
+    src/form/plc/mc_protocol_device_widget.cpp \
+    src/form/plc/plc_mitsu_device_wizard.cpp \
+    src/form/project_infor_setting.cpp \
+    src/form/task/localization_calibration_widget.cpp \
+    src/form/task/localization_dashboard_widget.cpp \
+    src/form/task/localization_patterns_widget.cpp \
+    src/form/task/localization_task_widget.cpp \
+    src/form/task_form.cpp \
+    src/libwg/group_frame.cpp \
+    src/logger/app_logger.cpp \
+    src/matching/image_matcher.cpp \
+    src/matching/imatch_type_config.cpp \
+    src/matching/match_config_property_adapter.cpp \
+    src/matching/match_group.cpp \
+    src/matching/match_params.cpp \
+    src/matching/match_pattern.cpp \
+    src/matching/match_pattern_config.cpp \
+    src/matching/pattern_group_manager.cpp \
+    src/matching/utils_block_max.cpp \
+    src/matching/vision_utils.cpp \
+    src/model/itask.cpp \
+    src/model/project.cpp \
+    src/model/project_repository.cpp \
+    src/model/task_factory.cpp \
+    src/model/task_localization.cpp \
+    src/system_log_form.cpp \
+    src/widgets/camera_mapping_widget.cpp \
+    src/widgets/clamp.cpp \
+    src/widgets/group_frame_widget.cpp \
+    src/widgets/image_widget/image_view_only.cpp \
+    src/widgets/image_widget/image_widget.cpp \
+    src/widgets/image_widget/item_gripper_box.cpp \
+    src/widgets/image_widget/item_picking_pos.cpp \
+    src/widgets/image_widget/item_roi.cpp \
+    src/widgets/image_widget/item_roi_rotated.cpp \
+    src/widgets/no_wheel_combobox.cpp \
+    src/widgets/pattern_tree_widget.cpp \
+    src/widgets/plc_widget/d_devices_table.cpp \
+    src/widgets/plc_widget/m_devices_table.cpp \
+    src/widgets/project_tree_widget.cpp \
+    src/widgets/qtpropertybrowser/qtbuttonpropertybrowser.cpp \
+    src/widgets/qtpropertybrowser/qteditorfactory.cpp \
+    src/widgets/qtpropertybrowser/qtgroupboxpropertybrowser.cpp \
+    src/widgets/qtpropertybrowser/qtpropertybrowser.cpp \
+    src/widgets/qtpropertybrowser/qtpropertybrowserutils.cpp \
+    src/widgets/qtpropertybrowser/qtpropertymanager.cpp \
+    src/widgets/qtpropertybrowser/qttreepropertybrowser.cpp \
+    src/widgets/qtpropertybrowser/qtvariantproperty.cpp \
+    src/widgets/property_browser/custom_property_managers.cpp \
+    src/widgets/property_browser/property_browser_widget.cpp \
+    src/utils/theme_manager.cpp
+
+
+HEADERS += \
+    mainwindow.h \
+    src/app_settings/app_settings.h \
+    src/device/camera/basler_define.h \
+    src/device/camera/camera_basler_gige.h \
+    src/device/camera/camera_device.h \
+    src/device/communication_device.h \
+    src/device/device_factory.h \
+    src/device/device_io_interface.h \
+    src/device/device_manager.h \
+    src/device/idevice.h \
+    src/device/idevice_config.h \
+    src/device/irequest.h \
+    src/device/plc/mc_context.h \
+    src/device/plc/mc_context_3e.h \
+    src/device/plc/mc_context_factory.h \
+    src/device/plc/mc_define.h \
+    src/device/plc/mc_device_map.h \
+    src/device/plc/mc_fame_3e.h \
+    src/device/plc/mc_frame_abstract.h \
+    src/device/plc/mc_msg_interface.h \
+    src/device/plc/mc_msg_tcp_client.h \
+    src/device/plc/mc_protocol_config.h \
+    src/device/plc/mc_protocol_device.h \
+    src/device/plc/mc_request.h \
+    src/device/plc/memory_utils.h \
+    src/device/plc/mitsubishi_ethernet_tcp_plc.h \
+    src/device/plc/plc_request.h \
+    src/device/plc/plc_value.h \
+    src/form/add_device_wizard.h \
+    src/form/camera/basler_cam_select_dialog.h \
+    src/form/camera/basler_camera_widget.h \
+    src/form/device_widget.h \
+    src/form/navigate_form.h \
+    src/form/new_project_dialog.h \
+    src/form/new_task_dialog.h \
+    src/form/pattern/add_pattern_image_dialog.h \
+    src/form/pattern/pattern_manager_dialog.h \
+    src/form/plc/mc_protocol_device_widget.h \
+    src/form/plc/plc_mitsu_device_wizard.h \
+    src/form/project_infor_setting.h \
+    src/form/task/localization_calibration_widget.h \
+    src/form/task/localization_dashboard_widget.h \
+    src/form/task/localization_patterns_widget.h \
+    src/form/task/localization_task_widget.h \
+    src/form/task_form.h \
+    src/form/task_widget.h \
+    src/libwg/group_frame.h \
+    src/libwg/validating_line_edit.h \
+    src/logger/app_logger.h \
+    src/matching/edge_match_config.h \
+    src/matching/image_matcher.h \
+    src/matching/imatch_type_config.h \
+    src/matching/manager_result.h \
+    src/matching/match_config_property_adapter.h \
+    src/matching/match_box_gripper.h \
+    src/matching/match_group.h \
+    src/matching/match_object.h \
+    src/matching/match_params.h \
+    src/matching/match_pattern.h \
+    src/matching/match_pattern_config.h \
+    src/matching/match_pattern_layer.h \
+    src/matching/matching_types.h \
+    src/matching/pattern_group_manager.h \
+    src/matching/utils_block_max.h \
+    src/matching/vision_utils.h \
+    src/model/camera_map_entry.h \
+    src/model/camera_worker.h \
+    src/model/isignal_group.h \
+    src/model/itask.h \
+    src/model/itask_config.h \
+    src/model/mc_device_worker.h \
+    src/model/pick_and_place_task.h \
+    src/model/project.h \
+    src/model/project_repository.h \
+    src/model/task_define.h \
+    src/model/task_factory.h \
+    src/model/task_localization.h \
+    src/model/task_localization_config.h \
+    src/qgadget_marco.h \
+    src/setting_keys.h \
+    src/system_log_form.h \
+    src/utils/meta_utils.h \
+    src/utils/theme_manager.h \
+    src/widgets/camera_mapping_widget.h \
+    src/widgets/clamp.h \
+    src/widgets/group_frame_widget.h \
+    src/widgets/image_widget/image_view_only.h \
+    src/widgets/image_widget/image_widget.h \
+    src/widgets/image_widget/item_gripper_box.h \
+    src/widgets/image_widget/item_picking_pos.h \
+    src/widgets/image_widget/item_pixmap_bounding.h \
+    src/widgets/image_widget/item_roi.h \
+    src/widgets/image_widget/item_roi_rotated.h \
+    src/widgets/lamp_button.h \
+    src/widgets/no_wheel_combobox.h \
+    src/widgets/no_wheel_double_spinbox.h \
+    src/widgets/no_wheel_spinbox.h \
+    src/widgets/pattern_tree_widget.h \
+    src/widgets/plc_widget/d_devices_table.h \
+    src/widgets/plc_widget/m_devices_table.h \
+    src/widgets/project_tree_widget.h \
+    src/widgets/qtpropertybrowser/QtAbstractEditorFactoryBase \
+    src/widgets/qtpropertybrowser/QtAbstractPropertyBrowser \
+    src/widgets/qtpropertybrowser/QtAbstractPropertyManager \
+    src/widgets/qtpropertybrowser/QtBoolPropertyManager \
+    src/widgets/qtpropertybrowser/QtBrowserItem \
+    src/widgets/qtpropertybrowser/QtButtonPropertyBrowser \
+    src/widgets/qtpropertybrowser/QtCharEditorFactory \
+    src/widgets/qtpropertybrowser/QtCharPropertyManager \
+    src/widgets/qtpropertybrowser/QtCheckBoxFactory \
+    src/widgets/qtpropertybrowser/QtColorEditorFactory \
+    src/widgets/qtpropertybrowser/QtColorPropertyManager \
+    src/widgets/qtpropertybrowser/QtCursorEditorFactory \
+    src/widgets/qtpropertybrowser/QtCursorPropertyManager \
+    src/widgets/qtpropertybrowser/QtDateEditFactory \
+    src/widgets/qtpropertybrowser/QtDatePropertyManager \
+    src/widgets/qtpropertybrowser/QtDateTimeEditFactory \
+    src/widgets/qtpropertybrowser/QtDateTimePropertyManager \
+    src/widgets/qtpropertybrowser/QtDoublePropertyManager \
+    src/widgets/qtpropertybrowser/QtDoubleSpinBoxFactory \
+    src/widgets/qtpropertybrowser/QtEnumEditorFactory \
+    src/widgets/qtpropertybrowser/QtEnumPropertyManager \
+    src/widgets/qtpropertybrowser/QtFlagPropertyManager \
+    src/widgets/qtpropertybrowser/QtFontEditorFactory \
+    src/widgets/qtpropertybrowser/QtFontPropertyManager \
+    src/widgets/qtpropertybrowser/QtGroupBoxPropertyBrowser \
+    src/widgets/qtpropertybrowser/QtGroupPropertyManager \
+    src/widgets/qtpropertybrowser/QtIntPropertyManager \
+    src/widgets/qtpropertybrowser/QtKeySequenceEditorFactory \
+    src/widgets/qtpropertybrowser/QtKeySequencePropertyManager \
+    src/widgets/qtpropertybrowser/QtLineEditFactory \
+    src/widgets/qtpropertybrowser/QtLocalePropertyManager \
+    src/widgets/qtpropertybrowser/QtPointFPropertyManager \
+    src/widgets/qtpropertybrowser/QtPointPropertyManager \
+    src/widgets/qtpropertybrowser/QtProperty \
+    src/widgets/qtpropertybrowser/QtRectFPropertyManager \
+    src/widgets/qtpropertybrowser/QtRectPropertyManager \
+    src/widgets/qtpropertybrowser/QtScrollBarFactory \
+    src/widgets/qtpropertybrowser/QtSizeFPropertyManager \
+    src/widgets/qtpropertybrowser/QtSizePolicyPropertyManager \
+    src/widgets/qtpropertybrowser/QtSizePropertyManager \
+    src/widgets/qtpropertybrowser/QtSliderFactory \
+    src/widgets/qtpropertybrowser/QtSpinBoxFactory \
+    src/widgets/qtpropertybrowser/QtStringPropertyManager \
+    src/widgets/qtpropertybrowser/QtTimeEditFactory \
+    src/widgets/qtpropertybrowser/QtTimePropertyManager \
+    src/widgets/qtpropertybrowser/QtTreePropertyBrowser \
+    src/widgets/qtpropertybrowser/QtVariantEditorFactory \
+    src/widgets/qtpropertybrowser/QtVariantProperty \
+    src/widgets/qtpropertybrowser/QtVariantPropertyManager \
+    src/widgets/qtpropertybrowser/qtbuttonpropertybrowser.h \
+    src/widgets/qtpropertybrowser/qteditorfactory.h \
+    src/widgets/qtpropertybrowser/qtgroupboxpropertybrowser.h \
+    src/widgets/qtpropertybrowser/qtpropertybrowser.h \
+    src/widgets/qtpropertybrowser/qtpropertybrowserutils_p.h \
+    src/widgets/qtpropertybrowser/qtpropertymanager.h \
+    src/widgets/qtpropertybrowser/qttreepropertybrowser.h \
+    src/widgets/qtpropertybrowser/qtvariantproperty.h \
+    src/widgets/property_browser/prop_spec.h \
+    src/widgets/property_browser/custom_property_managers.h \
+    src/widgets/property_browser/property_browser_widget.h \
+    windows_helper.h
+
+
+FORMS += \
+    mainwindow.ui \
+    src/form/add_device_wizard.ui \
+    src/form/camera/basler_cam_select_dialog.ui \
+    src/form/camera/basler_camera_widget.ui \
+    src/form/navigate_form.ui \
+    src/form/new_project_dialog.ui \
+    src/form/new_task_dialog.ui \
+    src/form/pattern/add_pattern_image_dialog.ui \
+    src/form/plc/mc_ethernet_tcpip_widget.ui \
+    src/form/plc/mc_protocol_device_widget.ui \
+    src/form/plc/mc_serial_port_widget.ui \
+    src/form/plc/plc_mitsu_device_wizard.ui \
+    src/form/project_infor_setting.ui \
+    src/form/task/localization_calibration_widget.ui \
+    src/form/task/localization_dashboard_widget.ui \
+    src/form/task/localization_patterns_widget.ui \
+    src/form/task/localization_task_widget.ui \
+    src/form/task_form.ui \
+    src/system_log_form.ui
+
+TRANSLATIONS += \
+    ncr_picking_ja_JP.ts
+CONFIG += lrelease
+CONFIG += embed_translations
+
+INCLUDEPATH += \
+    third_party/advance_docking/inlcude \
+    src/
+
+# Default rules for deployment.
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
+
+win32:CONFIG(release, debug|release): LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120
+else:win32:CONFIG(debug, debug|release): LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120d
+else:unix: LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120
+
+INCLUDEPATH += C:/opencv/build/include
+DEPENDPATH += C:/opencv/build/include
+
+win32:CONFIG(release, debug|release): LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v11
+else:win32:CONFIG(debug, debug|release): LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v11
+else:unix: LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v11
+
+INCLUDEPATH += 'C:/Program Files/Basler/pylon/Development/include'
+DEPENDPATH += 'C:/Program Files/Basler/pylon/Development/include'
+
+RESOURCES += \
+    3rdparty/advance_docking/include/ads.qrc \
+    resrc.qrc \
+    src/widgets/qtpropertybrowser/qtpropertybrowser.qrc
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/3rdparty/advance_docking/lib/ -lqtadvanceddocking
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/3rdparty/advance_docking/lib/ -lqtadvanceddockingd
+
+INCLUDEPATH += $$PWD/3rdparty/advance_docking/include
+DEPENDPATH += $$PWD/3rdparty/advance_docking/include
+
+DISTFILES += \
+    src/widgets/qtpropertybrowser/images/button-reset.ico \
+    src/widgets/qtpropertybrowser/images/cursor-arrow.png \
+    src/widgets/qtpropertybrowser/images/cursor-busy.png \
+    src/widgets/qtpropertybrowser/images/cursor-closedhand.png \
+    src/widgets/qtpropertybrowser/images/cursor-cross.png \
+    src/widgets/qtpropertybrowser/images/cursor-forbidden.png \
+    src/widgets/qtpropertybrowser/images/cursor-hand.png \
+    src/widgets/qtpropertybrowser/images/cursor-hsplit.png \
+    src/widgets/qtpropertybrowser/images/cursor-ibeam.png \
+    src/widgets/qtpropertybrowser/images/cursor-openhand.png \
+    src/widgets/qtpropertybrowser/images/cursor-sizeall.png \
+    src/widgets/qtpropertybrowser/images/cursor-sizeb.png \
+    src/widgets/qtpropertybrowser/images/cursor-sizef.png \
+    src/widgets/qtpropertybrowser/images/cursor-sizeh.png \
+    src/widgets/qtpropertybrowser/images/cursor-sizev.png \
+    src/widgets/qtpropertybrowser/images/cursor-uparrow.png \
+    src/widgets/qtpropertybrowser/images/cursor-vsplit.png \
+    src/widgets/qtpropertybrowser/images/cursor-wait.png \
+    src/widgets/qtpropertybrowser/images/cursor-whatsthis.png \
+    src/widgets/qtpropertybrowser/qtpropertybrowser.pri

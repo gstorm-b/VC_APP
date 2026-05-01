@@ -1,0 +1,963 @@
+#include "image_matcher.h"
+
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
+#include <iostream>
+
+#include <chrono>
+#include <immintrin.h>   // AVX2
+#include <omp.h>
+#include <cmath>
+#include <malloc.h>
+#include <algorithm>
+#include <vector>
+
+#include "vision_utils.h"
+
+#define VISION_TOLERANCE    0.0000001
+#define D2R                 (CV_PI / 180.0)
+#define R2D                 (180.0 / CV_PI)
+#define MATCH_CANDIDATE_NUM 5
+#define SMALL_CROP_OFFSET   20
+
+using namespace std;
+using namespace cv;
+
+namespace mtc {
+
+// ── SIMD helpers ─────────────────────────────────────────────────────────────
+
+inline int _mm_hsum_epi32(__m128i V) {
+    __m128i T = _mm_add_epi32(V, _mm_srli_si128(V, 8));
+    T = _mm_add_epi32(T, _mm_srli_si128(T, 4));
+    return _mm_cvtsi128_si32(T);
+}
+
+inline int IM_Conv_SIMD(unsigned char* pCharKernel, unsigned char* pCharConv, int iLength) {
+    const int iBlockSize = 16, Block = iLength / iBlockSize;
+    __m128i SumV = _mm_setzero_si128();
+    __m128i Zero = _mm_setzero_si128();
+    for (int Y = 0; Y < Block * iBlockSize; Y += iBlockSize) {
+        __m128i SrcK = _mm_loadu_si128((__m128i*)(pCharKernel + Y));
+        __m128i SrcC = _mm_loadu_si128((__m128i*)(pCharConv  + Y));
+        __m128i SrcK_L = _mm_unpacklo_epi8(SrcK, Zero);
+        __m128i SrcK_H = _mm_unpackhi_epi8(SrcK, Zero);
+        __m128i SrcC_L = _mm_unpacklo_epi8(SrcC, Zero);
+        __m128i SrcC_H = _mm_unpackhi_epi8(SrcC, Zero);
+        __m128i SumT = _mm_add_epi32(_mm_madd_epi16(SrcK_L, SrcC_L),
+                                      _mm_madd_epi16(SrcK_H, SrcC_H));
+        SumV = _mm_add_epi32(SumV, SumT);
+    }
+    int Sum = _mm_hsum_epi32(SumV);
+    for (int Y = Block * iBlockSize; Y < iLength; Y++)
+        Sum += pCharKernel[Y] * pCharConv[Y];
+    return Sum;
+}
+
+// ── Comparators ──────────────────────────────────────────────────────────────
+
+static bool compareScoreBig2Small(const MatchParams& lhs, const MatchParams& rhs) {
+    return lhs._matchScore > rhs._matchScore;
+}
+
+static bool comparePtWithAngle(const pair<Point2f, double> lhs,
+                                const pair<Point2f, double> rhs) {
+    return lhs.second < rhs.second;
+}
+
+// ── ImageMatcher ──────────────────────────────────────────────────────────────
+
+ImageMatcher::ImageMatcher() {}
+
+MatchGroup* ImageMatcher::getPatternGroup() { return &m_model_src; }
+
+int ImageMatcher::getTemplateSourceSize() {
+    return static_cast<int>(m_model_src.patternCount());
+}
+
+void ImageMatcher::setImageSource(std::string path) {
+    m_img_source = cv::imread(path);
+}
+
+void ImageMatcher::setImageSource(cv::Mat img) {
+    m_img_source = img.clone();
+}
+
+void ImageMatcher::setMatchingROI(cv::Point tl, cv::Point br) {
+    ROI_tl = tl;
+    ROI_br = br;
+}
+
+// ── Border clear helper ───────────────────────────────────────────────────────
+
+static inline void clearImageBorder(Mat& image, int offset) {
+    const int cols = image.cols, rows = image.rows;
+    for (int y = 0; y < offset; ++y)
+        for (int x = 0; x < cols; ++x) {
+            image.at<uchar>(y, x)             = 255;
+            image.at<uchar>(rows - 1 - y, x)  = 255;
+        }
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < offset; ++x) {
+            image.at<uchar>(y, x)             = 255;
+            image.at<uchar>(y, cols - 1 - x)  = 255;
+        }
+}
+
+// ── Public matching entry points ──────────────────────────────────────────────
+
+void ImageMatcher::matching(Mat& image, bool boundingBoxChecking,
+                             int objectsNum, bool usingRoi) {
+    m_img_source = image.clone();
+    matching(boundingBoxChecking, objectsNum, usingRoi);
+}
+
+void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool usingRoi) {
+    if (m_img_source.empty()) return;
+
+    match_result.isFoundMatchObject   = false;
+    match_result.totalPossiblePicking = 0;
+
+    if (m_model_src.isEmpty()) {
+        match_result.Objects.clear();
+        match_result.ExecutionTime        = 0;
+        match_result.isAreaLessThanLimits = false;
+        m_img_source.copyTo(match_result.Image);
+        return;
+    }
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // find max model contour area for material-quantity check
+    int maxModelSize     = 0;
+    int maxModelRectArea = 0;
+    std::vector<std::shared_ptr<MatchPattern>> patterns = m_model_src.patterns();
+    for (auto& sp : patterns) {
+        MatchPattern* model = sp.get();
+        if (maxModelSize     < model->getModelContoursSelectedArea())
+            maxModelSize     = model->getModelContoursSelectedArea();
+        if (maxModelRectArea < model->getModelContoursSelectedRectArea())
+            maxModelRectArea = model->getModelContoursSelectedRectArea();
+    }
+
+    /// Pre-processing
+    Mat imageGray, imageThresh, temp_src_image;
+    if (m_img_source.channels() == 3)
+        cv::cvtColor(m_img_source, imageGray, cv::COLOR_BGR2GRAY);
+    else if (m_img_source.channels() == 4)
+        cv::cvtColor(m_img_source, imageGray, cv::COLOR_BGRA2GRAY);
+    else
+        imageGray = m_img_source.clone();
+
+    GaussianBlur(imageGray, imageGray, cv::Size(5, 5), 0);
+    threshold(imageGray, imageThresh, 0, 255, cv::THRESH_BINARY + cv::THRESH_OTSU);
+
+    vector<vector<Point>> srcContours;
+    vector<Vec4i>         srcHierarchy;
+    const int border_offset = 2;
+
+    if (usingRoi) {
+        temp_src_image = m_img_source(cv::Range(ROI_tl.y, ROI_br.y),
+                                      cv::Range(ROI_tl.x, ROI_br.x)).clone();
+        cv::Mat roi_mat = imageThresh(cv::Range(ROI_tl.y, ROI_br.y),
+                                      cv::Range(ROI_tl.x, ROI_br.x)).clone();
+        clearImageBorder(roi_mat, border_offset);
+        cv::imwrite("Test.bmp", roi_mat);
+        findContours(roi_mat, srcContours, srcHierarchy,
+                     cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
+    } else {
+        m_img_source.copyTo(temp_src_image);
+        clearImageBorder(imageThresh, border_offset);
+        findContours(imageThresh, srcContours, srcHierarchy,
+                     cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
+    }
+
+    int sumArea       = 0;
+    int temp_img_cols = static_cast<int>(temp_src_image.cols * 0.8);
+    int temp_img_rows = static_cast<int>(temp_src_image.rows * 0.8);
+    cv::Rect imageRect(0, 0, temp_src_image.cols, temp_src_image.rows);
+    const int maxNoiseArea = static_cast<int>(
+        temp_src_image.cols * temp_src_image.rows * 0.5);
+
+    vector<PossibleObject> objects;
+    vector<int>            possibleCollisionContourIndex;
+
+    for (int ci = 0; ci < static_cast<int>(srcContours.size()); ++ci) {
+        PossibleObject tempObj;
+        int area         = static_cast<int>(contourArea(srcContours[ci]));
+        cv::RotatedRect rect    = cv::minAreaRect(srcContours[ci]);
+        cv::Rect        bndBox  = cv::boundingRect(srcContours[ci]);
+        int rectArea = static_cast<int>(rect.size.height * rect.size.width);
+
+        possibleCollisionContourIndex.push_back(ci);
+
+        if (rectArea >= maxNoiseArea) continue;
+
+        bool isNoise = (rect.size.height >= temp_img_rows)
+                    || (rect.size.width  >= temp_img_cols)
+                    || (bndBox.height    >= temp_img_rows)
+                    || (bndBox.width     >= temp_img_cols);
+
+        if (!isNoise) sumArea += area;
+
+        for (int mi = 0; mi < static_cast<int>(patterns.size()); ++mi) {
+            MatchPattern* model = patterns.at(mi).get();
+            int lowerArea = static_cast<int>(model->getModelContoursSelectedArea() * lowerThreshRatio);
+            int upperArea = static_cast<int>(model->getModelContoursSelectedArea() * upperThreshRatio);
+            if (area <= lowerArea || area >= upperArea) continue;
+            tempObj.modelCheckList.push_back(mi);
+        }
+
+        if (!tempObj.modelCheckList.empty()) {
+            tempObj.conIndex = ci;
+            cv::Rect tmp = cv::boundingRect(srcContours[ci]);
+            tempObj.conBoundingRect = cv::Rect(
+                tmp.x - SMALL_CROP_OFFSET,
+                tmp.y - SMALL_CROP_OFFSET,
+                tmp.width  + 2 * SMALL_CROP_OFFSET,
+                tmp.height + 2 * SMALL_CROP_OFFSET) & imageRect;
+            tempObj.conMinRectArea = cv::minAreaRect(srcContours[ci]);
+            objects.push_back(tempObj);
+        }
+    }
+
+    match_result.Objects.clear();
+
+    for (int oi = 0; oi < static_cast<int>(objects.size()); ++oi) {
+        cv::Mat temp_crop = temp_src_image(objects[oi].conBoundingRect);
+        m_final_overlap_result.clear();
+        std::vector<MatchedObject> area_obj;
+
+        for (int mi = 0; mi < static_cast<int>(objects[oi].modelCheckList.size()); ++mi) {
+            std::vector<MatchedObject> tmp_obj;
+            int modelIdx = objects[oi].modelCheckList[mi];
+            MatchPattern* pattern = patterns.at(modelIdx).get();
+            this->MatchEdge(temp_crop, pattern, tmp_obj);
+            for (auto& o : tmp_obj)
+                area_obj.push_back(o);
+        }
+
+        std::vector<int> del_indexes;
+        FilterWithRotatedRect(&m_final_overlap_result, cv::TM_CCOEFF_NORMED,
+                              max_overlap, &del_indexes);
+        std::sort(del_indexes.begin(), del_indexes.end());
+        for (auto it = del_indexes.rbegin(); it != del_indexes.rend(); ++it) {
+            if (*it >= 0 && *it < static_cast<int>(area_obj.size()))
+                area_obj.erase(area_obj.begin() + *it);
+        }
+
+        for (auto& obj : area_obj) {
+            if (obj.parent() == nullptr) continue;
+            obj.translateByTopLeft(objects[oi].conBoundingRect.tl());
+            obj.pickingBox = cv::RotatedRect(obj.point_Center,
+                                              m_model_src.config().m_pickingBoxSize,
+                                              obj.point_angle);
+            obj.pattern_name  = obj.parent()->patternConfigPtr()->m_patternName;
+            obj.pattern_index = obj.parent()->patternConfigPtr()->m_patternIndex;
+            obj.computeGripperBox(m_model_src.config().m_pickingBoxSize,
+                                  m_model_src.config().m_pickingBoxDistance,
+                                  m_model_src.config().m_pickingBoxAngle);
+            obj.checkCollisionObject(srcContours, possibleCollisionContourIndex);
+            if (!obj.hasCollision())
+                match_result.totalPossiblePicking++;
+            match_result.Objects.push_back(obj);
+        }
+
+        if (objectsNum < 0) continue;
+        if (static_cast<int>(match_result.Objects.size()) > objectsNum
+            && match_result.totalPossiblePicking > 0)
+            break;
+    }
+
+    std::chrono::time_point stop_pt = std::chrono::high_resolution_clock::now();
+    double time_count = std::chrono::duration<double, std::milli>(stop_pt - start).count();
+
+    match_result.cropOffsetPoint = usingRoi ? ROI_tl : cv::Point(0, 0);
+    match_result.ExecutionTime   = time_count;
+    match_result.imageCols       = temp_src_image.cols;
+    match_result.imageRows       = temp_src_image.rows;
+
+    match_result.totalPossiblePicking = 0;
+    for (auto& obj : match_result.Objects)
+        if (!obj.hasCollision()) match_result.totalPossiblePicking++;
+
+    match_result.isFoundMatchObject = !match_result.Objects.empty();
+    match_result.isAreaLessThanLimits =
+        (sumArea < static_cast<int>(maxModelSize * m_model_src.config().m_lowWorkpieceRatio));
+
+    if (temp_src_image.channels() == 1)
+        cv::cvtColor(temp_src_image, match_result.Image, cv::COLOR_GRAY2BGR);
+    else if (m_img_source.channels() == 4)
+        cv::cvtColor(temp_src_image, match_result.Image, cv::COLOR_BGRA2BGR);
+    else
+        match_result.Image = temp_src_image.clone();
+
+    for (auto& obj : match_result.Objects) {
+        const MatchPattern* parent = obj.parent();
+        if (parent) obj.drawMaskPatternIntoImage(match_result.Image);
+
+        vsu::drawAxes2Img(match_result.Image, obj.point_Center, obj.point_angle,
+                          false, 20, 0.4, DEFAULT_COLOR_BLUE, DEFAULT_COLOR_RED);
+
+        if (obj.hasCollision())
+            obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_RED);
+        else
+            obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_GREEN);
+
+        obj.setParent(nullptr);
+    }
+}
+
+void ImageMatcher::setMatchSourceImage(cv::Mat& img) {
+    m_img_source = img.clone();
+}
+
+// ── MatchEdge ─────────────────────────────────────────────────────────────────
+
+bool ImageMatcher::MatchEdge(cv::Mat& img_edge, MatchPattern* edgePattern,
+                              std::vector<MatchedObject>& match_objs) {
+    if (!edgePattern || !edgePattern->isPatternLearned()) return false;
+
+    cv::Mat img_dst = edgePattern->getPatternImage();
+    if (img_edge.empty() || img_dst.empty()) return false;
+    if (img_dst.cols > img_edge.cols && img_dst.rows > img_edge.rows) return false;
+    if (img_dst.size().area() > img_edge.size().area()) return false;
+
+    const MatchPatternConfig* cfg = edgePattern->patternConfigPtr();
+    const EdgeMatchConfig* ecfg = cfg->edgeConfig();
+    if (!ecfg) return false;  // only EdgeBased supported here
+
+    // ── Build source pyramid ──────────────────────────────────────────────
+
+    cv::Mat img_gray;
+    if (img_edge.channels() == 3)
+        cv::cvtColor(img_edge, img_gray, cv::COLOR_BGR2GRAY);
+    else if (img_edge.channels() == 4)
+        cv::cvtColor(img_edge, img_gray, cv::COLOR_BGRA2GRAY);
+    else
+        img_gray = img_edge.clone();
+
+    const int top_layer = edgePattern->getTopLayer();
+    vector<Mat> vecSrcPyr;
+    cv::buildPyramid(img_gray, vecSrcPyr, top_layer);
+
+    // ── Prepare angle list ────────────────────────────────────────────────
+
+    const vector<cv::Mat>* tmpl_pyr = edgePattern->getPyramid();
+    double angleStep = atan(2.0 / max(tmpl_pyr->at(top_layer).cols,
+                                       tmpl_pyr->at(top_layer).rows)) * R2D;
+    vector<double> vecAngles;
+    if (cfg->m_toleranceAngle < VISION_TOLERANCE) {
+        vecAngles.push_back(0.0);
+    } else {
+        for (double a = 0; a < cfg->m_toleranceAngle + angleStep; a += angleStep)
+            vecAngles.push_back(a);
+        for (double a = -angleStep; a > -(cfg->m_toleranceAngle) - angleStep; a -= angleStep)
+            vecAngles.push_back(a);
+    }
+
+    const int   top_srcW  = vecSrcPyr[top_layer].cols;
+    const int   top_srcH  = vecSrcPyr[top_layer].rows;
+    Point2f top_center((top_srcW - 1) / 2.0f, (top_srcH - 1) / 2.0f);
+
+    // reduce min score per lower pyramid layer
+    vector<double> vecLayerScores(top_layer + 1, cfg->m_minScore);
+    for (int li = 1; li <= top_layer; ++li)
+        vecLayerScores[li] = vecLayerScores[li - 1] * 0.8;
+
+    cv::Size top_patSize = tmpl_pyr->at(top_layer).size();
+    bool calMaxByBlock = ((vecSrcPyr[top_layer].size().area() / top_patSize.area()) > 500)
+                         && (max_pos_num > 10);
+
+    vector<MatchParams> vecMatchParams;
+
+    // ── Smallest-layer matching ───────────────────────────────────────────
+
+    for (int idx = 0; idx < static_cast<int>(vecAngles.size()); ++idx) {
+        Mat matRotatedSrc, matR = cv::getRotationMatrix2D(top_center, vecAngles[idx], 1.0);
+        Mat matResult;
+        Point ptMaxLoc;
+        double value, maxValue;
+        Size sizeBest = GetBestRotationSize(vecSrcPyr[top_layer].size(),
+                                            tmpl_pyr->at(top_layer).size(),
+                                            vecAngles[idx]);
+        float fTx = (sizeBest.width  - 1) / 2.0f - top_center.x;
+        float fTy = (sizeBest.height - 1) / 2.0f - top_center.y;
+        matR.at<double>(0, 2) += fTx;
+        matR.at<double>(1, 2) += fTy;
+        warpAffine(vecSrcPyr[top_layer], matRotatedSrc, matR, sizeBest,
+                   INTER_LINEAR, BORDER_CONSTANT, Scalar(edgePattern->borderColor()));
+
+        bool isValid = false;
+#ifdef NOT_USE_SIMD
+        isValid = MatchEdgePattern(matRotatedSrc, edgePattern, matResult,
+                                   top_layer, vecLayerScores[top_layer], *ecfg);
+#else
+        isValid = MatchEdgePattern_SIMD(matRotatedSrc, edgePattern, matResult,
+                                        top_layer, vecLayerScores[top_layer]);
+#endif
+        if (!isValid) continue;
+
+        if (calMaxByBlock) {
+            BlockMax blockMax(matResult, tmpl_pyr->at(top_layer).size());
+            blockMax.GetMaxValueLoc(maxValue, ptMaxLoc);
+            if (maxValue < vecLayerScores[top_layer]) continue;
+            vecMatchParams.push_back(MatchParams(Point2f(ptMaxLoc.x - fTx,
+                                                          ptMaxLoc.y - fTy),
+                                                  maxValue, vecAngles[idx]));
+            for (int j = 0; j < max_pos_num + MATCH_CANDIDATE_NUM - 1; ++j) {
+                ptMaxLoc = GetNextMaxLoc(matResult, ptMaxLoc,
+                                         tmpl_pyr->at(top_layer).size(),
+                                         value, max_overlap, blockMax);
+                if (value < vecLayerScores[top_layer]) break;
+                vecMatchParams.push_back(MatchParams(
+                    Point2f(ptMaxLoc.x - fTx, ptMaxLoc.y - fTy), value, vecAngles[idx]));
+            }
+        } else {
+            cv::minMaxLoc(matResult, 0, &maxValue, 0, &ptMaxLoc);
+            if (maxValue < vecLayerScores[top_layer]) continue;
+            vecMatchParams.push_back(MatchParams(Point2f(ptMaxLoc.x - fTx,
+                                                          ptMaxLoc.y - fTy),
+                                                  maxValue, vecAngles[idx]));
+            for (int j = 0; j < max_pos_num + MATCH_CANDIDATE_NUM - 1; ++j) {
+                ptMaxLoc = GetNextMaxLoc(matResult, ptMaxLoc,
+                                         tmpl_pyr->at(top_layer).size(),
+                                         value, max_overlap);
+                if (value < vecLayerScores[top_layer]) break;
+                vecMatchParams.push_back(MatchParams(
+                    Point2f(ptMaxLoc.x - fTx, ptMaxLoc.y - fTy), value, vecAngles[idx]));
+            }
+        }
+    }
+    sort(vecMatchParams.begin(), vecMatchParams.end(), compareScoreBig2Small);
+
+    // ── Fine matching (pyramid descent) ───────────────────────────────────
+
+    const int stop_layer = ecfg->stopAtLayer1 ? 1 : 0;
+    vector<MatchParams> vecAllResult;
+
+    for (int i = 0; i < static_cast<int>(vecMatchParams.size()); ++i) {
+        double rAngle = -vecMatchParams[i]._matchAngle * D2R;
+        Point2f ptLT  = ptRotatePt2f(vecMatchParams[i]._point, top_center, rAngle);
+
+        double _angleStep = atan(2.0 / max(top_srcW, top_srcH)) * R2D;
+        vecMatchParams[i]._angleStart = vecMatchParams[i]._matchAngle - _angleStep;
+        vecMatchParams[i]._angleEnd   = vecMatchParams[i]._matchAngle + _angleStep;
+
+        if (top_layer <= stop_layer) {
+            vecMatchParams[i]._point = Point2d(ptLT * (top_layer == 0 ? 1 : 2));
+            vecAllResult.push_back(vecMatchParams[i]);
+        } else {
+            for (int iLayer = top_layer - 1; iLayer >= stop_layer; --iLayer) {
+                _angleStep = atan(2.0 / max(tmpl_pyr->at(iLayer).cols,
+                                             tmpl_pyr->at(iLayer).rows)) * R2D;
+                vector<double> layerAngles;
+                double dMatchedAngle = vecMatchParams[i]._matchAngle;
+                if (cfg->m_toleranceAngle < VISION_TOLERANCE) {
+                    layerAngles.push_back(0.0);
+                } else {
+                    for (int k = -1; k <= 1; ++k)
+                        layerAngles.push_back(dMatchedAngle + _angleStep * k);
+                }
+
+                Point2f ptSrcCenter((vecSrcPyr[iLayer].cols - 1) / 2.0f,
+                                    (vecSrcPyr[iLayer].rows - 1) / 2.0f);
+                const int iSize = static_cast<int>(layerAngles.size());
+                vector<MatchParams> vecNew(iSize);
+                int    iMaxIdx  = 0;
+                double dBigVal  = -1;
+
+                for (int j = 0; j < iSize; ++j) {
+                    Mat matResult, matRotatedSrc;
+                    double dMaxVal = 0;
+                    Point  ptMax;
+                    GetRotatedROI(vecSrcPyr[iLayer], tmpl_pyr->at(iLayer).size(),
+                                  ptLT * 2, layerAngles[j], matRotatedSrc);
+#ifdef NOT_USE_SIMD
+                    MatchEdgePattern(matRotatedSrc, edgePattern, matResult,
+                                     iLayer, vecLayerScores[iLayer], *ecfg);
+#else
+                    MatchEdgePattern_SIMD(matRotatedSrc, edgePattern, matResult,
+                                          iLayer, vecLayerScores[iLayer]);
+#endif
+                    minMaxLoc(matResult, 0, &dMaxVal, 0, &ptMax);
+                    vecNew[j] = MatchParams(ptMax, dMaxVal, layerAngles[j]);
+                    if (vecNew[j]._matchScore > dBigVal) {
+                        iMaxIdx = j;
+                        dBigVal = vecNew[j]._matchScore;
+                    }
+                    if (ptMax.x == 0 || ptMax.y == 0
+                        || ptMax.x == matResult.cols - 1
+                        || ptMax.y == matResult.rows - 1)
+                        vecNew[j]._posOnBorder = true;
+                    if (!vecNew[j]._posOnBorder) {
+                        for (int y = -1; y <= 1; ++y)
+                            for (int x = -1; x <= 1; ++x)
+                                vecNew[j]._vecResult[x + 1][y + 1] =
+                                    matResult.at<float>(ptMax + Point(x, y));
+                    }
+                }
+
+                if (vecNew[iMaxIdx]._matchScore < vecLayerScores[iLayer]) break;
+
+                // sub-pixel refinement
+                if (ecfg->subPixelEstimation && iLayer == 0
+                    && !vecNew[iMaxIdx]._posOnBorder
+                    && iMaxIdx != 0 && iMaxIdx != 2) {
+                    double dNewX = 0, dNewY = 0, dNewAngle = 0;
+                    SubPixEsimation(&vecNew, &dNewX, &dNewY, &dNewAngle,
+                                    _angleStep, iMaxIdx);
+                    vecNew[iMaxIdx]._point      = Point2d(dNewX, dNewY);
+                    vecNew[iMaxIdx]._matchAngle = dNewAngle;
+                }
+
+                double dNewAngle = vecNew[iMaxIdx]._matchAngle;
+                Point2f ptPad = ptRotatePt2f(ptLT * 2, ptSrcCenter,
+                                              dNewAngle * D2R) - Point2f(3, 3);
+                Point2f pt(vecNew[iMaxIdx]._point.x + ptPad.x,
+                           vecNew[iMaxIdx]._point.y + ptPad.y);
+                pt = ptRotatePt2f(pt, ptSrcCenter, -dNewAngle * D2R);
+
+                if (iLayer == stop_layer) {
+                    vecNew[iMaxIdx]._point = pt * (stop_layer == 0 ? 1 : 2);
+                    vecAllResult.push_back(vecNew[iMaxIdx]);
+                } else {
+                    vecMatchParams[i]._matchAngle = dNewAngle;
+                    vecMatchParams[i]._angleStart = dNewAngle - _angleStep / 2;
+                    vecMatchParams[i]._angleEnd   = dNewAngle + _angleStep / 2;
+                    ptLT = pt;
+                }
+            }
+        }
+    }
+
+    FilterWithScore(&vecAllResult, cfg->m_minScore);
+
+    // ── Overlap filter ────────────────────────────────────────────────────
+
+    const int iDstW = tmpl_pyr->at(stop_layer).cols * (stop_layer == 0 ? 1 : 2);
+    const int iDstH = tmpl_pyr->at(stop_layer).rows * (stop_layer == 0 ? 1 : 2);
+
+    for (int i = 0; i < static_cast<int>(vecAllResult.size()); ++i) {
+        Point2f ptLT2, ptRT, ptRB, ptLB;
+        double dRA = -vecAllResult[i]._matchAngle * D2R;
+        ptLT2 = vecAllResult[i]._point;
+        ptRT  = Point2f(ptLT2.x + iDstW * (float)cos(dRA),
+                        ptLT2.y - iDstW * (float)sin(dRA));
+        ptLB  = Point2f(ptLT2.x + iDstH * (float)sin(dRA),
+                        ptLT2.y + iDstH * (float)cos(dRA));
+        ptRB  = Point2f(ptRT.x  + iDstH * (float)sin(dRA),
+                        ptRT.y  + iDstH * (float)cos(dRA));
+        vecAllResult[i]._rectR = RotatedRect(ptLT2, ptRT, ptRB);
+    }
+    FilterWithRotatedRect(&vecAllResult, cv::TM_CCOEFF_NORMED, max_overlap);
+
+    sort(vecAllResult.begin(), vecAllResult.end(), compareScoreBig2Small);
+
+    // ── Build output ──────────────────────────────────────────────────────
+
+    match_objs.clear();
+    const int numMatched = static_cast<int>(vecAllResult.size());
+    if (numMatched == 0) return false;
+
+    const int iW = tmpl_pyr->at(0).cols;
+    const int iH = tmpl_pyr->at(0).rows;
+
+    for (int idx = 0; idx < numMatched; ++idx) {
+        MatchedObject mo;
+        double dRA = -vecAllResult[idx]._matchAngle * D2R;
+
+        mo.point_LT = vecAllResult[idx]._point;
+        mo.point_RT = Point2f(mo.point_LT.x + iW * cos(dRA),
+                              mo.point_LT.y - iW * sin(dRA));
+        mo.point_LB = Point2f(mo.point_LT.x + iH * sin(dRA),
+                              mo.point_LT.y + iH * cos(dRA));
+        mo.point_RB = Point2f(mo.point_RT.x + iH * sin(dRA),
+                              mo.point_RT.y + iH * cos(dRA));
+
+        Point2f tspt = cfg->m_pickPosition;
+        mo.point_Center = Point2f(
+            mo.point_LT.x + (tspt.x * cos(dRA) + tspt.y * sin(dRA)),
+            mo.point_LT.y + (tspt.y * cos(dRA) - tspt.x * sin(dRA)));
+
+        mo.matched_Score = vecAllResult[idx]._matchScore;
+        mo.computeMatchAngle(vecAllResult[idx]._matchAngle);
+        mo.computePointAngle(cfg->m_angle);
+        mo.setParent(edgePattern);
+
+        match_objs.push_back(mo);
+        m_final_overlap_result.push_back(vecAllResult[idx]);
+    }
+    return true;
+}
+
+// ── MatchEdgePattern (non-SIMD fallback) ──────────────────────────────────────
+
+bool ImageMatcher::MatchEdgePattern(Mat& matSrc, MatchPattern* model,
+                                     Mat& matResult, int layer, double minScore,
+                                     const EdgeMatchConfig& cfg) {
+    const vector<PatternLayer>* patterns = model->getPatterns();
+    int result_row = matSrc.rows - patterns->at(layer).image.rows + 1;
+    int result_col = matSrc.cols - patterns->at(layer).image.cols + 1;
+    if (result_col <= 0 || result_row <= 0) return false;
+
+    Mat imgDest = matSrc.clone();
+    Mat gx, gy, magnitude, angle;
+    Sobel(imgDest, gx, CV_64F, 1, 0, 3);
+    Sobel(imgDest, gy, CV_64F, 0, 1, 3);
+    cartToPolar(gx, gy, magnitude, angle);
+
+    const vector<PatternPoint>& modelPattern = patterns->at(layer).patternPoints;
+    const long noOfCoords = static_cast<long>(modelPattern.size());
+    if (noOfCoords <= 0) return false;
+
+    const float normMinScore  = static_cast<float>(minScore) / noOfCoords;
+    const float normGreediness = static_cast<float>(
+        (1.0 - cfg.greediness * minScore) / (1.0 - cfg.greediness)) / noOfCoords;
+
+    matResult.create(result_row, result_col, CV_32FC1);
+    matResult.setTo(0.0f);
+
+    for (int rowIdx = 0; rowIdx < result_row; ++rowIdx) {
+        for (int colIdx = 0; colIdx < result_col; ++colIdx) {
+            float partialSum = 0.0f;
+            float partialScore = 0.0f;
+            for (int count = 0; count < noOfCoords; ++count) {
+                const PatternPoint& pt = modelPattern[count];
+                int cx = colIdx + pt.Coordinates.x;
+                int cy = rowIdx + pt.Coordinates.y;
+
+                float iTx = pt.Derivative.x;
+                float iTy = pt.Derivative.y;
+                float iSx = static_cast<float>(gx.ptr<float>(cy)[cx]);
+                float iSy = static_cast<float>(gy.ptr<float>(cy)[cx]);
+
+                if ((iSx != 0 || iSy != 0) && (iTx != 0 || iTy != 0)) {
+                    float mag = static_cast<float>(magnitude.ptr<float>(cy)[cx]);
+                    if (mag == 0)
+                        partialSum += (iSx * iTx + iSy * iTy);
+                    else
+                        partialSum += (iSx * iTx + iSy * iTy) * (1.0f / (mag * pt.Magnitude));
+                }
+
+                int sumCoords  = count + 1;
+                partialScore   = partialSum / sumCoords;
+                float brkLow   = (static_cast<float>(minScore) - 1.0f) + normGreediness * sumCoords;
+                float brkUp    = normMinScore * sumCoords;
+                if (partialScore < std::min(brkLow, brkUp)) break;
+            }
+            if (partialScore >= static_cast<float>(minScore))
+                matResult.ptr<float>(rowIdx)[colIdx] = partialScore;
+        }
+    }
+    return true;
+}
+
+// ── MatchEdgePattern_SIMD ─────────────────────────────────────────────────────
+
+inline float edge_template_match_simd_omp(const float* iSx, const float* iSy,
+                                           const float* iTx, const float* iTy,
+                                           const float* SMag, const float* TMag,
+                                           int length) {
+    float total_sum = 0.0f;
+    __m256 sum_vec  = _mm256_setzero_ps();
+    __m256 epsilon  = _mm256_set1_ps(1e-20f);
+
+    for (int i = 0; i <= length - 8; i += 8) {
+        __m256 Sx   = _mm256_load_ps(iSx  + i);
+        __m256 Sy   = _mm256_load_ps(iSy  + i);
+        __m256 Tx   = _mm256_load_ps(iTx  + i);
+        __m256 Ty   = _mm256_load_ps(iTy  + i);
+        __m256 smag = _mm256_load_ps(SMag + i);
+        __m256 tmag = _mm256_load_ps(TMag + i);
+
+        __m256 dot   = _mm256_fmadd_ps(Sx, Tx, _mm256_mul_ps(Sy, Ty));
+        __m256 denom = _mm256_max_ps(_mm256_mul_ps(smag, tmag), epsilon);
+        sum_vec = _mm256_add_ps(sum_vec, _mm256_div_ps(dot, denom));
+    }
+
+    for (int i = (length & ~7); i < length; ++i) {
+        float denom = SMag[i] * TMag[i] + 1e-8f;
+        total_sum  += (iSx[i] * iTx[i] + iSy[i] * iTy[i]) / denom;
+    }
+
+    __m128 lo = _mm256_castps256_ps128(sum_vec);
+    __m128 hi = _mm256_extractf128_ps(sum_vec, 1);
+    __m128 s  = _mm_hadd_ps(_mm_add_ps(lo, hi), _mm_add_ps(lo, hi));
+    s = _mm_hadd_ps(s, s);
+    return total_sum + _mm_cvtss_f32(s);
+}
+
+bool ImageMatcher::MatchEdgePattern_SIMD(Mat& matSrc, MatchPattern* model,
+                                          Mat& matResult, int layer, double minScore) {
+    const vector<PatternLayer>* patterns = model->getPatterns();
+    int result_row = matSrc.rows - patterns->at(layer).image.rows + 1;
+    int result_col = matSrc.cols - patterns->at(layer).image.cols + 1;
+    if (result_col <= 0 || result_row <= 0) return false;
+
+    Mat imgDest = matSrc.clone();
+    Mat gx, gy, magnitude;
+    Sobel(imgDest, gx, CV_32F, 1, 0, 3);
+    Sobel(imgDest, gy, CV_32F, 0, 1, 3);
+    cv::magnitude(gx, gy, magnitude);
+
+    const vector<PatternPoint>& modelPattern = patterns->at(layer).patternPoints;
+    const long noOfCoords = static_cast<long>(modelPattern.size());
+    if (noOfCoords <= 0) return false;
+
+    matResult.create(result_row, result_col, CV_32FC1);
+    matResult.setTo(0.0f);
+
+    float* bufSx  = static_cast<float*>(_mm_malloc(noOfCoords * sizeof(float), 32));
+    float* bufSy  = static_cast<float*>(_mm_malloc(noOfCoords * sizeof(float), 32));
+    float* bufSMag= static_cast<float*>(_mm_malloc(noOfCoords * sizeof(float), 32));
+    float* bufTx  = patterns->at(layer).pGx;
+    float* bufTy  = patterns->at(layer).pGy;
+    float* bufTMag= patterns->at(layer).pMag;
+
+    for (int rowIdx = 0; rowIdx < result_row; ++rowIdx) {
+        for (int colIdx = 0; colIdx < result_col; ++colIdx) {
+            for (int cnt = 0; cnt < noOfCoords; ++cnt) {
+                const Point& coord = modelPattern[cnt].Coordinates;
+                int cx = colIdx + coord.x;
+                int cy = rowIdx + coord.y;
+                bufSx[cnt]   = gx.ptr<float>(cy)[cx];
+                bufSy[cnt]   = gy.ptr<float>(cy)[cx];
+                bufSMag[cnt] = magnitude.ptr<float>(cy)[cx];
+            }
+            float score = edge_template_match_simd_omp(bufSx, bufSy, bufTx, bufTy,
+                                                        bufSMag, bufTMag,
+                                                        static_cast<int>(noOfCoords))
+                          / noOfCoords;
+            if (score >= static_cast<float>(minScore))
+                matResult.ptr<float>(rowIdx)[colIdx] = score;
+        }
+    }
+    _mm_free(bufSx);
+    _mm_free(bufSy);
+    _mm_free(bufSMag);
+    return true;
+}
+
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+
+Size ImageMatcher::GetBestRotationSize(Size sizeSrc, Size sizeDst, double rAngle) {
+    double rad = rAngle * D2R;
+    Point2f c((sizeSrc.width - 1) / 2.0f, (sizeSrc.height - 1) / 2.0f);
+    Point2f ltR = ptRotatePt2f(Point2f(0, 0),                        c, rad);
+    Point2f lbR = ptRotatePt2f(Point2f(0, (float)(sizeSrc.height-1)),c, rad);
+    Point2f rbR = ptRotatePt2f(Point2f((float)(sizeSrc.width-1),(float)(sizeSrc.height-1)),c,rad);
+    Point2f rtR = ptRotatePt2f(Point2f((float)(sizeSrc.width-1),0),  c, rad);
+
+    float topY    = max({ltR.y, lbR.y, rbR.y, rtR.y});
+    float bottomY = min({ltR.y, lbR.y, rbR.y, rtR.y});
+    float rightX  = max({ltR.x, lbR.x, rbR.x, rtR.x});
+    float leftX   = min({ltR.x, lbR.x, rbR.x, rtR.x});
+
+    if (rAngle > 360) rAngle -= 360;
+    else if (rAngle < 0) rAngle += 360;
+
+    if (fabs(fabs(rAngle) - 90) < VISION_TOLERANCE || fabs(fabs(rAngle) - 270) < VISION_TOLERANCE)
+        return Size(sizeSrc.height, sizeSrc.width);
+    if (fabs(rAngle) < VISION_TOLERANCE || fabs(fabs(rAngle) - 180) < VISION_TOLERANCE)
+        return sizeSrc;
+
+    double a = rAngle;
+    if      (a > 90  && a < 180) a -= 90;
+    else if (a > 180 && a < 270) a -= 180;
+    else if (a > 270 && a < 360) a -= 270;
+
+    float fH1 = (float)(sizeDst.width  * sin(a * D2R) * cos(a * D2R));
+    float fH2 = (float)(sizeDst.height * sin(a * D2R) * cos(a * D2R));
+    int halfH = (int)ceil(topY   - c.y - fH1);
+    int halfW = (int)ceil(rightX - c.x - fH2);
+    Size ret(halfW * 2, halfH * 2);
+
+    bool wrongSize = (sizeDst.width  < ret.width  && sizeDst.height > ret.height)
+                  || (sizeDst.width  > ret.width  && sizeDst.height < ret.height)
+                  || sizeDst.area() > ret.area();
+    if (wrongSize)
+        ret = Size((int)(rightX - leftX + 0.5f), (int)(topY - bottomY + 0.5f));
+    return ret;
+}
+
+Point2f ImageMatcher::ptRotatePt2f(Point2f in, Point2f org, double angle) {
+    double h  = org.y * 2;
+    double y1 = h - in.y;
+    double y2 = h - org.y;
+    double x  = (in.x - org.x) * cos(angle) - (y1 - org.y) * sin(angle) + org.x;
+    double y  = (in.x - org.x) * sin(angle) + (y1 - org.y) * cos(angle) + y2;
+    return Point2f((float)x, (float)(-(y - h)));
+}
+
+Point ImageMatcher::GetNextMaxLoc(Mat& matResult, Point ptMaxLoc,
+                                   Size sizeTemplate, double& maxValue, double maxOverlap) {
+    int sx = (int)(ptMaxLoc.x - sizeTemplate.width  * (1 - maxOverlap));
+    int sy = (int)(ptMaxLoc.y - sizeTemplate.height * (1 - maxOverlap));
+    cv::rectangle(matResult,
+                  Rect(sx, sy,
+                       (int)(2 * sizeTemplate.width  * (1 - maxOverlap)),
+                       (int)(2 * sizeTemplate.height * (1 - maxOverlap))),
+                  Scalar(-1), cv::FILLED);
+    Point ptNew;
+    cv::minMaxLoc(matResult, 0, &maxValue, 0, &ptNew);
+    return ptNew;
+}
+
+Point ImageMatcher::GetNextMaxLoc(Mat& matResult, Point ptMaxLoc,
+                                   Size sizeTemplate, double& maxValue,
+                                   double maxOverlap, BlockMax& blockMax) {
+    int sx = (int)(ptMaxLoc.x - sizeTemplate.width  * (1 - maxOverlap));
+    int sy = (int)(ptMaxLoc.y - sizeTemplate.height * (1 - maxOverlap));
+    Rect ignore(sx, sy,
+                (int)(2 * sizeTemplate.width  * (1 - maxOverlap)),
+                (int)(2 * sizeTemplate.height * (1 - maxOverlap)));
+    cv::rectangle(matResult, ignore, Scalar(-1), cv::FILLED);
+    blockMax.UpdateMax(ignore);
+    Point ptRet;
+    blockMax.GetMaxValueLoc(maxValue, ptRet);
+    return ptRet;
+}
+
+void ImageMatcher::GetRotatedROI(Mat& matSrc, Size size, Point2f ptLT,
+                                  double dAngle, Mat& matROI) {
+    double rad = dAngle * D2R;
+    Point2f c((matSrc.cols - 1) / 2.0f, (matSrc.rows - 1) / 2.0f);
+    Point2f ptLT_rot = ptRotatePt2f(ptLT, c, rad);
+    Size szPad(size.width + 6, size.height + 6);
+    Mat rMat = getRotationMatrix2D(c, dAngle, 1);
+    rMat.at<double>(0, 2) -= ptLT_rot.x - 3;
+    rMat.at<double>(1, 2) -= ptLT_rot.y - 3;
+    warpAffine(matSrc, matROI, rMat, szPad);
+}
+
+// ── Sub-pixel estimation ──────────────────────────────────────────────────────
+
+bool ImageMatcher::SubPixEsimation(vector<MatchParams>* vec, double* dNewX,
+                                    double* dNewY, double* dNewAngle,
+                                    double dAngleStep, int iMaxIdx) {
+    Mat matA(27, 10, CV_64F);
+    Mat matS(27, 1,  CV_64F);
+
+    double dx0 = (*vec)[iMaxIdx]._point.x;
+    double dy0 = (*vec)[iMaxIdx]._point.y;
+    double dt0 = (*vec)[iMaxIdx]._matchAngle;
+    int row = 0;
+    for (int theta = 0; theta <= 2; ++theta) {
+        for (int y = -1; y <= 1; ++y) {
+            for (int x = -1; x <= 1; ++x) {
+                double dX = dx0 + x;
+                double dY = dy0 + y;
+                double dT = (dt0 + (theta - 1) * dAngleStep) * D2R;
+                matA.at<double>(row, 0) = dX * dX;
+                matA.at<double>(row, 1) = dY * dY;
+                matA.at<double>(row, 2) = dT * dT;
+                matA.at<double>(row, 3) = dX * dY;
+                matA.at<double>(row, 4) = dX * dT;
+                matA.at<double>(row, 5) = dY * dT;
+                matA.at<double>(row, 6) = dX;
+                matA.at<double>(row, 7) = dY;
+                matA.at<double>(row, 8) = dT;
+                matA.at<double>(row, 9) = 1.0;
+                matS.at<double>(row, 0) = (*vec)[iMaxIdx + (theta - 1)]._vecResult[x + 1][y + 1];
+                ++row;
+            }
+        }
+    }
+    Mat matZ = (matA.t() * matA).inv() * matA.t() * matS;
+    Mat matZ_t;
+    transpose(matZ, matZ_t);
+    double* dZ = matZ_t.ptr<double>(0);
+    Mat matK1 = (Mat_<double>(3, 3) << 2*dZ[0], dZ[3], dZ[4],
+                                        dZ[3], 2*dZ[1], dZ[5],
+                                        dZ[4], dZ[5], 2*dZ[2]);
+    Mat matK2 = (Mat_<double>(3, 1) << -dZ[6], -dZ[7], -dZ[8]);
+    Mat delta = matK1.inv() * matK2;
+    *dNewX     = delta.at<double>(0, 0);
+    *dNewY     = delta.at<double>(1, 0);
+    *dNewAngle = delta.at<double>(2, 0) * R2D;
+    return true;
+}
+
+// ── Score / overlap filters ───────────────────────────────────────────────────
+
+void ImageMatcher::FilterWithScore(vector<MatchParams>* vec, double dScore) {
+    sort(vec->begin(), vec->end(), compareScoreBig2Small);
+    int iDel = static_cast<int>(vec->size()) + 1;
+    for (int i = 0; i < static_cast<int>(vec->size()); ++i) {
+        if ((*vec)[i]._matchScore < dScore) { iDel = i; break; }
+    }
+    if (iDel <= static_cast<int>(vec->size()))
+        vec->erase(vec->begin() + iDel, vec->end());
+}
+
+void ImageMatcher::FilterWithRotatedRect(vector<MatchParams>* vec, int iMethod,
+                                          double dMaxOverLap,
+                                          std::vector<int>* del_indexes) {
+    const int iSize = static_cast<int>(vec->size());
+    for (int i = 0; i < iSize - 1; ++i) {
+        if (vec->at(i)._delete) continue;
+        for (int j = i + 1; j < iSize; ++j) {
+            if (vec->at(j)._delete) continue;
+            vector<Point2f> inter;
+            int iType = rotatedRectangleIntersection(vec->at(i)._rectR,
+                                                      vec->at(j)._rectR, inter);
+            if (iType == cv::INTERSECT_NONE) continue;
+            int iDel;
+            if (iType == cv::INTERSECT_FULL) {
+                iDel = (iMethod == cv::TM_SQDIFF)
+                     ? (vec->at(i)._matchScore <= vec->at(j)._matchScore ? j : i)
+                     : (vec->at(i)._matchScore >= vec->at(j)._matchScore ? j : i);
+                vec->at(iDel)._delete = true;
+                if (del_indexes) del_indexes->push_back(iDel);
+            } else if (static_cast<int>(inter.size()) >= 3) {
+                SortPtWithCenter(inter);
+                double ratio = contourArea(inter) / vec->at(i)._rectR.size.area();
+                if (ratio > dMaxOverLap) {
+                    iDel = (iMethod == cv::TM_SQDIFF)
+                         ? (vec->at(i)._matchScore <= vec->at(j)._matchScore ? j : i)
+                         : (vec->at(i)._matchScore >= vec->at(j)._matchScore ? j : i);
+                    vec->at(iDel)._delete = true;
+                    if (del_indexes) del_indexes->push_back(iDel);
+                }
+            }
+        }
+    }
+    for (auto it = vec->begin(); it != vec->end();)
+        it = (*it)._delete ? vec->erase(it) : ++it;
+}
+
+void ImageMatcher::SortPtWithCenter(vector<Point2f>& vecSort) {
+    const int n = static_cast<int>(vecSort.size());
+    Point2f center;
+    for (auto& p : vecSort) center += p;
+    center /= n;
+
+    vector<pair<Point2f, double>> va(n);
+    for (int i = 0; i < n; ++i) {
+        va[i].first = vecSort[i];
+        Point2f v(vecSort[i].x - center.x, vecSort[i].y - center.y);
+        float norm = v.x * v.x + v.y * v.y;
+        double angle = (v.y < 0) ?  acos(v.x / norm) * R2D
+                     : (v.y > 0) ? (360.0 - acos(v.x / norm) * R2D)
+                     : (v.x - center.x > 0 ? 0.0 : 180.0);
+        va[i].second = angle;
+    }
+    sort(va.begin(), va.end(), comparePtWithAngle);
+    for (int i = 0; i < n; ++i) vecSort[i] = va[i].first;
+}
+
+void ImageMatcher::DrawMatchResult(Mat& drawImage,
+                                    vector<MatchedObject>& matchedResults) {
+    cv::Scalar box_color(255, 0, 0);
+    for (auto& obj : matchedResults) {
+        cv::line(drawImage, obj.point_LT, obj.point_RT, box_color, 2, cv::LINE_AA);
+        cv::line(drawImage, obj.point_RT, obj.point_RB, box_color, 2, cv::LINE_AA);
+        cv::line(drawImage, obj.point_RB, obj.point_LB, box_color, 2, cv::LINE_AA);
+        cv::line(drawImage, obj.point_LB, obj.point_LT, box_color, 2, cv::LINE_AA);
+        cv::circle(drawImage, obj.point_Center, 2, cv::Scalar(0, 0, 255), 2);
+        cv::circle(drawImage, obj.point_LT,     2, cv::Scalar(0, 255, 0), 2);
+    }
+}
+
+} // namespace mtc

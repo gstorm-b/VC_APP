@@ -1,0 +1,88 @@
+@startuml Camera_mapping_widget
+
+' !theme plain
+' skinparam classAttributeIconSize 0
+' skinparam nodesep 50
+' skinparam ranksep 50
+
+skinparam backgroundColor #FAFAFA
+skinparam classBackgroundColor #EBF3FB
+skinparam classBorderColor #2E75B6
+skinparam classHeaderBackgroundColor #3e6d99
+skinparam classFontColor #FFFFFF
+skinparam classAttributeFontColor #1F1F1F
+skinparam arrowColor #1F4E79
+skinparam packageBackgroundColor #F5F5F5
+skinparam packageBorderColor #AAAAAA
+skinparam shadowing false
+
+
+' --- Qt Core Classes ---
+package "Qt Framework" <<Rectangle>> {
+    class QStackedWidget
+    class QWidget
+    class QListWidgetItem
+    class QListWidget
+}
+
+' --- Custom Components ---
+class EditableComboWidget {
+  - m_label : QLabel*
+  - m_comboBox : QComboBox*
+  + setText(text: QString) : void
+  + text() : QString
+  + setOptions(options: QStringList, current: QString) : void
+  <<signal>> + valueChanged(newValue: QString)
+  <<signal>> + editRequested()
+  # eventFilter(watched: QObject*, event: QEvent*) : bool
+}
+
+class CameraRowWidget {
+  + nameWidget : EditableComboWidget*
+  + numberWidget : EditableComboWidget*
+  + btnDelete : QPushButton*
+}
+
+class AddRowWidget {
+  - btnAddRow : QPushButton*
+  - cbCameraSelect : QComboBox*
+  - btnCancel : QPushButton*
+  + setAvailableCameras(cameras: QStringList) : void
+  <<signal>> + addRequested(cameraName: QString)
+  - createAddButtonPage() : QWidget*
+  - createSelectCameraPage() : QWidget*
+}
+
+class SortableCameraItem {
+  + operator<(other: QListWidgetItem&) : bool
+}
+
+class CameraMappingWidget {
+  - m_allCameras : QStringList
+  - m_limitNumber : int
+  - m_addRowItem : SortableCameraItem*
+  - m_addRowWidget : AddRowWidget*
+  + setCameraList(cameras: QStringList) : void
+  + setNumberLimit(limit: int) : void
+  + getCurrentMapping() : QMap<QString, int>
+  <<signal>> + mappingChanged(mapping: QMap<QString, int>)
+  - onRowAdded(cameraName: QString) : void
+  - onRowDeleted(item: QListWidgetItem*) : void
+  - onDataChanged() : void
+  - updateSortingData() : void
+}
+
+' --- Inheritance Relationships ---
+QStackedWidget <|-- EditableComboWidget
+QWidget <|-- CameraRowWidget
+QStackedWidget <|-- AddRowWidget
+QListWidgetItem <|-- SortableCameraItem
+QListWidget <|-- CameraMappingWidget
+
+' --- Composition / Aggregation Relationships ---
+CameraRowWidget *-- "2" EditableComboWidget : "contains"
+CameraMappingWidget o-- "*" SortableCameraItem : "manages items"
+CameraMappingWidget *-- "*" CameraRowWidget : "setItemWidget()"
+CameraMappingWidget *-- "1" AddRowWidget : "contains"
+
+@enduml

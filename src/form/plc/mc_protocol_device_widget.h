@@ -31,6 +31,7 @@ public:
                                  QWidget *parent = nullptr);
     ~McProtocolDeviceWidget();
 
+    QString deviceId() override;
     void loadConfigToDevice() override;
     void loadConfigToWidget() override;
 

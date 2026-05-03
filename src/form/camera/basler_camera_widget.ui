@@ -6,14 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>802</width>
-    <height>649</height>
+    <width>898</width>
+    <height>543</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
    <item>
     <widget class="QSplitter" name="splitter_main">
      <property name="orientation">
@@ -153,7 +165,6 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="wg_property_browser" native="true"/>
     </widget>
    </item>
   </layout>
@@ -162,7 +173,7 @@
   <customwidget>
    <class>ImageViewOnly</class>
    <extends>QGraphicsView</extends>
-   <header location="global">widgets/image_widget/image_view_only.h</header>
+   <header location="global">src/widgets/image_widget/image_view_only.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

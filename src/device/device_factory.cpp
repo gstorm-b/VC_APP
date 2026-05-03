@@ -85,9 +85,7 @@ IDevice* DeviceFactory::createBaslerGigeCamera(const QJsonObject& obj,
 
     BaslerGigECamera* device = new BaslerGigECamera(deviceId, deviceName, parent);
     if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
-        BaslerGigeCfg cfg = device->baslerGigeConfig();
-        cfg.fromJson(obj[DEVICE_JSK_CONFIG].toObject());
-        device->setBaslerGigeConfig(cfg);
+        device->fromJson(obj);
     }
 
     return device;
@@ -100,12 +98,14 @@ IDevice* DeviceFactory::createMcProtocolDevice(const QJsonObject& obj, QObject* 
         return nullptr;
     }
 
-    McProtocolConfig *config = new McProtocolConfig();
-    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
-        config->fromJson(obj[DEVICE_JSK_CONFIG].toObject());
-    }
+    /// TODO: change fromjson method
     McProtocolDevice *device = new McProtocolDevice(deviceId, deviceName, parent);
-    device->setDeviceConfig(config);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+        // McProtocolConfig *config = new McProtocolConfig();
+        // config->fromJson(obj[DEVICE_JSK_CONFIG].toObject());
+        // device->setDeviceConfig(config);
+    }
     return device;
 }
 

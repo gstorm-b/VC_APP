@@ -182,6 +182,15 @@ BaslerCameraWidget::~BaslerCameraWidget() {
     delete ui;
 }
 
+// void BaslerCameraWidget::setToPropertyBrowser(PropertyBrowserWidget *browser) {
+//     // Q_UNUSED(browser);
+//     browser->browser()->setFactoryForManager(m_variantManager, m_variantFactory);
+// }
+
+QString BaslerCameraWidget::deviceId() {
+    return m_device->id();
+}
+
 void BaslerCameraWidget::loadConfigToDevice() {
     if(!m_camera) {
         return;
@@ -198,6 +207,8 @@ void BaslerCameraWidget::setDockWidget(ads::CDockWidget *dock) {
 }
 
 void BaslerCameraWidget::initCameraWiget() {
+    initPropertyBrowser();
+
     ui->btn_connect->setIcon(svgIcon(":/resrc/icon/plug_disconnected.svg"));
     ui->btn_trigger->setIcon(svgIcon(":/resrc/icon/capture.svg"));
 
@@ -216,20 +227,20 @@ void BaslerCameraWidget::initCameraWiget() {
     //         this, &BaslerCameraWidget::btn_save_image_clicked);
 
     // init property browser
-    m_variantManager = new QtVariantPropertyManager(this);
-    m_variantFactory = new QtVariantEditorFactory(this);
-    m_variantEditor = new QtTreePropertyBrowser();
+    // m_variantManager = new QtVariantPropertyManager(this);
+    // m_variantFactory = new QtVariantEditorFactory(this);
+    // m_variantEditor = new QtTreePropertyBrowser();
 
-    QHBoxLayout *layout = new QHBoxLayout();
-    ui->wg_property_browser->setLayout(layout);
-    layout->addWidget(m_variantEditor);
-    layout->setContentsMargins(0,0,0,0);
+    // QHBoxLayout *layout = new QHBoxLayout();
+    // ui->wg_property_browser->setLayout(layout);
+    // layout->addWidget(m_variantEditor);
+    // layout->setContentsMargins(0,0,0,0);
 
-    m_variantEditor->setAlternatingRowColors(false);
-    m_variantEditor->setFactoryForManager(m_variantManager, m_variantFactory);
-    m_variantEditor->setPropertiesWithoutValueMarked(true);
-    m_variantEditor->setRootIsDecorated(false);
-    m_variantEditor->setResizeMode(QtTreePropertyBrowser::Stretch);
+    // m_variantEditor->setAlternatingRowColors(false);
+    // // m_variantEditor->setFactoryForManager(m_variantManager, m_variantFactory);
+    // m_variantEditor->setPropertiesWithoutValueMarked(true);
+    // m_variantEditor->setRootIsDecorated(false);
+    // m_variantEditor->setResizeMode(QtTreePropertyBrowser::Stretch);
 
     if (m_device) {
         m_camera = static_cast<vc::device::BaslerGigECamera*>(m_device.get());

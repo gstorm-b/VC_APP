@@ -10,11 +10,11 @@ namespace vc::model {
 Project::Project(QObject* parent)
     : QObject(parent) {
 
-    m_dvManager = std::make_shared<device::DeviceManager>(this);
+    m_deviceManager = std::make_shared<device::DeviceManager>(this);
 
-    connect(m_dvManager.get(), &device::DeviceManager::devicesChanged,
+    connect(m_deviceManager.get(), &device::DeviceManager::devicesChanged,
             this, &Project::projectModificationOccurred);
-    connect(m_dvManager.get(), &device::DeviceManager::deviceModified,
+    connect(m_deviceManager.get(), &device::DeviceManager::deviceModified,
             this, [this]() {
         emit this->projectModificationOccurred();
     });
@@ -61,7 +61,7 @@ bool Project::addTask(ITask* task) {
         return false;
     }
 
-    if (m_occupieTaskdNames.contains(task->name())){
+    if (m_occupiedTaskNames.contains(task->name())){
         return false;
     }
 
@@ -69,7 +69,7 @@ bool Project::addTask(ITask* task) {
     task_ptr.reset(task);
     task_ptr->setProject(this);
     m_tasks.insert(task_ptr->id(), task_ptr);
-    m_occupieTaskdNames.insert(task_ptr->name());
+    m_occupiedTaskNames.insert(task_ptr->name());
 
     // connect signal
     connect(task_ptr.get(), &vc::model::ITask::configChanged, this, [this, task_ptr]() {
@@ -94,6 +94,30 @@ bool Project::removeTask(const QString& id) {
     return false;
 }
 
+bool Project::assignDeviceToTask(const QString &deviceId, const QString &taskId) {
+    std::shared_ptr<vc::model::ITask> task = this->taskById(taskId);
+    if (!task) return false;
+
+    std::shared_ptr<vc::device::IDevice> device = this->deviceById(deviceId);
+    if (!device) return false;
+
+    task->assignDevice(deviceId);
+    device->setAssignedTaskId(taskId);
+    return true;
+}
+
+bool Project::unassignDeviceFromTask(const QString &deviceId, const QString &taskId) {
+    std::shared_ptr<vc::model::ITask> task = this->taskById(taskId);
+    if (!task) return false;
+
+    std::shared_ptr<vc::device::IDevice> device = this->deviceById(deviceId);
+    if (!device) return false;
+
+    task->unassignDevice(deviceId);
+    device->setAssignedTaskId("");
+    return true;
+}
+
 std::shared_ptr<vc::model::ITask> Project::taskById(const QString& id) const {
     if (m_tasks.contains(id)) {
         return m_tasks.value(id, nullptr);
@@ -102,7 +126,7 @@ std::shared_ptr<vc::model::ITask> Project::taskById(const QString& id) const {
 }
 
 bool Project::changeTaskName(const QString& id, const QString &name) {
-    if (m_occupieTaskdNames.contains(name)) {
+    if (m_occupiedTaskNames.contains(name)) {
         return false;
     }
 
@@ -113,38 +137,28 @@ bool Project::changeTaskName(const QString& id, const QString &name) {
     std::shared_ptr<ITask> task = m_tasks.value(id);
     QString old_name = task->id();
     task->setName(name);
-    m_occupieTaskdNames.remove(old_name);
+    m_occupiedTaskNames.remove(old_name);
     emit taskModified(id);
     return false;
 }
 
 bool Project::isTaskNameOccupied(const QString& name) const {
-    return m_occupieTaskdNames.contains(name);
+    return m_occupiedTaskNames.contains(name);
 }
 
 std::shared_ptr<device::DeviceManager> Project::deviceManager() {
-    return m_dvManager;
+    return m_deviceManager;
 }
 
 std::shared_ptr<vc::device::IDevice> Project::deviceById(const QString& id) {
-    return m_dvManager->getCurrentDevices().value(id, nullptr);
-
-    // QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_start = m_dvManager->getCurrentDevices().cbegin();
-    // QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_end = m_dvManager->getCurrentDevices().cend();
-    // while (it_start != it_end) {
-    //     if (it_start.key() == id) {
-    //         return it_start.value();
-    //     }
-    //     it_start++;
-    // }
-    // return std::shared_ptr<vc::device::IDevice>(nullptr);
+    return m_deviceManager->getCurrentDevices().value(id, nullptr);
 }
 
 QJsonObject Project::toJson() const {
     // get device json data
     QJsonArray deviceArr;
-    QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device = m_dvManager->getCurrentDevices().cbegin();
-    QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device_end = m_dvManager->getCurrentDevices().cend();
+    QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device = m_deviceManager->getCurrentDevices().cbegin();
+    QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device_end = m_deviceManager->getCurrentDevices().cend();
     while (it_device != it_device_end) {
         deviceArr.append(it_device.value()->toJson());
         it_device++;
@@ -157,6 +171,8 @@ QJsonObject Project::toJson() const {
         taskArr.append(it_task.value()->toJson());
         it_task++;
     }
+
+    qDebug() << deviceArr;
 
     return QJsonObject {
                        { "name",    m_name    },
@@ -190,9 +206,11 @@ bool Project::fromJson(const QJsonObject &json) {
 
         QString id = obj[DEVICE_JSK_ID].toString();
         QString name = obj[DEVICE_JSK_NAME].toString();
-        m_dvManager->reserveDevice(id, name, dv);
+        m_deviceManager->reserveDevice(id, name, dv);
+        LOG_USER_INFO << "Device loaded from JSON. ID: " << id << ", Name: " << name;
     }
 
+    // convert tasks from json
     for (int idx=0;idx<taskArr.size();idx++) {
         if (!taskArr[idx].isObject()) {
             continue;
@@ -205,7 +223,35 @@ bool Project::fromJson(const QJsonObject &json) {
         }
 
         this->addTask(task);
+        LOG_USER_INFO << "Task loaded from JSON. ID: " << task->id() << ", Name: " << task->name();
     }
+
+    // assign devices to tasks
+    const QMap<QString, std::shared_ptr<vc::device::IDevice>>& devices = m_deviceManager->getCurrentDevices();
+    QStringList releaseDeviceIds;
+    for (const std::shared_ptr<vc::device::IDevice>& device : devices) {
+        qDebug() << device->id() << device->assignedTaskId();
+        QString assignedTaskId = device->assignedTaskId();
+        if (assignedTaskId.isEmpty()) {
+            releaseDeviceIds.append(device->id());
+            LOG_USER_ERR << "Device " << device->id() << " has no assigned task, deleting device.";
+            continue;
+        }
+
+        std::shared_ptr<vc::model::ITask> task = this->taskById(assignedTaskId);
+        if (task) {
+            task->assignDevice(device->id());
+            LOG_USER_INFO << "Assigned device " << device->id() << " to task " << assignedTaskId;
+        }
+    }
+
+    for (const QString &deviceId : releaseDeviceIds) {
+        m_deviceManager->releaseDevice(deviceId);
+    }
+
+    LOG_USER_INFO << "Project loaded from JSON successfully. Name: " << m_name << ", Version: " << m_version
+                 << ", Devices: " << devices.size() << ", Tasks: " << m_tasks.size();
+    // convert succeesfully
     return true;
 }
 
@@ -239,12 +285,14 @@ bool Project::moveDeviceToTask(const QString &deviceId,
 {
     auto fromTask = taskById(fromTaskId);
     auto toTask   = taskById(toTaskId);
+    auto device   = deviceById(deviceId);
     if (!fromTask || !toTask) return false;
     if (!fromTask->hasDevice(deviceId)) return false;
     if (toTask->hasDevice(deviceId))   return false;
 
     fromTask->unassignDevice(deviceId);
     toTask->assignDevice(deviceId);
+    device->setAssignedTaskId(toTaskId);
     emit projectModificationOccurred();
     return true;
 }

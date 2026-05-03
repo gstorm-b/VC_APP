@@ -30,6 +30,8 @@ public:
                                 QWidget *parent = nullptr);
     ~BaslerCameraWidget();
 
+    // void setToPropertyBrowser(PropertyBrowserWidget *browser) override;
+    QString deviceId() override;
     void loadConfigToDevice() override;
     void loadConfigToWidget() override;
     void setDockWidget(ads::CDockWidget *dock);
@@ -75,9 +77,9 @@ private:
     BaslerCamSelectDialog *m_camera_select_dialog{nullptr};
     vc::runtime::CameraWorker *m_worker{nullptr};
 
-    QtVariantPropertyManager *m_variantManager;
-    QtVariantEditorFactory *m_variantFactory;
-    QtTreePropertyBrowser *m_variantEditor;
+    // QtVariantPropertyManager *m_variantManager;
+    // QtVariantEditorFactory *m_variantFactory;
+    // QtTreePropertyBrowser *m_variantEditor;
     bool m_populating_browser{false};
 
 };

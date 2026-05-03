@@ -11,6 +11,7 @@
 
 #define DEVICE_JSK_ID               "DeviceId"
 #define DEVICE_JSK_NAME             "DeviceName"
+#define DEVICE_JSK_TASKID           "AssignedTaskId"
 #define DEVICE_JSK_TYPE             "DeviceType"
 #define DEVICE_JSK_CONFIG           "DeviceConfig"
 #define DEVICE_JSK_CAM_TYPE         "CameraType"

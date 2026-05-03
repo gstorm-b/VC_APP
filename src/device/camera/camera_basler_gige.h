@@ -200,6 +200,14 @@ public:
         return QStringList();
     }
 
+    virtual bool fromJson(const QJsonObject &obj) override {
+        if (!CameraDevice::fromJson(obj)) {
+            return false;
+        }
+        return IDevice::fromJson(obj);
+    }
+
+
 public slots:
     void deviceTerminate() override;
 

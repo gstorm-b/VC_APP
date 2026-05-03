@@ -224,6 +224,10 @@ void McProtocolDeviceWidget::loadConfigToWidget() {
 
 }
 
+QString McProtocolDeviceWidget::deviceId() {
+    return m_device->id();
+}
+
 void McProtocolDeviceWidget::onBtnConnect() {
     if (!m_device) {
         return;

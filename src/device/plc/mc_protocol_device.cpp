@@ -9,6 +9,7 @@ namespace vc::device {
 McProtocolDevice::McProtocolDevice(QString id, QString name, QObject* parent)
     : IDevice(id, name, parent) {
 
+    IDevice::setDeviceConfig(&m_config);
 }
 
 McProtocolDevice::~McProtocolDevice() {

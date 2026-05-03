@@ -92,7 +92,7 @@ void LocalizationPatternsWidget::loadConfigToWidget() {}
 // ── initWidget ───────────────────────────────────────────────────────────────
 
 void LocalizationPatternsWidget::initWidget() {
-    initPropertyBrowser(ui->wg_property_browser);
+    // initPropertyBrowser(ui->wg_property_browser);
 
     // splitter ratios: monitor | tree | inspector
     ui->splitter_main->setStretchFactor(0, 6);
@@ -131,7 +131,7 @@ void LocalizationPatternsWidget::initWidget() {
     wireToolbar();
     wireTree();
     wireManagerSignals();
-    wirePropertyBrowser();
+    // wirePropertyBrowser();
 
     rebuildGroupCombo();
     updateGroupsCount();

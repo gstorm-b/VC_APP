@@ -70,6 +70,14 @@ public:
         emit nameChanged();
     }
 
+    void setAssignedTaskId(const QString& taskId) {
+        m_assignedTaskId = taskId;
+    }
+    
+    QString assignedTaskId() const {
+        return m_assignedTaskId;
+    }
+
     ConnectStatus connectStatus() const {
         return m_connect_status;
     }
@@ -116,6 +124,7 @@ public:
         QJsonObject obj;
         obj[DEVICE_JSK_ID] = m_id;
         obj[DEVICE_JSK_NAME] = m_name;
+        obj[DEVICE_JSK_TASKID] = m_assignedTaskId;
         obj[DEVICE_JSK_TYPE] = DeviceTypeToString(deviceType());
         if (m_abstract_cfg) {
             obj[DEVICE_JSK_CONFIG] = m_abstract_cfg->toJson();
@@ -133,6 +142,7 @@ public:
     virtual bool fromJson(const QJsonObject &obj) {
         if (!obj.contains(DEVICE_JSK_ID) ||
             !obj.contains(DEVICE_JSK_NAME) ||
+            // !obj.contains(DEVICE_JSK_TASKID) ||
             !obj.contains(DEVICE_JSK_TYPE) ||
             !obj.contains(DEVICE_JSK_CONFIG)) {
 
@@ -150,6 +160,7 @@ public:
 
         m_id = obj[DEVICE_JSK_ID].toString();
         m_name = obj[DEVICE_JSK_NAME].toString();
+        m_assignedTaskId = obj[DEVICE_JSK_TASKID].toString("");
         if (m_abstract_cfg){
             m_abstract_cfg->fromJson(obj[DEVICE_JSK_CONFIG].toObject());
         }
@@ -177,6 +188,7 @@ protected:
 private:
     QString m_id;
     QString m_name;
+    QString m_assignedTaskId;
     ConnectStatus m_connect_status;
     IDeviceCfg *m_abstract_cfg{nullptr};
     DeviceManager* m_manager{nullptr};

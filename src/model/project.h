@@ -50,6 +50,8 @@ public:
     // ── Task management ────────────────────────────────
     bool addTask(ITask* task);
     bool removeTask(const QString& id);
+    bool assignDeviceToTask(const QString &deviceId, const QString &taskId);
+    bool unassignDeviceFromTask(const QString &deviceId, const QString &taskId);
     std::shared_ptr<vc::model::ITask> taskById(const QString& id) const;
     bool changeTaskName(const QString& id, const QString &name);
     bool isTaskNameOccupied(const QString& name) const;
@@ -101,11 +103,11 @@ private:
     QString m_createdAt;
     QString m_updatedAt;
 
-    std::shared_ptr<device::DeviceManager> m_dvManager;
+    std::shared_ptr<device::DeviceManager> m_deviceManager;
 
     QMap<QString, std::shared_ptr<vc::model::ITask>> m_tasks;
 
-    QSet<QString> m_occupieTaskdNames;
+    QSet<QString> m_occupiedTaskNames;
 };
 
 } // namespace vc::model

@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <QObject>
 #include <QHBoxLayout>
+#include <QList>
+#include <QStackedWidget>
 #include <QCoreApplication>
 
 #include "DockWidget.h"
@@ -55,7 +57,7 @@ public:
     virtual void loadConfigToWidget() = 0;
 
 protected:
-    // ── Initialisation ────────────────────────────────────────────────────
+    // ── Initialization ────────────────────────────────────────────────────
     void initPropertyBrowser(QWidget *container) {
         m_propBrowser = new PropertyBrowserWidget(this);
 
@@ -69,7 +71,36 @@ protected:
     void embedBrowserInWidget(QWidget *container) {
         auto *layout = new QHBoxLayout(container);
         layout->setContentsMargins(0, 0, 0, 0);
-        layout->addWidget(m_propBrowser);
+        layout->addWidget(m_propBrowser);    
+    }
+
+    void initBrowserInWidget(QWidget *container) {
+        if (container) {
+            m_browserBox = new QHBoxLayout(container);
+            m_browserStackWidget = new QStackedWidget();
+            m_browserBox->addWidget(m_browserStackWidget);
+            m_browserBox->setContentsMargins(0, 0, 0, 0);
+        }
+    }
+
+    void changePropertyBrowserWidget(PropertyBrowserWidget *wg) {
+        if (!m_propertyBrowserWidgets.contains(wg)) {
+            m_propertyBrowserWidgets.append(wg);
+            m_browserStackWidget->addWidget(wg);
+            m_browserStackWidget->setCurrentWidget(wg);
+            return; 
+        }
+
+        m_browserStackWidget->setCurrentWidget(wg);
+    }
+
+    void removePropertyBrowserWidget(PropertyBrowserWidget *wg) {
+        if (!m_propertyBrowserWidgets.contains(wg)) {
+            return;
+        }
+
+        m_propertyBrowserWidgets.removeAll(wg);
+        m_browserStackWidget->removeWidget(wg);
     }
 
     // ── Reflection helper ─────────────────────────────────────────────────
@@ -159,6 +190,10 @@ protected:
     QtVariantPropertyManager *m_variantManager{nullptr};
     QtVariantEditorFactory   *m_variantFactory{nullptr};
     QtTreePropertyBrowser    *m_variantEditor {nullptr};
+
+    QHBoxLayout *m_browserBox{nullptr};
+    QStackedWidget *m_browserStackWidget{nullptr};
+    QList<PropertyBrowserWidget*> m_propertyBrowserWidgets;
 };
 
 #endif // TASK_WIDGET_H

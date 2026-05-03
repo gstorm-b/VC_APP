@@ -624,9 +624,10 @@ void MainWindow::onTaskDoubleClicked(const QString &id, const QString &widgetNam
     ads::CDockWidget *dockWidget = nullptr;
     if (widgetName.isEmpty()) {
         dockWidget = taskEntry.dockWidget;
-    } else if (taskEntry.children.contains(widgetName)) {
-        dockWidget = taskEntry.children.value(widgetName).dockWidget;
     }
+    // } else if (taskEntry.children.contains(widgetName)) {
+    //     dockWidget = taskEntry.children.value(widgetName).dockWidget;
+    // }
 
     if (!dockWidget) return;
 
@@ -646,23 +647,29 @@ void MainWindow::onDeviceCreated(const QString &id) {
     }
 
     std::shared_ptr<vc::device::IDevice> device = m_project->deviceById(id);
-    ads::CDockWidget *dockWidget  = new ads::CDockWidget(device->name());
-    QWidget          *deviceWidget = createDeviceWidget(device, dockWidget);
-    if (!deviceWidget) {
-        dockWidget->deleteLater();
-        LOG_DEV_ERR << "Cannot create device widget, null pointer error.";
+    if (!device) {
+        LOG_DEV_ERR << "Cannot create device widget, device not found for id: " << id;
         return;
     }
 
-    dockWidget->setWidget(deviceWidget);
-    dockWidget->setFeature(ads::CDockWidget::DockWidgetClosable,  true);
-    dockWidget->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
-    dockWidget->setFeature(ads::CDockWidget::DockWidgetMovable,   true);
-    dockWidget->setFeature(ads::CDockWidget::DockWidgetPinnable,  true);
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, dockWidget,
-                                 m_anchorDock->dockAreaWidget());
+    // std::shared_ptr<vc::device::IDevice> device = m_project->deviceById(id);
+    // ads::CDockWidget *dockWidget  = new ads::CDockWidget(device->name());
+    // QWidget          *deviceWidget = createDeviceWidget(device, dockWidget);
+    // if (!deviceWidget) {
+    //     dockWidget->deleteLater();
+    //     LOG_DEV_ERR << "Cannot create device widget, null pointer error.";
+    //     return;
+    // }
 
-    m_deviceEntries.insert(id, {deviceWidget, dockWidget});
+    // dockWidget->setWidget(deviceWidget);
+    // dockWidget->setFeature(ads::CDockWidget::DockWidgetClosable,  true);
+    // dockWidget->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
+    // dockWidget->setFeature(ads::CDockWidget::DockWidgetMovable,   true);
+    // dockWidget->setFeature(ads::CDockWidget::DockWidgetPinnable,  true);
+    // m_dockManager->addDockWidget(ads::CenterDockWidgetArea, dockWidget,
+    //                              m_anchorDock->dockAreaWidget());
+
+    // m_deviceEntries.insert(id, {deviceWidget, dockWidget});
 }
 
 void MainWindow::onDeviceDeleted(const QString &id) {
@@ -718,8 +725,10 @@ void MainWindow::onAddDeviceToTaskRequested(const QString &taskId) {
     if (wizard.showWizard() != QDialog::Accepted) return;
 
     const QString deviceId = wizard.getDeviceId();
-    task->assignDevice(deviceId);    // emits devicesChanged → refreshTree
-    LOG_USER_INFO << QString("Device %1 assigned to task %2").arg(deviceId, taskId);
+    if (m_project->assignDeviceToTask(deviceId, taskId)) {
+        LOG_USER_INFO << QString("Device %1 assigned to task %2").arg(deviceId, taskId);
+    }
+    // task->assignDevice(deviceId);    // emits devicesChanged → refreshTree
 }
 
 void MainWindow::onMoveDeviceRequested(const QString &taskId,
@@ -775,7 +784,8 @@ void MainWindow::onDeleteDeviceRequested(const QString &taskId,
 
     if (reply != QMessageBox::Yes) return;
 
-    task->unassignDevice(deviceId);                      // emits devicesChanged → refreshTree
+    // task->unassignDevice(deviceId);                      // emits devicesChanged → refreshTree
+    m_project->unassignDeviceFromTask(deviceId, taskId); // emits devicesChanged → refreshTree
     m_project->deviceManager()->releaseDevice(deviceId); // emits deviceDeleted → closes dock
     LOG_USER_INFO << QString("Device %1 removed from task %2").arg(deviceId, taskId);
 }
@@ -798,7 +808,8 @@ void MainWindow::onDeleteTaskRequested(const QString &taskId)
     // Release all devices owned by this task first
     const QStringList devIds = task->assignedDeviceIds();
     for (const QString &devId : devIds) {
-        task->unassignDevice(devId);
+        // task->unassignDevice(devId);
+        m_project->unassignDeviceFromTask(devId, taskId);
         m_project->deviceManager()->releaseDevice(devId);
     }
 
@@ -889,6 +900,10 @@ UITaskEntry MainWindow::createLocalizationEntry(std::shared_ptr<vc::model::ITask
     entry.dockWidget = dockWidget;
     entry.widget     = taskWidget;
     configureDockWidget(dockWidget, taskWidget);
+
+    auto *locWidget = static_cast<LocalizationTaskWidget*>(taskWidget);
+    connect(locWidget, &LocalizationTaskWidget::addDeviceRequested,
+            this, &MainWindow::onAddDeviceToTaskRequested);
 
     UITaskEntry dashEntry  = makeTaskEntry<LocalizationDashboardWidget>  (tr("Dashboard"),   task);
     UITaskEntry patEntry   = makeTaskEntry<LocalizationPatternsWidget>   (tr("Patterns"),    task);

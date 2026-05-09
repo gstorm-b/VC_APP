@@ -182,11 +182,6 @@ BaslerCameraWidget::~BaslerCameraWidget() {
     delete ui;
 }
 
-// void BaslerCameraWidget::setToPropertyBrowser(PropertyBrowserWidget *browser) {
-//     // Q_UNUSED(browser);
-//     browser->browser()->setFactoryForManager(m_variantManager, m_variantFactory);
-// }
-
 QString BaslerCameraWidget::deviceId() {
     return m_device->id();
 }
@@ -226,22 +221,6 @@ void BaslerCameraWidget::initCameraWiget() {
     // connect(ui->btn_save_image, &QPushButton::clicked,
     //         this, &BaslerCameraWidget::btn_save_image_clicked);
 
-    // init property browser
-    // m_variantManager = new QtVariantPropertyManager(this);
-    // m_variantFactory = new QtVariantEditorFactory(this);
-    // m_variantEditor = new QtTreePropertyBrowser();
-
-    // QHBoxLayout *layout = new QHBoxLayout();
-    // ui->wg_property_browser->setLayout(layout);
-    // layout->addWidget(m_variantEditor);
-    // layout->setContentsMargins(0,0,0,0);
-
-    // m_variantEditor->setAlternatingRowColors(false);
-    // // m_variantEditor->setFactoryForManager(m_variantManager, m_variantFactory);
-    // m_variantEditor->setPropertiesWithoutValueMarked(true);
-    // m_variantEditor->setRootIsDecorated(false);
-    // m_variantEditor->setResizeMode(QtTreePropertyBrowser::Stretch);
-
     if (m_device) {
         m_camera = static_cast<vc::device::BaslerGigECamera*>(m_device.get());
         connect(m_camera, &vc::device::IDevice::connectStatusChanged,
@@ -251,43 +230,6 @@ void BaslerCameraWidget::initCameraWiget() {
         loadConfigToWidget();
         connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
                 this, &BaslerCameraWidget::onPropertyValueChanged);
-
-        // connect(m_variantManager, &QtVariantPropertyManager::valueChanged, this, [=](QtProperty *property, const QVariant &variant) {
-        //     QString propName = property->propertyName();
-
-        //     const QMetaObject *idevice_meta = m_device->metaObject();
-        //     const QMetaObject &meta_cfg = m_params.getMetaObject();
-
-        //     // abstract device
-        //     int index = idevice_meta->indexOfProperty(propName.toUtf8());
-        //     if (index != -1) {
-        //         if (propName == "name") {
-        //             QString new_name = variant.toString();
-        //             // avoid loop made by signal valueChanged
-        //             if (m_device->name() == new_name) {
-        //                 return;
-        //             }
-
-        //             if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
-        //                 m_variantManager->setValue(property, m_device->name());
-        //             }
-        //         }
-        //         return;
-        //     }
-
-        //     // parameters
-        //     index = meta_cfg.indexOfProperty(propName.toUtf8());
-        //     if (index != -1) {
-        //         QMetaProperty mProp = meta_cfg.property(index);
-        //         mProp.writeOnGadget(&m_params, variant);
-        //         qDebug() << "Updated context: " << propName << "to" << variant;
-        //         this->m_camera->setBaslerGigeConfig(m_params);
-        //         if (this->m_camera->isDeviceConnected()) {
-        //             this->m_worker->applyChangeParameters();
-        //         }
-        //         return;
-        //     }
-        // });
 
     }
 

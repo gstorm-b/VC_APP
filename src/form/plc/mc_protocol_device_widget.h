@@ -36,6 +36,8 @@ public:
     void loadConfigToWidget() override;
 
 private slots:
+    void onPropertyValueChanged(QtProperty *property, const QVariant &variant);
+
     void onBtnConnect();
     void saveConfig();
     void refreshConfig();
@@ -49,7 +51,7 @@ private slots:
     void onPollingUpdateValue(vc::device::McDeviceMap device_map);
 
 private:
-    void init_widget();
+    void initWidget();
     void init_m_devices_table();
     void init_d_devices_table();
     void refreshDeviceMap();
@@ -75,20 +77,9 @@ private:
     QCompleter *d_device_completer;
 
     vc::device::mc::McFrameType current_frame_type;
-
     vc::runtime::McDeviceWorker *m_worker{nullptr};
 
-    QtVariantPropertyManager *variantManager;
-    QtVariantEditorFactory *variantFactory;
-    QtTreePropertyBrowser *variantEditor;
+    bool m_populating_browser{false};
 };
-
-
-///
-/// necessary value
-/// bool
-/// int
-/// real
-/// string
 
 #endif // MC_PROTOCOL_DEVICE_WIDGET_H

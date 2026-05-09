@@ -1,6 +1,5 @@
 #include "mc_protocol_device_widget.h"
 #include "ui_mc_protocol_device_widget.h"
-// #include "device/plc/mc_msg_tcp_client.h"
 #include "device/plc/mc_request.h"
 
 // hepler function
@@ -132,84 +131,7 @@ McProtocolDeviceWidget::McProtocolDeviceWidget(std::shared_ptr<vc::device::IDevi
     m_dock(dock)  {
 
     ui->setupUi(this);
-
-    init_widget();
-
-    if (m_device) {
-        m_mc_device = static_cast<vc::device::McProtocolDevice*>(m_device.get());
-        connect(m_mc_device, &vc::device::McProtocolDevice::pollingUpdate,
-                this, &McProtocolDeviceWidget::onPollingUpdateValue);
-
-        m_worker = new vc::runtime::McDeviceWorker(m_mc_device);
-        m_worker->moveToWorker();
-
-        str_model_m_device = new QStringListModel(m_device_names, this);
-        str_model_d_device = new QStringListModel(d_device_names, this);
-
-        m_device_completer = new QCompleter(this);
-        m_device_completer->setCaseSensitivity(Qt::CaseInsensitive);
-        d_device_completer = new QCompleter(this);
-        d_device_completer->setCaseSensitivity(Qt::CaseInsensitive);
-
-        m_device_completer->setModel(str_model_m_device);
-        d_device_completer->setModel(str_model_d_device);
-
-        ui->ledit_bit_address->setCompleter(m_device_completer);
-        ui->ledit_word_address->setCompleter(d_device_completer);
-
-        m_config = m_mc_device->mcProtocolConfig();
-        populateBrowser();
-
-        connect(variantManager, &QtVariantPropertyManager::valueChanged, this, [=](QtProperty *property, const QVariant &variant) {
-            vc::device::McContext *context = this->m_config.context();
-            vc::device::McMsgItfConfig *msg_cfg = context->msgConfig();
-
-            QString propName = property->propertyName();
-
-            const QMetaObject *idevice_meta = m_device->metaObject();
-            const QMetaObject &meta_context = context->getMetaObject();
-            const QMetaObject &meta_msg = msg_cfg->getMetaObject();
-
-            // abstract device
-            int index = idevice_meta->indexOfProperty(propName.toUtf8());
-            if (index != -1) {
-                if (propName == "name") {
-                    QString new_name = variant.toString();
-                    // avoid loop made by signal valueChanged
-                    if (m_device->name() == new_name) {
-                        return;
-                    }
-
-                    if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
-                        variantManager->setValue(property, m_device->name());
-                    }
-                }
-                return;
-            }
-
-            // mc context
-            index = meta_context.indexOfProperty(propName.toUtf8());
-            if (index != -1) {
-                QMetaProperty mProp = meta_context.property(index);
-                mProp.writeOnGadget(context, variant);
-                qDebug() << "Updated context: " << propName << "to" << variant;
-                this->saveConfig();
-                return;
-            }
-
-            // interface config
-            index = meta_msg.indexOfProperty(propName.toUtf8());
-            if (index != -1) {
-                QMetaProperty mProp = meta_msg.property(index);
-                mProp.writeOnGadget(msg_cfg, variant);
-                qDebug() << "Updated context: " << propName << "to" << variant;
-                this->saveConfig();
-                return;
-            }
-        });
-
-        refreshDeviceMap();
-    }
+    initWidget();
 }
 
 McProtocolDeviceWidget::~McProtocolDeviceWidget() {
@@ -226,6 +148,58 @@ void McProtocolDeviceWidget::loadConfigToWidget() {
 
 QString McProtocolDeviceWidget::deviceId() {
     return m_device->id();
+}
+
+void McProtocolDeviceWidget::onPropertyValueChanged(QtProperty *property, const QVariant &variant) {
+    if (m_populating_browser) {
+        return;
+    }
+
+    vc::device::McContext *context = this->m_config.context();
+    vc::device::McMsgItfConfig *msg_cfg = context->msgConfig();
+
+    QString propName = property->propertyName();
+
+    const QMetaObject *idevice_meta = m_device->metaObject();
+    const QMetaObject &meta_context = context->getMetaObject();
+    const QMetaObject &meta_msg = msg_cfg->getMetaObject();
+
+    // abstract device
+    int index = idevice_meta->indexOfProperty(propName.toUtf8());
+    if (index != -1) {
+        if (propName == "name") {
+            QString new_name = variant.toString();
+            // avoid loop made by signal valueChanged
+            if (m_device->name() == new_name) {
+                return;
+            }
+
+            if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
+                m_variantManager->setValue(property, m_device->name());
+            }
+        }
+        return;
+    }
+
+    // mc context
+    index = meta_context.indexOfProperty(propName.toUtf8());
+    if (index != -1) {
+        QMetaProperty mProp = meta_context.property(index);
+        mProp.writeOnGadget(context, variant);
+        qDebug() << "Updated context: " << propName << "to" << variant;
+        this->saveConfig();
+        return;
+    }
+
+    // interface config
+    index = meta_msg.indexOfProperty(propName.toUtf8());
+    if (index != -1) {
+        QMetaProperty mProp = meta_msg.property(index);
+        mProp.writeOnGadget(msg_cfg, variant);
+        qDebug() << "Updated context: " << propName << "to" << variant;
+        this->saveConfig();
+        return;
+    }
 }
 
 void McProtocolDeviceWidget::onBtnConnect() {
@@ -279,7 +253,8 @@ void McProtocolDeviceWidget::onPollingUpdateValue(vc::device::McDeviceMap device
     }
 }
 
-void McProtocolDeviceWidget::init_widget() {
+void McProtocolDeviceWidget::initWidget() {
+    initPropertyBrowser();
 
     connect(ui->btn_connect, &QPushButton::clicked,
             this, & McProtocolDeviceWidget::onBtnConnect);
@@ -293,25 +268,37 @@ void McProtocolDeviceWidget::init_widget() {
             this, & McProtocolDeviceWidget::onBtnWordModify);
     connect(ui->spb_word_modify, &QSpinBox::editingFinished,
             this, & McProtocolDeviceWidget::onBtnWordModify);
+            
+    if (m_device) {
+        m_mc_device = static_cast<vc::device::McProtocolDevice*>(m_device.get());
+        connect(m_mc_device, &vc::device::McProtocolDevice::pollingUpdate,
+                this, &McProtocolDeviceWidget::onPollingUpdateValue);
 
-    // init property browser
-    variantManager = new QtVariantPropertyManager(this);
-    variantFactory = new QtVariantEditorFactory(this);
-    variantEditor = new QtTreePropertyBrowser();
+        m_worker = new vc::runtime::McDeviceWorker(m_mc_device);
+        m_worker->moveToWorker();
 
-    QHBoxLayout *layout = new QHBoxLayout();
-    ui->wg_property_browser->setLayout(layout);
-    layout->addWidget(variantEditor);
-    layout->setContentsMargins(0,0,0,0);
+        str_model_m_device = new QStringListModel(m_device_names, this);
+        str_model_d_device = new QStringListModel(d_device_names, this);
 
-    variantEditor->setAlternatingRowColors(false);
-    variantEditor->setFactoryForManager(variantManager, variantFactory);
-    variantEditor->setPropertiesWithoutValueMarked(true);
-    variantEditor->setRootIsDecorated(false);
-    variantEditor->setResizeMode(QtTreePropertyBrowser::Stretch);
+        m_device_completer = new QCompleter(this);
+        m_device_completer->setCaseSensitivity(Qt::CaseInsensitive);
+        d_device_completer = new QCompleter(this);
+        d_device_completer->setCaseSensitivity(Qt::CaseInsensitive);
 
-    ui->splitter_main->setStretchFactor(0, 7);
-    ui->splitter_main->setStretchFactor(0, 3);
+        m_device_completer->setModel(str_model_m_device);
+        d_device_completer->setModel(str_model_d_device);
+
+        ui->ledit_bit_address->setCompleter(m_device_completer);
+        ui->ledit_word_address->setCompleter(d_device_completer);
+
+        m_config = m_mc_device->mcProtocolConfig();
+        populateBrowser();
+
+        connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
+                this, &McProtocolDeviceWidget::onPropertyValueChanged);
+
+        refreshDeviceMap();
+    }
 }
 
 void McProtocolDeviceWidget::init_m_devices_table() {
@@ -354,10 +341,9 @@ void McProtocolDeviceWidget::init_d_devices_table() {
 }
 
 void McProtocolDeviceWidget::refreshConfig() {
-    // if (!m_device) {
-    //     return;
-    // }
-
+    if (!m_device) {
+        return;
+    }
 }
 
 
@@ -434,13 +420,13 @@ void McProtocolDeviceWidget::update_completer() {
 }
 
 void McProtocolDeviceWidget::populateBrowser() {
-    variantEditor->blockSignals(true);
+    m_variantEditor->blockSignals(true);
 
-    variantManager->clear();
+    m_variantManager->clear();
 
-    populateBrowser_Device(m_device.get(), variantManager, variantEditor);
-    populateBrowser_McContext(m_config.context(), variantManager, variantEditor);
-    populateBrowser_MsgInterface(m_config.context()->msgConfig(), variantManager, variantEditor);
+    populateBrowser_Device(m_device.get(), m_variantManager, m_variantEditor);
+    populateBrowser_McContext(m_config.context(), m_variantManager, m_variantEditor);
+    populateBrowser_MsgInterface(m_config.context()->msgConfig(), m_variantManager, m_variantEditor);
 
-    variantEditor->blockSignals(false);
+    m_variantEditor->blockSignals(false);
 }

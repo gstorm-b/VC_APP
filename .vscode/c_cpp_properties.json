@@ -15,7 +15,7 @@
                 "C:/Qt/6.8.2/mingw_64/include/QtOpenGL",
                 "C:/Qt/6.8.2/mingw_64/include/QtPrintSupport",
                 "C:/Qt/6.8.2/mingw_64/include/QtSvg",
-                "C:/opencv/build/include",
+                "C:/opencv/build/include/*",
                 "C:/Program Files/Basler/pylon/Development",
                 "C:/Program Files/Basler/pylon/Development/include",
                 "C:/Program Files/Basler/pylon/Development/include/pylon",

@@ -30,7 +30,6 @@ public:
                                 QWidget *parent = nullptr);
     ~BaslerCameraWidget();
 
-    // void setToPropertyBrowser(PropertyBrowserWidget *browser) override;
     QString deviceId() override;
     void loadConfigToDevice() override;
     void loadConfigToWidget() override;
@@ -43,7 +42,6 @@ private:
     void setDoublePropertyLimit(QtVariantProperty *variant, double &max, double &min);
     void setIntPropertyLimit(QtVariantProperty *variant, int &max, int &min);
     void updateDockTitle();
-    // void refreshWidget();
 
 private slots:
     void onPropertyValueChanged(QtProperty *property, const QVariant &variant);
@@ -61,8 +59,6 @@ private:
     void onCameraConnected();
     void onCameraDisconnected();
     void onCameraGrabFinished(vc::device::GrabResult result);
-    // void updateCameraShowInfo();
-    // void updateImageParameters();
     void populateBrowser();
 
 private:
@@ -77,7 +73,6 @@ private:
     BaslerCamSelectDialog *m_camera_select_dialog{nullptr};
     vc::runtime::CameraWorker *m_worker{nullptr};
 
-    // QtVariantPropertyManager *m_variantManager;
     // QtVariantEditorFactory *m_variantFactory;
     // QtTreePropertyBrowser *m_variantEditor;
     bool m_populating_browser{false};

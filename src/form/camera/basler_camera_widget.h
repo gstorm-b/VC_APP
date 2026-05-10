@@ -13,7 +13,7 @@
 #include "device/device_manager.h"
 #include "device/camera/camera_basler_gige.h"
 
-#include "model/camera_worker.h"
+#include "runtime/camera_runner.h"
 #include "form/device_widget.h"
 
 namespace Ui {
@@ -25,7 +25,12 @@ class BaslerCameraWidget : public IDeviceWidget
     Q_OBJECT
 
 public:
+    // Runner is owned by TaskRunner (not by this widget).  It must outlive
+    // this widget — TaskRunner guarantees this as long as the device stays
+    // assigned to the task.  Pass nullptr only if the caller explicitly
+    // disables thread-routed access (rare; status lamp will stay disabled).
     explicit BaslerCameraWidget(std::shared_ptr<vc::device::IDevice> dv,
+                                vc::runtime::CameraRunner *runner,
                                 ads::CDockWidget *dock = nullptr,
                                 QWidget *parent = nullptr);
     ~BaslerCameraWidget();
@@ -71,12 +76,11 @@ private:
     QList<vc::device::BaslerGigeCfg> m_cam_list;
 
     BaslerCamSelectDialog *m_camera_select_dialog{nullptr};
-    vc::runtime::CameraWorker *m_worker{nullptr};
 
-    // QtVariantEditorFactory *m_variantFactory;
-    // QtTreePropertyBrowser *m_variantEditor;
+    // Not owned — provided by TaskRunner.  Widget never creates a thread.
+    vc::runtime::CameraRunner *m_runner{nullptr};
+
     bool m_populating_browser{false};
-
 };
 
 #endif // BASLER_CAMERA_WIDGET_H

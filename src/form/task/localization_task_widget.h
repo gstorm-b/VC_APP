@@ -58,6 +58,7 @@ private:
     // ── Navigation ────────────────────────────────────────────────────────
     void rebuildDeviceNav();
     void showDashboardPage();
+    void showPatternsPage();
     void showSettingsPage();
     void showDeviceConfigPage(const QString &deviceId);
     void setNavButtonActive(QPushButton *btn);
@@ -91,7 +92,8 @@ private:
     // ── Content stack page indices ─────────────────────────────────────────
     static constexpr int kDashboardPage = 0;
     static constexpr int kSettingsPage  = 1;
-    // Device pages: index 2+
+    static constexpr int kPatternsPage  = 2;
+    // Device pages: index 3+
 
     // ── UI ────────────────────────────────────────────────────────────────
     Ui::LocalizationTaskWidget *ui;
@@ -126,6 +128,12 @@ private:
 
     // ── Nav button group for mutual exclusion ─────────────────────────────
     QButtonGroup *m_navBtnGroup{nullptr};
+
+    // ── Patterns page (LocalizationTask only) ─────────────────────────────
+    // Per design handoff `Sidebar.jsx`: "Patterns tab — LocalizationTask only".
+    // Lazily instantiated when user clicks the Patterns nav button.
+    QPushButton *m_btnNavPatterns{nullptr};
+    QWidget     *m_patternsPage{nullptr};
 };
 
 #endif // LOCALIZATION_TASK_WIDGET_H

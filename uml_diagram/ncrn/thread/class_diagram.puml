@@ -1,0 +1,268 @@
+@startuml class_diagram
+title Device Thread Framework — Class Diagram
+
+skinparam backgroundColor #fafafa
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #4a6080
+skinparam classFontSize 11
+skinparam classAttributeFontSize 10
+skinparam ArrowColor #4a6080
+skinparam ArrowFontSize 10
+skinparam stereotypeCBackgroundColor #daeaf8
+skinparam stereotypeIBackgroundColor #eef8ea
+skinparam noteBackgroundColor #fffde7
+skinparam noteBorderColor #c8b400
+skinparam packageBorderColor #c0c8d8
+skinparam packageBackgroundColor #f5f8fc
+
+' ═══════════════════════════════════════════════════════
+' DEVICE LAYER  (src/device)
+' ═══════════════════════════════════════════════════════
+
+package "device" #f5f8fc {
+
+    abstract class IDevice <<QObject>> {
+        +id() : QString
+        +name() : QString
+        +deviceType() : DeviceType
+        +connectStatus() : ConnectStatus
+        +deviceConnect() : bool  {slot}
+        +deviceDisconnect() : bool  {slot}
+        +deviceTerminate()  {slot}
+        +pushRequest(r:IRequest*) : bool
+        ..signals..
+        +connectStatusChanged(ConnectStatus)
+        +connectionFailed(QString)
+        +errorOccurred(QString)
+    }
+
+    abstract class CameraDevice <<QObject>> {
+        +cameraType() : CameraType
+        +grabSingleShot() : GrabResult
+        +applyParametersChange() : bool
+        +startContinuousShot() : bool
+        ..signals..
+        +grabFinished(GrabResult)
+        +parametersApplied(bool)
+    }
+
+    class McProtocolDevice <<QObject>> {
+        +mcProtocolConfig() : McProtocolConfig
+        +pushRequest(r:IRequest*) : bool
+        ..signals..
+        +pollingUpdate(McDeviceMap)
+        +requestFinished(McResult)
+        +deviceMChanged(int,u8,u8)
+        +deviceDChanged(int,i16,i16)
+    }
+
+    class DeviceManager <<QObject>> {
+        +registerDevice(id,name,dev) : bool
+        +deviceById(id) : shared_ptr<IDevice>
+        +unregisterDevice(id)
+        ..
+        -deviceInstances : QMap<QString, shared_ptr<IDevice>>
+    }
+
+    IDevice <|-- CameraDevice
+    IDevice <|-- McProtocolDevice
+    DeviceManager "1" o-- "0..*" IDevice : manages >
+}
+
+' ═══════════════════════════════════════════════════════
+' RUNTIME LAYER  (src/runtime)  ← NEW
+' ═══════════════════════════════════════════════════════
+
+package "runtime" #eef8ea {
+
+    abstract class IDeviceRunner <<QObject>> {
+        +start()
+        +stop()
+        +attach()
+        +detach(dest:QThread*)
+        +workerThread() : QThread*
+        +device() : IDevice*
+        +isAttached() : bool
+        +isRunning()  : bool
+        ..signals..
+        +connectStatusChanged(ConnectStatus)
+        +errorOccurred(QString)
+        #m_attached : bool
+    }
+
+    abstract class "DeviceRunner<T>" as DeviceRunner <<template>> {
+        +typedDevice() : T*
+        ..
+        #wireSignals()   {abstract}
+        #unwireSignals() {abstract}
+        --
+        #m_device : T*
+        #m_thread : QThread*
+    }
+
+    class CameraRunner <<QObject>> {
+        +requestConnect()
+        +requestDisconnect()
+        +requestSingleShot()
+        +requestApplyParams()
+        ..signals..
+        +grabFinished(GrabResult)
+        +parametersApplied(bool)
+        --
+        -m_busy : bool
+        #wireSignals()
+        #unwireSignals()
+    }
+
+    class McDeviceRunner <<QObject>> {
+        +requestConnect()
+        +requestDisconnect()
+        ..signals..
+        +pollingUpdate(McDeviceMap)
+        +requestFinished(McResult)
+        +deviceMChanged(int,u8,u8)
+        +deviceDChanged(int,i16,i16)
+        --
+        -m_busy : bool
+        #wireSignals()
+        #unwireSignals()
+    }
+
+    class TaskRunner <<QObject>> {
+        +registerDevice(id, dev)
+        +unregisterDevice(id)
+        +runnerFor(id) : IDeviceRunner*
+        +hasRunner(id) : bool
+        ..
+        +enterCommission()
+        +enterRuntime(merge:bool)
+        +enterIdle()
+        ..
+        +currentPhase() : Phase
+        +runtimeThread() : QThread*
+        ..signals..
+        +phaseChanged(Phase)
+        --
+        -m_phase : Phase
+        -m_runtimeThread : QThread*
+        -m_runners : QMap<QString, IDeviceRunner*>
+        -createRunner(dev) : IDeviceRunner*
+    }
+
+    enum "TaskRunner::Phase" as Phase {
+        Idle
+        Commission
+        Runtime
+    }
+
+    IDeviceRunner <|-- DeviceRunner
+    DeviceRunner <|-- CameraRunner
+    DeviceRunner <|-- McDeviceRunner
+
+    TaskRunner "1" *-- "0..*" IDeviceRunner : owns >
+    TaskRunner ..> Phase : uses
+    TaskRunner .right.> CameraRunner   : <<creates>>
+    TaskRunner .right.> McDeviceRunner : <<creates>>
+}
+
+' ═══════════════════════════════════════════════════════
+' MODEL LAYER  (src/model)
+' ═══════════════════════════════════════════════════════
+
+package "model" #f5f8fc {
+
+    abstract class ITask <<QObject>> {
+        +id() : QString
+        +name() : QString
+        +assignDevice(id)
+        +unassignDevice(id)
+        +assignedDeviceIds() : QStringList
+        +taskRunner() : TaskRunner*
+        ..
+        +beginCommission()
+        +endCommission()
+        +beginRuntime(merge:bool)
+        +endRuntime()
+        +stopAll()
+        ..signals..
+        +devicesChanged()
+        +commissionStarted()
+        +commissionStopped()
+        +runtimeStarted()
+        +runtimeStopped()
+        --
+        #syncRunnersWithDevices()
+        -m_taskRunner : TaskRunner*
+        -m_assignedDeviceIds : QStringList
+        -m_proj : Project*
+    }
+
+    class TaskLocalization <<QObject>> {
+        +setupTask()
+        +executeLocalization()
+        +setCameraDeviceId(id)
+        +setMcDeviceId(id)
+        +camera() : CameraDevice*
+        +mcDevice() : McProtocolDevice*
+        --
+        -m_cameraDeviceId : QString
+        -m_mcDeviceId     : QString
+        -m_matcher        : ImageMatcher
+        -m_patternManager : PatternGroupManager*
+        -cameraRunner(id) : CameraRunner*
+        -mcRunner(id)     : McDeviceRunner*
+    }
+
+    class Project <<QObject>> {
+        +addTask(task)
+        +taskById(id) : shared_ptr<ITask>
+        +deviceManager() : shared_ptr<DeviceManager>
+        +assignDeviceToTask(devId, taskId)
+    }
+
+    ITask <|-- TaskLocalization
+    Project "1" *-- "0..*" ITask      : manages >
+    Project "1" *-- "1"    DeviceManager : owns >
+    ITask "1" *-- "1" TaskRunner       : owns >
+}
+
+' ═══════════════════════════════════════════════════════
+' FORM LAYER  (src/form)
+' ═══════════════════════════════════════════════════════
+
+package "form" #fdf5ff {
+
+    class LocalizationTaskWidget <<QWidget>> {
+        +loadConfigToWidget()
+        +loadConfigToTask()
+        ..
+        -showDeviceConfigPage(deviceId)
+        -onConnectClicked()
+        -onGrabClicked()
+        -onStartRuntime()
+    }
+
+    note bottom of LocalizationTaskWidget
+      Widget has ZERO thread logic.
+      It only calls runner->requestXxx()
+      and listens to runner signals.
+    end note
+}
+
+' ═══════════════════════════════════════════════════════
+' CROSS-LAYER RELATIONSHIPS
+' ═══════════════════════════════════════════════════════
+
+LocalizationTaskWidget --> TaskLocalization    : uses >
+LocalizationTaskWidget ..> IDeviceRunner       : calls requestXxx() >
+LocalizationTaskWidget ..> TaskRunner          : calls runnerFor() >
+
+ITask --> Project                              : has >
+TaskRunner ..> DeviceManager                   : queries deviceById() >
+
+CameraRunner "1" --> "1" CameraDevice         : drives (QueuedConnection) >
+McDeviceRunner "1" --> "1" McProtocolDevice   : drives (QueuedConnection) >
+
+DeviceRunner ..> "QThread" : owns 1 >
+
+@enduml

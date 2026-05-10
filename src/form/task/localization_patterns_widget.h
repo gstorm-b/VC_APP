@@ -56,6 +56,16 @@ public slots:
     /// External entry point for image input (camera, file, network …).
     void setCameraImage(const cv::Mat &image);
 
+    /// Open the Edit Pattern Wizard for a specific (groupNumber, patternNumber).
+    /// Returns true if the user accepted and the pattern was updated.
+    /// Invoke from a host-supplied UI control (e.g. a "Edit" toolbar button
+    /// or a keyboard shortcut), or from the pattern tree's edit-icon click.
+    bool editPattern(int groupNumber, int patternNumber);
+
+    /// Open the Edit Pattern Wizard for the currently-selected pattern,
+    /// or do nothing if no pattern is selected.
+    void editSelectedPattern();
+
 private slots:
     // ── Pattern tree handlers ────────────────────────────────────────────
     void onTreeGroupClicked   (int groupIndex, const MatchGroupConfig &cfg);
@@ -87,6 +97,10 @@ private slots:
     void onPatternConfigModified();
     void onPropertyValueChanged(QtProperty *property, const QVariant &value);
 
+    // ── PatternSettingPanel (under-tree inline editor) ──────────────────
+    void onSettingPanelPatternFieldChanged(const QString &key, const QVariant &value);
+    void onSettingPanelGroupFieldChanged  (const QString &key, const QVariant &value);
+
 private:
     // ── Build / wire-up ─────────────────────────────────────────────────
     void initWidget();
@@ -94,6 +108,10 @@ private:
     void wireTree();
     void wireManagerSignals();
     void wirePropertyBrowser();
+    void rebuildTreeFromManager();   // pull full library state into the tree
+    void buildResultTable();         // build & insert result-table widget
+    void populateResultTable(const mtc::MatchResult &result);
+    void clearResultTable();
 
     // ── Property browser construction ───────────────────────────────────
     void buildGroupProperties();      // group-level (picking box etc.)
@@ -138,6 +156,20 @@ private:
     mtc::MatchConfigPropertyAdapter *m_configAdapter {nullptr};
 
     AddPatternImageDialog           *m_addPatternImageDialog{nullptr};
+
+    // Active Add Pattern wizard (non-null only while wizard is open).
+    // Lets setCameraImage() forward captures into the wizard preview.
+    class AddPatternWizard           *m_activeAddWizard{nullptr};
+
+    // Pattern Setting panel — sits below the library tree (Pane 2 bottom).
+    // Mirrors `PatternSetting` from the design handoff.
+    class PatternSettingPanel        *m_settingPanel{nullptr};
+
+    // Result table — sits below the KPI strip in Pane 1, inside a vertical
+    // splitter so the user can resize image vs. table.  Populated after each
+    // matching run from `mtc::MatchResult`.  Mirrors the Result Table from
+    // `PatternManager.jsx → MonitorPane`.
+    class QTableWidget               *m_resultTable{nullptr};
 
     // ── Selection state (-1 = none) ─────────────────────────────────────
     int m_selectedGroupIndex  {-1};   // group *number*, not list index

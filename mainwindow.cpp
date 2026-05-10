@@ -625,9 +625,6 @@ void MainWindow::onTaskDoubleClicked(const QString &id, const QString &widgetNam
     if (widgetName.isEmpty()) {
         dockWidget = taskEntry.dockWidget;
     }
-    // } else if (taskEntry.children.contains(widgetName)) {
-    //     dockWidget = taskEntry.children.value(widgetName).dockWidget;
-    // }
 
     if (!dockWidget) return;
 
@@ -651,25 +648,6 @@ void MainWindow::onDeviceCreated(const QString &id) {
         LOG_DEV_ERR << "Cannot create device widget, device not found for id: " << id;
         return;
     }
-
-    // std::shared_ptr<vc::device::IDevice> device = m_project->deviceById(id);
-    // ads::CDockWidget *dockWidget  = new ads::CDockWidget(device->name());
-    // QWidget          *deviceWidget = createDeviceWidget(device, dockWidget);
-    // if (!deviceWidget) {
-    //     dockWidget->deleteLater();
-    //     LOG_DEV_ERR << "Cannot create device widget, null pointer error.";
-    //     return;
-    // }
-
-    // dockWidget->setWidget(deviceWidget);
-    // dockWidget->setFeature(ads::CDockWidget::DockWidgetClosable,  true);
-    // dockWidget->setFeature(ads::CDockWidget::DockWidgetFloatable, true);
-    // dockWidget->setFeature(ads::CDockWidget::DockWidgetMovable,   true);
-    // dockWidget->setFeature(ads::CDockWidget::DockWidgetPinnable,  true);
-    // m_dockManager->addDockWidget(ads::CenterDockWidgetArea, dockWidget,
-    //                              m_anchorDock->dockAreaWidget());
-
-    // m_deviceEntries.insert(id, {deviceWidget, dockWidget});
 }
 
 void MainWindow::onDeviceDeleted(const QString &id) {
@@ -819,36 +797,36 @@ void MainWindow::onDeleteTaskRequested(const QString &taskId)
 
 // ── Widget factories ──────────────────────────────────────────────────────────
 
-QWidget *MainWindow::createDeviceWidget(std::shared_ptr<vc::device::IDevice> device,
-                                        ads::CDockWidget *dock) {
-    if (!device) return nullptr;
+// QWidget *MainWindow::createDeviceWidget(std::shared_ptr<vc::device::IDevice> device,
+//                                         ads::CDockWidget *dock) {
+//     if (!device) return nullptr;
 
-    switch (device->deviceType()) {
-    case vc::device::DeviceType::Camera:   return createCameraWidget(device, dock);
-    case vc::device::DeviceType::McDevice: return createMcProtocolWidget(device, dock);
-    default: break;
-    }
-    return nullptr;
-}
+//     switch (device->deviceType()) {
+//     case vc::device::DeviceType::Camera:   return createCameraWidget(device, dock);
+//     case vc::device::DeviceType::McDevice: return createMcProtocolWidget(device, dock);
+//     default: break;
+//     }
+//     return nullptr;
+// }
 
-QWidget *MainWindow::createCameraWidget(std::shared_ptr<vc::device::IDevice> device,
-                                        ads::CDockWidget *dock) {
-    if (!device) return nullptr;
+// QWidget *MainWindow::createCameraWidget(std::shared_ptr<vc::device::IDevice> device,
+//                                         ads::CDockWidget *dock) {
+//     if (!device) return nullptr;
 
-    auto *camDevice = static_cast<vc::device::CameraDevice *>(device.get());
-    switch (camDevice->cameraType()) {
-    case vc::device::CameraType::BaslerGigE:
-        return new BaslerCameraWidget(device, dock);
-    default: break;
-    }
-    return nullptr;
-}
+//     auto *camDevice = static_cast<vc::device::CameraDevice *>(device.get());
+//     switch (camDevice->cameraType()) {
+//     case vc::device::CameraType::BaslerGigE:
+//         return new BaslerCameraWidget(device,dock);
+//     default: break;
+//     }
+//     return nullptr;
+// }
 
-QWidget *MainWindow::createMcProtocolWidget(std::shared_ptr<vc::device::IDevice> device,
-                                            ads::CDockWidget *dock) {
-    if (!device) return nullptr;
-    return new McProtocolDeviceWidget(device, dock);
-}
+// QWidget *MainWindow::createMcProtocolWidget(std::shared_ptr<vc::device::IDevice> device,
+//                                             ads::CDockWidget *dock) {
+//     if (!device) return nullptr;
+//     return new McProtocolDeviceWidget(device, dock);
+// }
 
 static void configureDockWidget(ads::CDockWidget *dock, QWidget *widget) {
     dock->setWidget(widget);

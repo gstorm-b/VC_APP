@@ -3,11 +3,8 @@
 
 #include <QDialog>
 #include <QThread>
-// #include <QTimer>
 #include <pylon/PylonIncludes.h>
 #include <pylon/gige/GigETransportLayer.h>
-
-
 
 namespace Ui {
 class BaslerCamSelectDialog;
@@ -75,7 +72,6 @@ private:
     GetDevicesWorker *get_cam_thread;
 
     Pylon::DeviceInfoList cameraDeviceList;
-    // Pylon::CDeviceInfo selectedCamera;
 
     bool m_is_selected{false};
     int m_current_select_row{-1};

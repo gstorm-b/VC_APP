@@ -3,13 +3,15 @@
 
 #include "model/itask.h"
 #include "device/camera/camera_device.h"
-#include "model/camera_worker.h"
 #include "device/plc/mc_protocol_device.h"
 #include "task_localization_config.h"
 #include "matching/image_matcher.h"
-
 #include "matching/pattern_group_manager.h"
 #include <opencv2/imgcodecs.hpp>
+
+// Runtime runners (for typed access inside executeLocalization)
+#include "runtime/camera_runner.h"
+#include "runtime/mc_device_runner.h"
 
 namespace vc::model {
 
@@ -81,6 +83,15 @@ public:
     }
 
 
+    // Convenience: typed access to device config from runner
+    vc::device::CameraDevice       *camera()   const;
+    vc::device::McProtocolDevice   *mcDevice() const;
+
+    void setCameraDeviceId(const QString &id)   { m_cameraDeviceId = id; }
+    void setMcDeviceId(const QString &id)        { m_mcDeviceId     = id; }
+    QString cameraDeviceId()  const              { return m_cameraDeviceId; }
+    QString mcDeviceId()      const              { return m_mcDeviceId;     }
+
 public slots:
     void setupTask();
     void executeLocalization();
@@ -94,17 +105,24 @@ signals:
     void startCameraRequest();
 
 private:
+    // ── Helpers for typed runner access ───────────────────────────────────────
+    // Returns nullptr if the device isn't registered or is wrong type.
+    vc::runtime::CameraRunner   *cameraRunner(const QString &deviceId) const;
+    vc::runtime::McDeviceRunner *mcRunner(const QString &deviceId)     const;
+
+private:
     bool m_isValid{false};
 
     TaskLocalizeConfig m_config;
 
-    vc::runtime::CameraWorker *m_worker{nullptr};
-    std::shared_ptr<device::CameraDevice> m_camera;
-    std::shared_ptr<device::McProtocolDevice> m_mc_protocol;
+    // Device objects are retrieved from DeviceManager via taskRunner().
+    // Typed cached pointers below are populated in setupTask() after
+    // commission has confirmed which deviceId plays each role.
+    QString m_cameraDeviceId;
+    QString m_mcDeviceId;
 
     mtc::ImageMatcher m_matcher;
     mtc::PatternGroupManager *m_patternManager;
-    // mtc::MatchGroup *m_match_model;
 };
 
 

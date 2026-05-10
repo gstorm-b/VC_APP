@@ -14,6 +14,10 @@
 #include "form/camera/basler_camera_widget.h"
 #include "form/plc/mc_protocol_device_widget.h"
 #include "device/idevice_config.h"
+#include "runtime/camera_runner.h"
+#include "runtime/mc_device_runner.h"
+#include "form/pattern/pattern_theme.h"
+#include "form/task/localization_patterns_widget.h"
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Device type → accent color
@@ -62,6 +66,12 @@ LocalizationTaskWidget::LocalizationTaskWidget(std::shared_ptr<vc::model::ITask>
 
 LocalizationTaskWidget::~LocalizationTaskWidget()
 {
+    // Stop all per-device threads before tearing down the widget.  This
+    // moves devices back to the main thread so DeviceManager can keep
+    // using them.  The TaskRunner stays alive (owned by ITask) so other
+    // task widgets / future runs can re-enter Commission cleanly.
+    if (m_localizeTask) m_localizeTask->endCommission();
+
     delete ui;
 }
 
@@ -77,6 +87,83 @@ void LocalizationTaskWidget::initWidget()
         m_localizeTask = static_cast<vc::model::TaskLocalization*>(m_task.get());
         m_config       = m_localizeTask->taskLocalizeConfig();
     }
+
+    // ── Apply design-handoff dark theme ─────────────────────────────────────
+    // Tokens come from `form/pattern/pattern_theme.h`, which mirrors the
+    // design handoff `ui_scratch/design_handoff_full_project/README.md`.
+    //
+    // The .ui file has no styling — every visual is set programmatically.
+    // We install one global stylesheet that themes the major frames, then
+    // helper methods (rebuildDeviceNav, updateStatusLamps, refreshNavItemStyles)
+    // override per-item colors using the same tokens.
+    setStyleSheet(QString(
+        // ── root ────────────────────────────────────────────────────────────
+        "QWidget#LocalizationTaskWidget { background: %1; color: %2; "
+        "  font-family: 'Segoe UI'; }"
+        "QSplitter::handle { background: %3; }"
+        "QScrollBar:vertical { background: %1; width: 8px; }"
+        "QScrollBar::handle:vertical { background: %4; border-radius: 3px; min-height: 20px; }"
+        "QScrollBar::handle:vertical:hover { background: %5; }"
+        "QScrollBar::add-line, QScrollBar::sub-line { height: 0; background: transparent; }"
+
+        // ── Left nav panel ──────────────────────────────────────────────────
+        "QFrame#nav_panel { background: %1; border-right: 1px solid #2a2d2e; }"
+        "QFrame#frame_task_header { background: %1; "
+        "  border-bottom: 1px solid #2a2d2e; }"
+        "QFrame#frame_status_lamps { background: %1; "
+        "  border-bottom: 1px solid #2a2d2e; }"
+        "QFrame#frame_nav_top { background: %1; }"
+        "QFrame#frame_devices_header { background: %1; }"
+        "QFrame#frame_nav_bottom { background: %1; "
+        "  border-top: 1px solid #2a2d2e; }"
+        "QScrollArea#scroll_devices { background: %1; border: none; }"
+        "QWidget#scroll_devices_content { background: %1; }"
+
+        // ── Task header labels ──────────────────────────────────────────────
+        "QLabel#lbl_active_title {"
+        "  color: %6; font: 700 7.5pt 'Segoe UI'; letter-spacing: 1.6px; }"
+        "QLabel#lbl_task_name_nav {"
+        "  color: %2; font: 700 11pt 'JetBrains Mono'; }"
+        "QLabel#lbl_task_type_chip {"
+        "  color: %7; background: rgba(43,140,232,30); border-radius: 3px;"
+        "  padding: 1px 6px; font: 700 8pt 'Segoe UI'; letter-spacing: 1px; }"
+        "QLabel#lbl_devices_section {"
+        "  color: %6; font: 700 7.5pt 'Segoe UI'; letter-spacing: 1.6px; }"
+
+        // ── Nav buttons (Dashboard / Settings) ──────────────────────────────
+        "QPushButton#btn_nav_dashboard, QPushButton#btn_nav_settings {"
+        "  text-align: left; padding: 7px 12px;"
+        "  background: transparent; border: 1px solid transparent; border-left: 2px solid transparent;"
+        "  color: %4; font: 600 10.5pt 'Segoe UI'; border-radius: 3px; }"
+        "QPushButton#btn_nav_dashboard:hover, QPushButton#btn_nav_settings:hover {"
+        "  background: %8; color: %4; }"
+        "QPushButton#btn_nav_dashboard:checked, QPushButton#btn_nav_settings:checked {"
+        "  background: rgba(43,140,232,28); color: %7;"
+        "  border-left: 2px solid %7; }"
+
+        // ── Top-right breadcrumb ───────────────────────────────────────────
+        "QFrame#frame_breadcrumb { background: %9; "
+        "  border-bottom: 1px solid %3; min-height: 36px; max-height: 36px; }"
+        "QLabel#lbl_bc_task { color: %4; font: 8.5pt 'JetBrains Mono'; }"
+        "QLabel#lbl_bc_sep  { color: %6; font: 13pt 'JetBrains Mono'; }"
+        "QLabel#lbl_bc_current { color: %7; font: 700 9.5pt 'JetBrains Mono'; }"
+
+        // ── Breadcrumb tool buttons ─────────────────────────────────────────
+        "QToolButton#tbtn_bc_save, QToolButton#tbtn_bc_refresh,"
+        "QToolButton#tbtn_add_device {"
+        "  background: transparent; border: 1px solid transparent; border-radius: 3px;"
+        "  padding: 3px 6px; color: %4; }"
+        "QToolButton#tbtn_bc_save:hover, QToolButton#tbtn_bc_refresh:hover,"
+        "QToolButton#tbtn_add_device:hover {"
+        "  background: %8; border: 1px solid %3; color: %2; }"
+
+        // ── Right content (stack + property browser) ───────────────────────
+        "QStackedWidget#content_stack { background: %1; }"
+        "QWidget#wg_property_browser { background: %1; }"
+        "QWidget#page_task_config   { background: %1; }"
+    ).arg(ptn::BG,    /* %1 */ ptn::TXT,  /* %2 */ ptn::BD,    /* %3 */
+           ptn::TXT2, /* %4 */ ptn::BD2,  /* %5 */ ptn::TXT3,  /* %6 */
+           ptn::ACC,  /* %7 */ ptn::SURF2,/* %8 */ ptn::SURF   /* %9 */));
 
     // initPropertyBrowser(ui->wg_property_browser);
     initBrowserInWidget(ui->wg_property_browser);
@@ -135,6 +222,16 @@ void LocalizationTaskWidget::initWidget()
         emit addDeviceRequested(m_task ? m_task->id() : QString());
     });
 
+    // ── Enter Commission phase ────────────────────────────────────────────
+    // Each assigned device gets its own HighPriority QThread so the GUI
+    // never blocks while we configure / connect / single-shot.  When the
+    // user adds a device later, devicesChanged → syncRunnersWithDevices()
+    // registers it; TaskRunner auto-starts the new runner because we are
+    // already past Idle.
+    if (m_localizeTask) {
+        m_localizeTask->beginCommission();
+    }
+
     // Dashboard tab (default active)
     showDashboardPage();
 }
@@ -144,6 +241,13 @@ void LocalizationTaskWidget::initWidget()
 // ──────────────────────────────────────────────────────────────────────────────
 void LocalizationTaskWidget::initNavPanel()
 {
+    // ── Per design handoff: nav panel is 188px wide ─────────────────────────
+    // README.md → "Width 248px sidebar; left device nav 188px".
+    if (ui->nav_panel) {
+        ui->nav_panel->setMinimumWidth(188);
+        ui->nav_panel->setMaximumWidth(260);
+    }
+
     // Task header labels
     QFont sectionFont = ui->lbl_active_title->font();
     sectionFont.setPointSizeF(7.5);
@@ -189,13 +293,40 @@ void LocalizationTaskWidget::initNavPanel()
     ui->btn_nav_settings->setIcon(svgIcon(":/resrc/icon/setting.svg", 14));
     ui->btn_nav_settings->setIconSize({14, 14});
 
+    // ── Patterns nav button (added programmatically — not in .ui) ──────────
+    // Per design handoff `Sidebar.jsx` / `TaskWorkspace.jsx`: LocalizationTask
+    // gets a "Patterns" tab between Dashboard and the device list. Inserted
+    // into the same vl_nav_top layout right under Dashboard so it inherits
+    // the same QSS rules already defined for #btn_nav_dashboard / _settings.
+    m_btnNavPatterns = new QPushButton(tr("  Patterns"));
+    m_btnNavPatterns->setObjectName("btn_nav_patterns");
+    m_btnNavPatterns->setCheckable(true);
+    m_btnNavPatterns->setIcon(svgIcon(":/resrc/icon/setting.svg", 14));
+    m_btnNavPatterns->setIconSize({14, 14});
+    // Reuse the dashboard/settings stylesheet (same object id selector pattern).
+    m_btnNavPatterns->setStyleSheet(QString(
+        "QPushButton#btn_nav_patterns {"
+        "  text-align: left; padding: 7px 12px;"
+        "  background: transparent; border: 1px solid transparent; border-left: 2px solid transparent;"
+        "  color: %1; font: 600 10.5pt 'Segoe UI'; border-radius: 3px; }"
+        "QPushButton#btn_nav_patterns:hover { background: %2; color: %1; }"
+        "QPushButton#btn_nav_patterns:checked {"
+        "  background: rgba(43,140,232,28); color: %3;"
+        "  border-left: 2px solid %3; }"
+    ).arg(ptn::TXT2, ptn::SURF2, ptn::ACC));
+    if (auto *navTopLay = qobject_cast<QVBoxLayout*>(ui->frame_nav_top->layout()))
+        navTopLay->addWidget(m_btnNavPatterns);
+
     m_navBtnGroup = new QButtonGroup(this);
     m_navBtnGroup->addButton(ui->btn_nav_dashboard);
+    m_navBtnGroup->addButton(m_btnNavPatterns);
     m_navBtnGroup->addButton(ui->btn_nav_settings);
     m_navBtnGroup->setExclusive(true);
 
     connect(ui->btn_nav_dashboard, &QPushButton::clicked,
             this, &LocalizationTaskWidget::showDashboardPage);
+    connect(m_btnNavPatterns,      &QPushButton::clicked,
+            this, &LocalizationTaskWidget::showPatternsPage);
     connect(ui->btn_nav_settings,  &QPushButton::clicked,
             this, &LocalizationTaskWidget::showSettingsPage);
 
@@ -304,7 +435,10 @@ void LocalizationTaskWidget::updateStatusLamps()
     const bool states[4] = { ready, hasCam, hasPlc, hasBot };
     for (int i = 0; i < m_statusLamps.size(); ++i) {
         bool on = (i < 4) ? states[i] : false;
-        QColor col  = on ? QColor(0x22, 0xd1, 0x7a) : QColor(0xe8, 0x40, 0x40);
+        // Design-handoff lamp: radial gradient between bright stop and base.
+        // ON  → ptn::OK  (#22d17a) glow
+        // OFF → ptn::ERR (#e84040) glow
+        QColor col(on ? ptn::OK : ptn::ERR);
         QString css = QString(
             "QFrame {"
             "  border-radius: 5px;"
@@ -316,8 +450,10 @@ void LocalizationTaskWidget::updateStatusLamps()
                  col.name(),
                  col.name() + "66");
         m_statusLamps[i].dot->setStyleSheet(css);
-        m_statusLamps[i].label->setStyleSheet(
-            QString("color: %1;").arg(on ? "#2a3a52" : "#3a2a2a"));
+        // Label color from design tokens — muted for off, regular text for on.
+        m_statusLamps[i].label->setStyleSheet(QString(
+            "color: %1; font: 700 6.5pt 'Segoe UI'; letter-spacing: 0.5px;"
+        ).arg(on ? ptn::TXT2 : ptn::TXT4));
     }
 }
 
@@ -329,6 +465,7 @@ void LocalizationTaskWidget::initContentStack()
     // Insert a dashboard placeholder at index 0
     // page_task_config (from .ui) shifts to index kSettingsPage = 1
     m_dashboardPage = new QWidget(this);
+    m_dashboardPage->setStyleSheet(QString("background: %1;").arg(ptn::BG));
     auto *dashLayout = new QVBoxLayout(m_dashboardPage);
     dashLayout->setAlignment(Qt::AlignCenter);
     auto *dashLbl = new QLabel(tr("Dashboard"), m_dashboardPage);
@@ -336,7 +473,7 @@ void LocalizationTaskWidget::initContentStack()
     f.setPointSize(12);
     dashLbl->setFont(f);
     dashLbl->setAlignment(Qt::AlignCenter);
-    dashLbl->setStyleSheet("color: #3a4f6a;");
+    dashLbl->setStyleSheet(QString("color: %1;").arg(ptn::TXT3));
     dashLayout->addWidget(dashLbl);
 
     ui->content_stack->insertWidget(kDashboardPage, m_dashboardPage);
@@ -358,6 +495,11 @@ void LocalizationTaskWidget::onTaskDevicesChanged() {
             m_devicePages.remove(deviceId);
         }
     }
+
+    // Sync runners with the new assigned-device set.  TaskRunner will:
+    //   - register + start a runner for any newly added device
+    //   - unregister + stop the runner for any removed device
+    if (m_localizeTask) m_localizeTask->resyncDevices();
 
     rebuildDeviceNav();
 }
@@ -405,12 +547,13 @@ void LocalizationTaskWidget::rebuildDeviceNav()
         iconLbl->move(0, 3);
         iconLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
 
-        // Status dot
+        // Status dot — design tokens (red = disconnected, green = connected)
         auto *dotLbl = new QFrame(iconBox);
         dotLbl->setFixedSize(5, 5);
         dotLbl->move(13, 13);
-        dotLbl->setStyleSheet(
-            "QFrame { border-radius: 2px; background: #e84040; border: 1px solid #09111e; }");
+        dotLbl->setStyleSheet(QString(
+            "QFrame { border-radius: 2px; background: %1; border: 1px solid %2; }"
+        ).arg(ptn::ERR, ptn::BG));
         dotLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
 
         itemLayout->addWidget(iconBox);
@@ -428,7 +571,7 @@ void LocalizationTaskWidget::rebuildDeviceNav()
         nameFont.setPointSizeF(9);
         nameLbl->setFont(nameFont);
         nameLbl->setObjectName("devNavName");
-        nameLbl->setStyleSheet("color: #6b7ea0;");
+        nameLbl->setStyleSheet(QString("color: %1;").arg(ptn::TXT2));
         nameLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
 
         auto *typeLbl = new QLabel(typeShortLabel(device->deviceType()), textCol);
@@ -448,7 +591,7 @@ void LocalizationTaskWidget::rebuildDeviceNav()
         lay->addWidget(item);
     }
 
-    // Empty state
+    // Empty state — design-token muted text
     if (!anyDevice) {
         auto *emptyLbl = new QLabel(tr("No devices assigned.\nUse [+] to add."),
                                     m_devListWidget);
@@ -457,7 +600,7 @@ void LocalizationTaskWidget::rebuildDeviceNav()
         f.setPointSizeF(8.5);
         emptyLbl->setFont(f);
         emptyLbl->setWordWrap(true);
-        emptyLbl->setStyleSheet("color: #1a2a3a;");
+        emptyLbl->setStyleSheet(QString("color: %1;").arg(ptn::TXT4));
         emptyLbl->setContentsMargins(4, 8, 4, 8);
         lay->addWidget(emptyLbl);
     }
@@ -476,7 +619,7 @@ void LocalizationTaskWidget::showDashboardPage()
     ui->content_stack->setCurrentIndex(kDashboardPage);
     ui->btn_nav_dashboard->setChecked(true);
     refreshNavItemStyles();
-    updateBreadcrumb(tr("Dashboard"), QColor(0x2b, 0x8c, 0xe8));
+    updateBreadcrumb(tr("Dashboard"), QColor(ptn::ACC));
     // populateBrowser();
     ui->wg_property_browser->setVisible(false);
 }
@@ -487,8 +630,37 @@ void LocalizationTaskWidget::showSettingsPage()
     ui->content_stack->setCurrentIndex(kSettingsPage);
     ui->btn_nav_settings->setChecked(true);
     refreshNavItemStyles();
-    updateBreadcrumb(tr("Settings"), QColor(0x6b, 0x7e, 0xa0));
+    updateBreadcrumb(tr("Settings"), QColor(ptn::TXT2));
     // populateBrowser();
+    ui->wg_property_browser->setVisible(false);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  Patterns page (LocalizationTask only)
+// ──────────────────────────────────────────────────────────────────────────────
+void LocalizationTaskWidget::showPatternsPage()
+{
+    // Lazy-construct the patterns widget the first time the user clicks here.
+    // This matches the design handoff (`TaskWorkspace.jsx → "Patterns tab"`),
+    // and keeps the patterns widget cheap when never viewed.
+    if (!m_patternsPage) {
+        if (m_localizeTask) {
+            m_patternsPage = new LocalizationPatternsWidget(m_task, nullptr, this);
+        } else {
+            // Fallback: empty placeholder so the stack index is stable.
+            m_patternsPage = new QWidget(this);
+            m_patternsPage->setStyleSheet(QString("background: %1;").arg(ptn::BG));
+        }
+        // Insert at fixed index kPatternsPage (= 2). ui pages and dashboard
+        // are already at 0/1, so this becomes index 2 on first creation.
+        ui->content_stack->insertWidget(kPatternsPage, m_patternsPage);
+    }
+
+    m_activeDeviceId.clear();
+    ui->content_stack->setCurrentWidget(m_patternsPage);
+    if (m_btnNavPatterns) m_btnNavPatterns->setChecked(true);
+    refreshNavItemStyles();
+    updateBreadcrumb(tr("Patterns"), QColor(ptn::ACC));
     ui->wg_property_browser->setVisible(false);
 }
 
@@ -526,6 +698,9 @@ void LocalizationTaskWidget::onDeviceNavClicked(const QString &deviceId)
 
 void LocalizationTaskWidget::refreshNavItemStyles()
 {
+    // Per design handoff (TaskWorkspace.jsx → "Device list items"):
+    //   active: bg `{color}15`, border `1px solid {color}44`, name color #dce8f5
+    //   normal: transparent + hover bg `#2a2d2e`, name color ptn::TXT2
     for (auto it = m_navItems.cbegin(); it != m_navItems.cend(); ++it) {
         QFrame *item   = it.value();
         bool    active = (it.key() == m_activeDeviceId);
@@ -535,24 +710,27 @@ void LocalizationTaskWidget::refreshNavItemStyles()
             item->setStyleSheet(QString(
                 "QFrame {"
                 "  border: 1px solid %1;"
-                "  background-color: rgba(%2, %3, %4, 21);"
+                "  background-color: rgba(%2, %3, %4, 28);"
                 "  border-radius: 5px;"
                 "}")
                 .arg(accent.name() + "66")
                 .arg(accent.red()).arg(accent.green()).arg(accent.blue()));
 
             if (auto *lbl = item->findChild<QLabel*>("devNavName"))
-                lbl->setStyleSheet("color: #dce8f5; font-weight: bold;");
+                lbl->setStyleSheet(QString(
+                    "color: %1; font-weight: bold;"
+                ).arg(ptn::TXT));   // primary text on active
         } else {
-            item->setStyleSheet(
+            item->setStyleSheet(QString(
                 "QFrame {"
                 "  border: 1px solid transparent;"
                 "  background: transparent;"
                 "  border-radius: 5px;"
                 "}"
-                "QFrame:hover { background: #0f1a2a; }");
+                "QFrame:hover { background: %1; }"
+            ).arg(ptn::SURF2));     // design-token hover surface
             if (auto *lbl = item->findChild<QLabel*>("devNavName"))
-                lbl->setStyleSheet("color: #6b7ea0;");
+                lbl->setStyleSheet(QString("color: %1;").arg(ptn::TXT2));
         }
     }
 }
@@ -576,22 +754,34 @@ QWidget *LocalizationTaskWidget::getOrCreateDeviceConfigPage(const QString &devi
     auto device = m_localizeTask->project()->deviceById(deviceId);
     if (!device) return nullptr;
 
+    // ── Resolve the typed runner from TaskRunner ─────────────────────────
+    // The Widget never creates a worker / thread.  TaskRunner owns the
+    // runner (and its QThread); we just look it up here and inject it.
+    auto *taskRunner = m_localizeTask->taskRunner();
+    vc::runtime::IDeviceRunner *runner =
+        taskRunner ? taskRunner->runnerFor(deviceId) : nullptr;
+
     // device widget factory
 
     QWidget *page = nullptr;
     switch (device->deviceType()) {
-    case vc::device::DeviceType::Camera:
-        page = new BaslerCameraWidget(device, nullptr, this);
+    case vc::device::DeviceType::Camera: {
+        auto *camRunner = qobject_cast<vc::runtime::CameraRunner *>(runner);
+        page = new BaslerCameraWidget(device, camRunner, nullptr, this);
         break;
-    case vc::device::DeviceType::McDevice:
-        page = new McProtocolDeviceWidget(device, nullptr, this);
+    }
+    case vc::device::DeviceType::McDevice: {
+        auto *mcRunner = qobject_cast<vc::runtime::McDeviceRunner *>(runner);
+        page = new McProtocolDeviceWidget(device, mcRunner, nullptr, this);
         break;
+    }
     default: {
         page = new QWidget(this);
+        page->setStyleSheet(QString("background: %1;").arg(ptn::BG));
         auto *l   = new QVBoxLayout(page);
         auto *lbl = new QLabel(tr("No configuration panel available for this device."), page);
         lbl->setAlignment(Qt::AlignCenter);
-        lbl->setStyleSheet("color: #3a4f6a; font-size: 11pt;");
+        lbl->setStyleSheet(QString("color: %1; font-size: 11pt;").arg(ptn::TXT3));
         l->addWidget(lbl);
         break;
     }
@@ -604,9 +794,10 @@ QWidget *LocalizationTaskWidget::getOrCreateDeviceConfigPage(const QString &devi
 
 QColor LocalizationTaskWidget::colorForDeviceId(const QString &deviceId) const
 {
-    if (!m_localizeTask || !m_localizeTask->project()) return QColor(0x6b, 0x7e, 0xa0);
+    // Default: design-token muted text color
+    if (!m_localizeTask || !m_localizeTask->project()) return QColor(ptn::TXT2);
     auto dev = m_localizeTask->project()->deviceById(deviceId);
-    if (!dev) return QColor(0x6b, 0x7e, 0xa0);
+    if (!dev) return QColor(ptn::TXT2);
     return accentForDeviceType(dev->deviceType());
 }
 

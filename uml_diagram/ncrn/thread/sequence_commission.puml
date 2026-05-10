@@ -1,0 +1,124 @@
+@startuml sequence_commission
+title Commission Phase — Sequence Diagram
+
+skinparam backgroundColor #fafafa
+skinparam sequenceArrowColor #4a6080
+skinparam sequenceLifeLineBorderColor #4a6080
+skinparam sequenceLifeLineBackgroundColor #f0f4f8
+skinparam sequenceParticipantBorderColor #4a6080
+skinparam sequenceParticipantBackgroundColor #daeaf8
+skinparam sequenceBoxBackgroundColor #f5f8fc
+skinparam noteBackgroundColor #fffde7
+skinparam noteBorderColor #c8b400
+skinparam sequenceDividerBackgroundColor #eef2f7
+skinparam sequenceGroupBorderColor #0078d4
+skinparam sequenceGroupBackgroundColor #f0f7ff
+
+actor User
+participant "LocalizationTaskWidget\n[GUI Thread]" as Widget #daeaf8
+participant "TaskLocalization\n[GUI Thread]" as Task #daeaf8
+participant "TaskRunner\n[GUI Thread]" as Runner #eef8ea
+participant "CameraRunner\n[GUI Thread obj\n→ drives Thread A]" as CamRunner #eef8ea
+participant "McDeviceRunner\n[GUI Thread obj\n→ drives Thread B]" as McRunner #eef8ea
+
+box "Thread A  (HighPriority)" #fff8f0
+    participant "CameraDevice" as Cam
+end box
+
+box "Thread B  (HighPriority)" #f0fff8
+    participant "McProtocolDevice" as Plc
+end box
+
+== User assigns devices to task ==
+
+User -> Widget : clicks "Add Device" (Camera)
+Widget -> Task  : assignDevice("cam-01")
+Task -> Task    : m_assignedDeviceIds.append("cam-01")
+Task -> Widget  : devicesChanged()
+Widget -> Widget : rebuildDeviceNav()
+
+User -> Widget : clicks "Add Device" (PLC)
+Widget -> Task  : assignDevice("plc-01")
+Task -> Widget  : devicesChanged()
+
+== User opens device config page ==
+
+User -> Widget : clicks [Camera - cam-01] in nav
+Widget -> Task  : beginCommission()
+
+group beginCommission()
+    Task -> Task    : syncRunnersWithDevices()
+    Task -> Runner  : registerDevice("cam-01", cameraDevice)
+    Runner -> CamRunner  : new CameraRunner(cameraDevice)
+    Runner -> Runner : m_runners["cam-01"] = CamRunner
+
+    Task -> Runner  : registerDevice("plc-01", plcDevice)
+    Runner -> McRunner   : new McDeviceRunner(plcDevice)
+    Runner -> Runner : m_runners["plc-01"] = McRunner
+
+    Task -> Runner  : enterCommission()
+
+    Runner -> CamRunner  : start()
+    note right: QThread A starts\n(HighPriority)
+    Runner -> CamRunner  : attach()
+    CamRunner -> Cam     : moveToThread(threadA)
+    CamRunner -> CamRunner : wireSignals()
+    note right: connect signals\nvia Qt::QueuedConnection
+
+    Runner -> McRunner   : start()
+    note right: QThread B starts\n(HighPriority)
+    Runner -> McRunner   : attach()
+    McRunner -> Plc      : moveToThread(threadB)
+    McRunner -> McRunner : wireSignals()
+end
+
+Task -> Widget  : commissionStarted()
+Widget -> Widget : showDeviceConfigPage("cam-01")
+
+== Widget wires UI to runner signals ==
+
+Widget -> Runner : runnerFor("cam-01") → CamRunner
+Widget -> CamRunner : connect(connectStatusChanged → updateStatusLamp)
+Widget -> CamRunner : connect(grabFinished → displayImage)
+
+== User clicks "Connect Camera" ==
+
+User -> Widget   : clicks [Connect]
+Widget -> CamRunner : requestConnect()
+CamRunner -> CamRunner : m_busy = true
+CamRunner ->> Cam    : sig_connect()\n«QueuedConnection»
+
+note over Cam : runs on Thread A
+Cam -> Cam : deviceConnect() → TCP handshake
+Cam -> CamRunner : connectStatusChanged(Connected)\n«QueuedConnection»
+
+note over CamRunner : received on\nCamRunner's thread affinity\n(GUI thread)
+CamRunner -> CamRunner : m_busy = false
+CamRunner -> Widget   : connectStatusChanged(Connected)
+Widget -> Widget : updateStatusLamp(Connected)
+
+== User triggers single-shot grab ==
+
+User -> Widget     : clicks [Single Shot]
+Widget -> CamRunner : requestSingleShot()
+CamRunner ->> Cam  : sig_singleShot()\n«QueuedConnection»
+
+note over Cam : grab runs on Thread A\n(non-blocking for GUI)
+Cam -> Cam : grabSingleShot()
+Cam -> CamRunner : grabFinished(result)\n«QueuedConnection»
+CamRunner -> Widget : grabFinished(result)
+Widget -> Widget : displayImage(result.frame)
+
+== User connects PLC ==
+
+User -> Widget   : clicks [Connect PLC]
+Widget -> Runner  : runnerFor("plc-01") → McRunner
+Widget -> McRunner : requestConnect()
+McRunner ->> Plc  : sig_connect()\n«QueuedConnection»
+
+note over Plc : runs on Thread B\npolling timer starts
+Plc -> Plc : deviceConnect()
+Plc -> McRunner : connectStatusChanged(Connected)\n«QueuedConnection»
+McRunner -> Widget : connectStatusChanged(Connected)
+
+@enduml

@@ -12,11 +12,10 @@
 #include "device/device_manager.h"
 #include "device/plc/mc_protocol_device.h"
 
-#include "model/mc_device_worker.h"
-#include <QStringListModel>
-#include <QCompleter>
+#include "runtime/mc_device_runner.h"
 
 #include "form/device_widget.h"
+#include "widgets/plc_widget/devices_monitor_widget.h"
 
 namespace Ui {
 class McProtocolDeviceWidget;
@@ -26,7 +25,10 @@ class McProtocolDeviceWidget : public IDeviceWidget {
     Q_OBJECT
 
 public:
+    // Runner is owned by TaskRunner (not by this widget).  See header
+    // comment in BaslerCameraWidget for the same rationale.
     explicit McProtocolDeviceWidget(std::shared_ptr<vc::device::IDevice> dv,
+                                 vc::runtime::McDeviceRunner *runner,
                                  ads::CDockWidget *dock = nullptr,
                                  QWidget *parent = nullptr);
     ~McProtocolDeviceWidget();
@@ -42,21 +44,27 @@ private slots:
     void saveConfig();
     void refreshConfig();
 
-    void onBtnBitDeviceOn();
-    void onBtnBitDeviceOff();
-    void onBtnBitDeviceToggle();
-    void onBtnWordModify();
+    // Per-row write requests forwarded from the monitor widgets.
+    void onBitWriteRequested(int address, quint8 value);
+    void onWordWriteRequested(int address, qint16 value);
+
+    // Inline edits on the connection card.
+    void onIpEditFinished();
+    void onPortEditFinished();
+    void onConnectTimeoutEditFinished();
+    void onResponseTimeoutEditFinished();
 
     void onConnectionStateChanged(vc::device::ConnectStatus state);
     void onPollingUpdateValue(vc::device::McDeviceMap device_map);
 
 private:
     void initWidget();
-    void init_m_devices_table();
-    void init_d_devices_table();
-    void refreshDeviceMap();
-    void update_completer();
+    void applyTheme();
+    void rebuildMonitorRanges();
+    void refreshMetaSummary();
+    void populateConnectionFields();
     void populateBrowser();
+    void updateConnectionVisual(vc::device::ConnectStatus status);
 
 private:
     Ui::McProtocolDeviceWidget *ui;
@@ -67,19 +75,15 @@ private:
     vc::device::McProtocolConfig m_config;
     vc::device::McDeviceMap m_device_map;
 
-    QStringListModel *str_model_m_device;
-    QStringListModel *str_model_d_device;
+    // Not owned — provided by TaskRunner.  Widget never creates a thread.
+    vc::runtime::McDeviceRunner *m_runner{nullptr};
 
-    QStringList m_device_names;
-    QStringList d_device_names;
-
-    QCompleter *m_device_completer;
-    QCompleter *d_device_completer;
-
-    vc::device::mc::McFrameType current_frame_type;
-    vc::runtime::McDeviceWorker *m_worker{nullptr};
+    // Two stacked monitors for M (bit) and D (word) registers.
+    vc::widgets::DevicesMonitorWidget *m_monitor_m{nullptr};
+    vc::widgets::DevicesMonitorWidget *m_monitor_d{nullptr};
 
     bool m_populating_browser{false};
+    bool m_loading_connection_fields{false};
 };
 
 #endif // MC_PROTOCOL_DEVICE_WIDGET_H

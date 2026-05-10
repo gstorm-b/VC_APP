@@ -1,6 +1,12 @@
 #include "mc_protocol_device_widget.h"
 #include "ui_mc_protocol_device_widget.h"
+
 #include "device/plc/mc_request.h"
+#include "device/plc/mc_msg_tcp_client.h"
+#include "form/pattern/pattern_theme.h"
+#include "logger/app_logger.h"
+
+#include <QSignalBlocker>
 
 // hepler function
 static QtVariantProperty* addPropertyToBrowser(const QMetaObject &meta, QMetaProperty &prop, QVariant &value,
@@ -77,7 +83,6 @@ static void populateBrowser_Device(vc::device::IDevice *gadget, QtVariantPropert
     int propCount = meta->propertyCount();
     for (int i = 0; i < propCount; ++i) {
         QMetaProperty prop = meta->property(i);
-        // QVariant value = prop.readOnGadget(gadget);
         QVariant value = gadget->property(prop.name());
         QtVariantProperty *variantProp = addPropertyToBrowser(*meta, prop, value, manager, browser);
         if (variantProp) {
@@ -124,11 +129,13 @@ static void populateBrowser_McContext(vc::device::McContext *gadget, QtVariantPr
 }
 
 McProtocolDeviceWidget::McProtocolDeviceWidget(std::shared_ptr<vc::device::IDevice> dv,
+                                          vc::runtime::McDeviceRunner *runner,
                                           ads::CDockWidget *dock, QWidget *parent)
     : IDeviceWidget(parent),
     ui(new Ui::McProtocolDeviceWidget),
     m_device(dv),
-    m_dock(dock)  {
+    m_dock(dock),
+    m_runner(runner)  {
 
     ui->setupUi(this);
     initWidget();
@@ -188,6 +195,8 @@ void McProtocolDeviceWidget::onPropertyValueChanged(QtProperty *property, const 
         mProp.writeOnGadget(context, variant);
         qDebug() << "Updated context: " << propName << "to" << variant;
         this->saveConfig();
+        rebuildMonitorRanges();
+        refreshMetaSummary();
         return;
     }
 
@@ -198,38 +207,35 @@ void McProtocolDeviceWidget::onPropertyValueChanged(QtProperty *property, const 
         mProp.writeOnGadget(msg_cfg, variant);
         qDebug() << "Updated context: " << propName << "to" << variant;
         this->saveConfig();
+        populateConnectionFields();
         return;
     }
 }
 
 void McProtocolDeviceWidget::onBtnConnect() {
-    if (!m_device) {
+    if (!m_device || !m_runner) {
         return;
     }
 
     if (!m_device->isDeviceConnected()) {
         // saveConfig();
-        m_worker->connectMcDevice();
+        m_runner->requestConnect();
     } else {
-        m_worker->disconnectMcDevice();
+        m_runner->requestDisconnect();
     }
 }
 
 void McProtocolDeviceWidget::saveConfig() {
-    refreshDeviceMap();
+    rebuildMonitorRanges();
     m_mc_device->setMcProtocolConfig(m_config);
 }
 
 void McProtocolDeviceWidget::onConnectionStateChanged(vc::device::ConnectStatus state) {
+    updateConnectionVisual(state);
     switch (state) {
-    // case vc::device::ConnectStatus::Connected:
-    //     ui->table_m_device->clearStatusAllDevices();
-    //     ui->table_d_device->clearStatusAllDevices();
-    //     break;
-
     case vc::device::ConnectStatus::Disconnected:
-        ui->table_m_device->clearStatusAllDevices();
-        ui->table_d_device->clearStatusAllDevices();
+        if (m_monitor_m) m_monitor_m->clearAllStatuses();
+        if (m_monitor_d) m_monitor_d->clearAllStatuses();
         break;
     default:
         break;
@@ -238,105 +244,277 @@ void McProtocolDeviceWidget::onConnectionStateChanged(vc::device::ConnectStatus 
 
 void McProtocolDeviceWidget::onPollingUpdateValue(vc::device::McDeviceMap device_map) {
     m_device_map = device_map;
-    std::map<int, quint8> &m_devices_map = device_map.device_map_m;
-    std::map<int, quint8>::const_iterator it_m = m_devices_map.begin();
-    for (; it_m != m_devices_map.end();++it_m) {
-        QString device_name = QString("M%1").arg(it_m->first, 4, 10, QChar('0'));
-        ui->table_m_device->editDeviceStatus(device_name, it_m->second);
+    if (m_monitor_m) {
+        const auto &m_map = device_map.device_map_m;
+        for (auto it = m_map.begin(); it != m_map.end(); ++it) {
+            m_monitor_m->setBitState(it->first, it->second);
+        }
     }
-
-    std::map<int, qint16> &d_devices_map = device_map.device_map_d;
-    std::map<int, qint16>::const_iterator it_d = d_devices_map.begin();
-    for (; it_d != d_devices_map.end();++it_d) {
-        QString device_name = QString("D%1").arg(it_d->first, 4, 10, QChar('0'));
-        ui->table_d_device->editDeviceValue(device_name, it_d->second);
+    if (m_monitor_d) {
+        const auto &d_map = device_map.device_map_d;
+        for (auto it = d_map.begin(); it != d_map.end(); ++it) {
+            m_monitor_d->setWordValue(it->first, it->second);
+        }
     }
 }
 
 void McProtocolDeviceWidget::initWidget() {
     initPropertyBrowser();
+    applyTheme();
 
-    connect(ui->btn_connect, &QPushButton::clicked,
-            this, & McProtocolDeviceWidget::onBtnConnect);
-    connect(ui->btn_bit_on, &QPushButton::clicked,
-            this, & McProtocolDeviceWidget::onBtnBitDeviceOn);
-    connect(ui->btn_bit_off, &QPushButton::clicked,
-            this, & McProtocolDeviceWidget::onBtnBitDeviceOff);
-    connect(ui->btn_bit_toggle, &QPushButton::clicked,
-            this, & McProtocolDeviceWidget::onBtnBitDeviceToggle);
-    connect(ui->btn_word_modify, &QPushButton::clicked,
-            this, & McProtocolDeviceWidget::onBtnWordModify);
-    connect(ui->spb_word_modify, &QSpinBox::editingFinished,
-            this, & McProtocolDeviceWidget::onBtnWordModify);
-            
     if (m_device) {
         m_mc_device = static_cast<vc::device::McProtocolDevice*>(m_device.get());
-        connect(m_mc_device, &vc::device::McProtocolDevice::pollingUpdate,
-                this, &McProtocolDeviceWidget::onPollingUpdateValue);
 
-        m_worker = new vc::runtime::McDeviceWorker(m_mc_device);
-        m_worker->moveToWorker();
-
-        str_model_m_device = new QStringListModel(m_device_names, this);
-        str_model_d_device = new QStringListModel(d_device_names, this);
-
-        m_device_completer = new QCompleter(this);
-        m_device_completer->setCaseSensitivity(Qt::CaseInsensitive);
-        d_device_completer = new QCompleter(this);
-        d_device_completer->setCaseSensitivity(Qt::CaseInsensitive);
-
-        m_device_completer->setModel(str_model_m_device);
-        d_device_completer->setModel(str_model_d_device);
-
-        ui->ledit_bit_address->setCompleter(m_device_completer);
-        ui->ledit_word_address->setCompleter(d_device_completer);
+        // ── Wire to runner (NOT to device directly) ──────────────────────────
+        // The runner forwards device signals onto the GUI thread via
+        // QueuedConnection, so it is safe to update widgets from these slots.
+        // Widget never owns a QThread.
+        if (m_runner) {
+            connect(m_runner, &vc::runtime::McDeviceRunner::connectStatusChanged,
+                    this,     &McProtocolDeviceWidget::onConnectionStateChanged);
+            connect(m_runner, &vc::runtime::McDeviceRunner::pollingUpdate,
+                    this,     &McProtocolDeviceWidget::onPollingUpdateValue);
+        } else {
+            LOG_DEV_ERR << "McProtocolDeviceWidget: no runner provided — control disabled";
+        }
 
         m_config = m_mc_device->mcProtocolConfig();
+
+        // Build the two stacked monitor widgets and slot them into the .ui
+        // splitter containers.
+        m_monitor_m = new vc::widgets::DevicesMonitorWidget(
+            vc::widgets::DevicesMonitorWidget::Mode::Bit, this);
+        m_monitor_d = new vc::widgets::DevicesMonitorWidget(
+            vc::widgets::DevicesMonitorWidget::Mode::Word, this);
+
+        if (auto *layM = ui->container_m->layout()) layM->addWidget(m_monitor_m);
+        if (auto *layD = ui->container_d->layout()) layD->addWidget(m_monitor_d);
+
+        connect(m_monitor_m, &vc::widgets::DevicesMonitorWidget::bitWriteRequested,
+                this,        &McProtocolDeviceWidget::onBitWriteRequested);
+        connect(m_monitor_d, &vc::widgets::DevicesMonitorWidget::wordWriteRequested,
+                this,        &McProtocolDeviceWidget::onWordWriteRequested);
+
+        rebuildMonitorRanges();
+        populateConnectionFields();
+        refreshMetaSummary();
         populateBrowser();
 
         connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
                 this, &McProtocolDeviceWidget::onPropertyValueChanged);
-
-        refreshDeviceMap();
     }
+
+    connect(ui->btn_connect, &QPushButton::clicked,
+            this, &McProtocolDeviceWidget::onBtnConnect);
+    connect(ui->ledit_ip, &QLineEdit::editingFinished,
+            this, &McProtocolDeviceWidget::onIpEditFinished);
+    connect(ui->spb_port, &QSpinBox::editingFinished,
+            this, &McProtocolDeviceWidget::onPortEditFinished);
+    connect(ui->spb_conn_timeout, &QSpinBox::editingFinished,
+            this, &McProtocolDeviceWidget::onConnectTimeoutEditFinished);
+    connect(ui->spb_resp_timeout, &QSpinBox::editingFinished,
+            this, &McProtocolDeviceWidget::onResponseTimeoutEditFinished);
+
+    updateConnectionVisual(m_device && m_device->isDeviceConnected()
+                               ? vc::device::ConnectStatus::Connected
+                               : vc::device::ConnectStatus::Disconnected);
 }
 
-void McProtocolDeviceWidget::init_m_devices_table() {
-    if (!m_device) {
-        return;
+void McProtocolDeviceWidget::applyTheme() {
+    using namespace ptn;
+
+    // Root surface
+    this->setStyleSheet(QString(
+        "QWidget#McProtocolDeviceWidget { background-color: %1; }"
+    ).arg(BG));
+
+    // Connection card
+    ui->frame_connection->setStyleSheet(QString(
+        "QFrame#frame_connection { background-color: %1; "
+        "  border: 1px solid %2; border-radius: 8px; }"
+    ).arg(SURF, BD));
+
+    ui->lbl_conn_title->setStyleSheet(QString(
+        "color: %1; font: 700 9pt \"Segoe UI\"; letter-spacing: 1.4px;"
+    ).arg(TXT3));
+
+    ui->lbl_meta_frame->setStyleSheet(QString(
+        "color: %1; font: 9pt \"%2\"; letter-spacing: 0.8px;"
+    ).arg(TXT3, FONT_MONO));
+
+    ui->lbl_meta_hint->setStyleSheet(QString(
+        "color: %1; font: italic 9pt \"Segoe UI\";"
+    ).arg(TXT4));
+
+    // Field labels
+    const QString labelStyle = QString(
+        "color: %1; font: 700 8pt \"Segoe UI\"; "
+        "letter-spacing: 1px; text-transform: uppercase;"
+    ).arg(TXT2);
+    for (auto *lbl : {ui->lbl_ip, ui->lbl_port,
+                       ui->lbl_conn_timeout, ui->lbl_resp_timeout}) {
+        lbl->setStyleSheet(labelStyle);
     }
 
-    m_device_names.clear();
-    ui->table_m_device->removeAllRow();
+    // Inputs
+    const QString inputStyle = QString(
+        "QLineEdit, QSpinBox { background-color: %1; color: %2; "
+        "  border: 1px solid %3; border-radius: 5px; "
+        "  padding: 6px 10px; font: 11pt \"%4\"; min-height: 22px; }"
+        "QLineEdit:focus, QSpinBox:focus { border-color: %5; }"
+    ).arg(BG, TXT, BD2, FONT_MONO, ACC);
+    ui->ledit_ip->setStyleSheet(inputStyle);
+    ui->spb_port->setStyleSheet(inputStyle);
+    ui->spb_conn_timeout->setStyleSheet(inputStyle);
+    ui->spb_resp_timeout->setStyleSheet(inputStyle);
 
-    ui->table_m_device->setCommentEditableMode(true);
+    // Connection status pill
+    ui->lbl_conn_dot->setStyleSheet(QString(
+        "background-color: %1; border-radius: 5px; min-width: 10px; max-width: 10px;"
+        "min-height: 10px; max-height: 10px;"
+    ).arg(ERR));
+    ui->lbl_conn_state->setStyleSheet(QString(
+        "color: %1; font: 700 9pt \"Segoe UI\"; letter-spacing: 1px;"
+    ).arg(ERR));
 
-    int start = m_config.context()->startMAddress();
-    int amount = m_config.context()->amountMAddress();
+    // Connect button (default: ready-to-connect — primary blue)
+    ui->btn_connect->setStyleSheet(QString(
+        "QPushButton { background-color: %1; color: white; border: none; "
+        "  border-radius: 5px; padding: 7px 22px; "
+        "  font: 700 10pt \"Segoe UI\"; }"
+        "QPushButton:hover { background-color: #3a9ef5; }"
+        "QPushButton:pressed { background-color: #1f74c7; }"
+    ).arg(ACC));
 
-    for (int idx=0;idx<amount;idx++) {
-        QString device_name = QString("M%1").arg(start + idx, 4, 10, QChar('0'));
-        m_device_names.push_back(device_name);
-        ui->table_m_device->addNewRow(device_name, false, QString(""));
-    }
+    // Splitter handle
+    ui->splitter_device_table->setStyleSheet(QString(
+        "QSplitter::handle { background-color: %1; }"
+        "QSplitter::handle:hover { background-color: %2; }"
+    ).arg(BG, ACC));
 }
 
-void McProtocolDeviceWidget::init_d_devices_table() {
-    if (!m_device) {
-        return;
+void McProtocolDeviceWidget::rebuildMonitorRanges() {
+    if (!m_config.context()) return;
+    const int m_start = m_config.context()->startMAddress();
+    const int m_amount = m_config.context()->amountMAddress();
+    const int d_start = m_config.context()->startDAddress();
+    const int d_amount = m_config.context()->amountDAddress();
+    if (m_monitor_m) m_monitor_m->setRange(m_start, m_amount);
+    if (m_monitor_d) m_monitor_d->setRange(d_start, d_amount);
+}
+
+void McProtocolDeviceWidget::refreshMetaSummary() {
+    auto *ctx = m_config.context();
+    if (!ctx) return;
+    const QString frame = vc::device::mc::McFrameTypeToString(ctx->frameType());
+    const QString code  = vc::device::mc::McDataCodeToString(ctx->dataCode());
+    ui->lbl_meta_frame->setText(QString("FRAME %1 · %2 · INTERVAL %3 ms")
+                                    .arg(frame.isEmpty() ? QStringLiteral("—") : frame.toUpper())
+                                    .arg(code.isEmpty()  ? QStringLiteral("—") : code.toUpper())
+                                    .arg(ctx->refreshInterval()));
+}
+
+void McProtocolDeviceWidget::populateConnectionFields() {
+    if (!m_config.context()) return;
+    auto *msg = m_config.context()->msgConfig();
+    if (!msg) return;
+
+    m_loading_connection_fields = true;
+    QSignalBlocker bIp(ui->ledit_ip);
+    QSignalBlocker bPort(ui->spb_port);
+    QSignalBlocker bConn(ui->spb_conn_timeout);
+    QSignalBlocker bResp(ui->spb_resp_timeout);
+
+    if (msg->type() == vc::device::mc::McMsgItfType::EthernetTCPIP) {
+        auto *eth = static_cast<vc::device::McMsgEthernetTcpCfg *>(msg);
+        ui->ledit_ip->setText(eth->m_ipAddress);
+        ui->spb_port->setValue(eth->m_portNumber);
+    } else {
+        ui->ledit_ip->setText(QString());
+        ui->ledit_ip->setEnabled(false);
+        ui->spb_port->setEnabled(false);
     }
+    ui->spb_conn_timeout->setValue(msg->m_connectTimeout);
+    ui->spb_resp_timeout->setValue(msg->m_responseTimeout);
 
-    d_device_names.clear();
-    ui->table_d_device->removeAllRow();
-    ui->table_d_device->setCommentEditableMode(true);
+    m_loading_connection_fields = false;
+}
 
-    int start = m_config.context()->startDAddress();
-    int amount = m_config.context()->amountDAddress();
+void McProtocolDeviceWidget::onIpEditFinished() {
+    if (m_loading_connection_fields) return;
+    auto *msg = m_config.context() ? m_config.context()->msgConfig() : nullptr;
+    if (!msg || msg->type() != vc::device::mc::McMsgItfType::EthernetTCPIP) return;
+    auto *eth = static_cast<vc::device::McMsgEthernetTcpCfg *>(msg);
+    const QString newIp = ui->ledit_ip->text().trimmed();
+    if (newIp == eth->m_ipAddress) return;
+    eth->m_ipAddress = newIp;
+    saveConfig();
+}
 
-    for (int idx=0;idx<amount;idx++) {
-        QString device_name = QString("D%1").arg(start + idx, 4, 10, QChar('0'));
-        d_device_names.push_back(device_name);
-        ui->table_d_device->addNewRow(device_name, false, QString(""));
+void McProtocolDeviceWidget::onPortEditFinished() {
+    if (m_loading_connection_fields) return;
+    auto *msg = m_config.context() ? m_config.context()->msgConfig() : nullptr;
+    if (!msg || msg->type() != vc::device::mc::McMsgItfType::EthernetTCPIP) return;
+    auto *eth = static_cast<vc::device::McMsgEthernetTcpCfg *>(msg);
+    const int newPort = ui->spb_port->value();
+    if (newPort == eth->m_portNumber) return;
+    eth->m_portNumber = newPort;
+    saveConfig();
+}
+
+void McProtocolDeviceWidget::onConnectTimeoutEditFinished() {
+    if (m_loading_connection_fields) return;
+    auto *msg = m_config.context() ? m_config.context()->msgConfig() : nullptr;
+    if (!msg) return;
+    const int v = ui->spb_conn_timeout->value();
+    if (v == msg->m_connectTimeout) return;
+    msg->SetConnectTimeout(v);
+    saveConfig();
+}
+
+void McProtocolDeviceWidget::onResponseTimeoutEditFinished() {
+    if (m_loading_connection_fields) return;
+    auto *msg = m_config.context() ? m_config.context()->msgConfig() : nullptr;
+    if (!msg) return;
+    const int v = ui->spb_resp_timeout->value();
+    if (v == msg->m_responseTimeout) return;
+    msg->SetWaitResponseTimeout(v);
+    saveConfig();
+}
+
+void McProtocolDeviceWidget::updateConnectionVisual(vc::device::ConnectStatus status) {
+    using namespace ptn;
+    const bool connected = status == vc::device::ConnectStatus::Connected;
+    const char *dotColor = connected ? OK : ERR;
+    const char *txtColor = connected ? OK : ERR;
+    const QString stateText = connected ? tr("CONNECTED") : tr("DISCONNECTED");
+
+    ui->lbl_conn_dot->setStyleSheet(QString(
+        "background-color: %1; border-radius: 5px; min-width: 10px; max-width: 10px;"
+        "min-height: 10px; max-height: 10px;"
+    ).arg(dotColor));
+    ui->lbl_conn_state->setText(stateText);
+    ui->lbl_conn_state->setStyleSheet(QString(
+        "color: %1; font: 700 9pt \"Segoe UI\"; letter-spacing: 1px;"
+    ).arg(txtColor));
+
+    ui->btn_connect->setText(connected ? tr("Disconnect") : tr("Connect"));
+    if (connected) {
+        ui->btn_connect->setStyleSheet(QString(
+            "QPushButton { background-color: #2a1a1a; color: %1; "
+            "  border: 1px solid rgba(232,64,64,0.27); border-radius: 5px; "
+            "  padding: 7px 22px; font: 700 10pt \"Segoe UI\"; }"
+            "QPushButton:hover { border-color: %1; }"
+            "QPushButton:pressed { background-color: %2; }"
+        ).arg(ERR, BG));
+    } else {
+        ui->btn_connect->setStyleSheet(QString(
+            "QPushButton { background-color: %1; color: white; border: none; "
+            "  border-radius: 5px; padding: 7px 22px; "
+            "  font: 700 10pt \"Segoe UI\"; }"
+            "QPushButton:hover { background-color: #3a9ef5; }"
+            "QPushButton:pressed { background-color: #1f74c7; }"
+        ).arg(ACC));
     }
 }
 
@@ -346,81 +524,29 @@ void McProtocolDeviceWidget::refreshConfig() {
     }
 }
 
-
-void McProtocolDeviceWidget::onBtnBitDeviceOn() {
-    if (!m_device->isDeviceConnected()) {
+void McProtocolDeviceWidget::onBitWriteRequested(int address, quint8 value) {
+    if (!m_device || !m_device->isDeviceConnected()) {
         return;
     }
-
-    QString start_address = ui->ledit_bit_address->text();
-    if (start_address.isEmpty()) {
-        return;
-    }
-
-    vc::device::MCRequest request(vc::device::MCRequest::WriteBit, start_address, 1);
-    request.buildWriteData_Bit_Device(0x01);
+    const QString name = QString("M%1").arg(address, 4, 10, QChar('0'));
+    vc::device::MCRequest request(vc::device::MCRequest::WriteBit, name, 1);
+    request.buildWriteData_Bit_Device(value ? 0x01 : 0x00);
     m_device->pushRequest(static_cast<vc::device::IRequest*>(&request));
 }
 
-void McProtocolDeviceWidget::onBtnBitDeviceOff() {
-    if (!m_device->isDeviceConnected()) {
+void McProtocolDeviceWidget::onWordWriteRequested(int address, qint16 value) {
+    if (!m_device || !m_device->isDeviceConnected()) {
         return;
     }
-
-    QString start_address = ui->ledit_bit_address->text();
-    if (start_address.isEmpty()) {
-        return;
-    }
-
-    vc::device::MCRequest request(vc::device::MCRequest::WriteBit, start_address, 1);
-    request.buildWriteData_Bit_Device(0x00);
+    const QString name = QString("D%1").arg(address, 4, 10, QChar('0'));
+    vc::device::MCRequest request(vc::device::MCRequest::WriteWord, name, 1);
+    request.buildWriteData_Word_Device_Word(static_cast<quint16>(value));
     m_device->pushRequest(static_cast<vc::device::IRequest*>(&request));
-}
-
-void McProtocolDeviceWidget::onBtnBitDeviceToggle() {
-    if (!m_device->isDeviceConnected()) {
-        return;
-    }
-
-    QString start_address = ui->ledit_bit_address->text();
-    if (start_address.isEmpty()) {
-        return;
-    }
-
-    vc::device::MCRequest request(vc::device::MCRequest::WriteBit, start_address, 1);
-    quint8 value = m_device_map.device_map_m[request.m_start_address];
-    request.buildWriteData_Bit_Device((value == 0x00) ? 0x01 : 0x00);
-    m_device->pushRequest(static_cast<vc::device::IRequest*>(&request));
-}
-
-void McProtocolDeviceWidget::onBtnWordModify() {
-    if (!m_device->isDeviceConnected()) {
-        return;
-    }
-
-    QString start_address = ui->ledit_word_address->text();
-    if (start_address.isEmpty()) {
-        return;
-    }
-
-    vc::device::MCRequest request(vc::device::MCRequest::WriteWord, start_address, 1);
-    request.buildWriteData_Word_Device_Word(static_cast<quint16>(ui->spb_word_modify->value()));
-    m_device->pushRequest(static_cast<vc::device::IRequest*>(&request));
-}
-
-void McProtocolDeviceWidget::refreshDeviceMap() {
-    init_d_devices_table();
-    init_m_devices_table();
-    update_completer();
-}
-
-void McProtocolDeviceWidget::update_completer() {
-    str_model_m_device->setStringList(m_device_names);
-    str_model_d_device->setStringList(d_device_names);
 }
 
 void McProtocolDeviceWidget::populateBrowser() {
     m_variantEditor->blockSignals(true);
+    m_populating_browser = true;
 
     m_variantManager->clear();
 
@@ -428,5 +554,6 @@ void McProtocolDeviceWidget::populateBrowser() {
     populateBrowser_McContext(m_config.context(), m_variantManager, m_variantEditor);
     populateBrowser_MsgInterface(m_config.context()->msgConfig(), m_variantManager, m_variantEditor);
 
+    m_populating_browser = false;
     m_variantEditor->blockSignals(false);
 }

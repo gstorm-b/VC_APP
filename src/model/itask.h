@@ -14,6 +14,7 @@
 #include "task_define.h"
 #include "itask_config.h"
 #include "logger/app_logger.h"
+#include "runtime/task_runner.h"
 
 namespace vc::model {
 
@@ -184,6 +185,32 @@ public:
         return m_proj;
     }
 
+    // ── Thread / phase management ──────────────────────────────────────────
+    vc::runtime::TaskRunner *taskRunner() const { return m_taskRunner; }
+
+    // Commission phase: each assigned device gets its own HighPriority thread.
+    // Widget calls this before showing the device config page.
+    virtual void beginCommission();
+
+    // End commission, stop per-device threads (→ Idle).
+    virtual void endCommission();
+
+    // Runtime phase: start production execution.
+    // mergeToTaskThread=false (default): keep per-device threads, runtime
+    //   thread acts as coordinator.
+    // mergeToTaskThread=true: move all devices to the single runtime thread.
+    virtual void beginRuntime(bool mergeToTaskThread = false);
+
+    // End runtime, stop all threads (→ Idle).
+    virtual void endRuntime();
+
+    // Convenience: stop everything regardless of current phase.
+    virtual void stopAll();
+
+    // Re-evaluate runners against m_assignedDeviceIds.  Call after the user
+    // adds or removes a device while the task is running — TaskRunner will
+    // auto-start any new runner when in Commission/Runtime phase.
+    void resyncDevices() { syncRunnersWithDevices(); }
 
 signals:
     void nameChanged();
@@ -191,6 +218,17 @@ signals:
     void cameraSourceTypeChanged();
     void patternsChanged();
     void devicesChanged();
+
+    void commissionStarted();
+    void commissionStopped();
+    void runtimeStarted();
+    void runtimeStopped();
+
+protected:
+    // Syncs registered runners with m_assignedDeviceIds.
+    // Must be called from beginCommission() / beginRuntime().
+    // Implemented in itask.cpp (needs full Project definition).
+    void syncRunnersWithDevices();
 
 private:
     QString m_id;
@@ -200,6 +238,9 @@ private:
     QStringList m_assignedDeviceIds;
     ITaskConfig *m_abstract_cfg{nullptr};
     Project *m_proj{nullptr};
+
+    // Owned thread/runner manager — created once, lives with the task.
+    vc::runtime::TaskRunner *m_taskRunner{new vc::runtime::TaskRunner(this)};
 };
 
 } // namespace vc::model

@@ -6,12 +6,10 @@ BaslerCamSelectDialog::BaslerCamSelectDialog(QWidget *parent)
     , ui(new Ui::BaslerCamSelectDialog) {
     ui->setupUi(this);
 
-    // Pylon::PylonInitialize();
     initForm();
 }
 
 BaslerCamSelectDialog::~BaslerCamSelectDialog() {
-    // Pylon::PylonTerminate();
     if (get_cam_thread != nullptr) {
         if (get_cam_thread->isRunning()) {
             get_cam_thread->terminate();
@@ -113,7 +111,6 @@ void BaslerCamSelectDialog::tableViewSelectionChanged() {
         m_is_selected = true;
     }
     ui->btn_select_confirm->setEnabled(m_is_selected);
-    // qDebug() << m_current_select_row;
 }
 
 void BaslerCamSelectDialog::cameraWorkerStart() {
@@ -126,7 +123,6 @@ void BaslerCamSelectDialog::cameraListCame() {
     ui->btn_refresh->setEnabled(true);
     cameraDeviceList = get_cam_thread->cameraDeviceList;
     clearCameraTableView();
-    // Pylon::CTlFactory::GetInstance().EnumerateDevices(cameraDeviceList, false);
     if(cameraDeviceList.size() > 0 ) {
         for(int addCounter = 0; addCounter < cameraDeviceList.size(); addCounter++) {
             cameraTableViewAddNewRow(cameraDeviceList[addCounter]);

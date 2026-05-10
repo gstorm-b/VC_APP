@@ -204,25 +204,8 @@ bool BaslerGigECamera::deviceDisconnect() {
 
 void BaslerGigECamera::setBaslerGigeConfig(BaslerGigeCfg& cfg) {
     QMutexLocker locker(&m_mutex);
-
-    // m_config.m_ipAddress = cfg.m_ipAddress;
-    // m_config.m_modelName = cfg.m_modelName;
-    // m_config.m_serialNumber = cfg.m_serialNumber;
-    // m_config.m_userDefinedName = cfg.m_userDefinedName;
-
-    // m_config.m_autoExposureMode = cfg.m_autoExposureMode;
-    // m_config.m_paramsExposureTime = cfg.m_paramsExposureTime;
-    // m_config.m_paramsGain = cfg.m_paramsGain;
-    // m_config.m_enableAcquisitionFrameRate = cfg.m_enableAcquisitionFrameRate;
-    // m_config.m_paramsAcquisitionFrameRate = cfg.m_paramsAcquisitionFrameRate;
-
-    // m_config.m_autoBacklightControl = cfg.m_autoBacklightControl;
-    // m_config.m_autoBacklightLine = cfg.m_autoBacklightLine;
-    // m_config.m_autoBacklightInvert = cfg.m_autoBacklightInvert;
-
-    // m_config.m_ioCapabilities = cfg.m_ioCapabilities;
-
     m_config = cfg;
+
     // change and emit signal
     IDevice::setDeviceConfig(&m_config);
 }

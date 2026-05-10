@@ -26,6 +26,10 @@ SOURCES += \
     src/form/new_project_dialog.cpp \
     src/form/new_task_dialog.cpp \
     src/form/pattern/add_pattern_image_dialog.cpp \
+    src/form/pattern/pattern_canvas.cpp \
+    src/form/pattern/add_pattern_wizard.cpp \
+    src/form/pattern/edit_pattern_wizard.cpp \
+    src/form/pattern/pattern_setting_panel.cpp \
     src/form/plc/mc_protocol_device_widget.cpp \
     src/form/plc/plc_mitsu_device_wizard.cpp \
     src/form/project_infor_setting.cpp \
@@ -51,6 +55,7 @@ SOURCES += \
     src/model/project_repository.cpp \
     src/model/task_factory.cpp \
     src/model/task_localization.cpp \
+    src/runtime/task_runner.cpp \
     src/system_log_form.cpp \
     src/widgets/camera_mapping_widget.cpp \
     src/widgets/clamp.cpp \
@@ -63,8 +68,8 @@ SOURCES += \
     src/widgets/image_widget/item_roi_rotated.cpp \
     src/widgets/no_wheel_combobox.cpp \
     src/widgets/pattern_tree_widget.cpp \
-    src/widgets/plc_widget/d_devices_table.cpp \
-    src/widgets/plc_widget/m_devices_table.cpp \
+    src/widgets/plc_widget/device_row_delegate.cpp \
+    src/widgets/plc_widget/devices_monitor_widget.cpp \
     src/widgets/project_tree_widget.cpp \
     src/widgets/qtpropertybrowser/qtbuttonpropertybrowser.cpp \
     src/widgets/qtpropertybrowser/qteditorfactory.cpp \
@@ -117,6 +122,11 @@ HEADERS += \
     src/form/new_task_dialog.h \
     src/form/pattern/add_pattern_image_dialog.h \
     src/form/pattern/pattern_manager_dialog.h \
+    src/form/pattern/pattern_theme.h \
+    src/form/pattern/pattern_canvas.h \
+    src/form/pattern/add_pattern_wizard.h \
+    src/form/pattern/edit_pattern_wizard.h \
+    src/form/pattern/pattern_setting_panel.h \
     src/form/plc/mc_protocol_device_widget.h \
     src/form/plc/plc_mitsu_device_wizard.h \
     src/form/project_infor_setting.h \
@@ -146,11 +156,14 @@ HEADERS += \
     src/matching/utils_block_max.h \
     src/matching/vision_utils.h \
     src/model/camera_map_entry.h \
-    src/model/camera_worker.h \
     src/model/isignal_group.h \
     src/model/itask.h \
     src/model/itask_config.h \
-    src/model/mc_device_worker.h \
+    src/runtime/idevice_runner.h \
+    src/runtime/device_runner.h \
+    src/runtime/camera_runner.h \
+    src/runtime/mc_device_runner.h \
+    src/runtime/task_runner.h \
     src/model/pick_and_place_task.h \
     src/model/project.h \
     src/model/project_repository.h \
@@ -178,8 +191,8 @@ HEADERS += \
     src/widgets/no_wheel_double_spinbox.h \
     src/widgets/no_wheel_spinbox.h \
     src/widgets/pattern_tree_widget.h \
-    src/widgets/plc_widget/d_devices_table.h \
-    src/widgets/plc_widget/m_devices_table.h \
+    src/widgets/plc_widget/device_row_delegate.h \
+    src/widgets/plc_widget/devices_monitor_widget.h \
     src/widgets/project_tree_widget.h \
     src/widgets/qtpropertybrowser/QtAbstractEditorFactoryBase \
     src/widgets/qtpropertybrowser/QtAbstractPropertyBrowser \

@@ -168,11 +168,13 @@ void BaslerCameraWidget::populateBrowser_BaslerConfig(vc::device::BaslerGigeCfg 
 }
 
 BaslerCameraWidget::BaslerCameraWidget(std::shared_ptr<vc::device::IDevice> dv,
+                                       vc::runtime::CameraRunner *runner,
                                        ads::CDockWidget *dock, QWidget *parent)
     : IDeviceWidget(parent),
     ui(new Ui::BaslerCameraWidget),
     m_device(dv),
-    m_dock(dock) {
+    m_dock(dock),
+    m_runner(runner) {
 
     ui->setupUi(this);
     initCameraWiget();
@@ -223,14 +225,11 @@ void BaslerCameraWidget::initCameraWiget() {
 
     if (m_device) {
         m_camera = static_cast<vc::device::BaslerGigECamera*>(m_device.get());
-        connect(m_camera, &vc::device::IDevice::connectStatusChanged,
-                this, &BaslerCameraWidget::onCameraConnectStatusChanged);
 
         m_params = m_camera->baslerGigeConfig();
         loadConfigToWidget();
         connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
                 this, &BaslerCameraWidget::onPropertyValueChanged);
-
     }
 
     ui->splitter_main->setStretchFactor(0, 7);
@@ -241,10 +240,18 @@ void BaslerCameraWidget::initCameraWiget() {
     connect(m_camera_select_dialog, &BaslerCamSelectDialog::userSelectionFinished,
             this, &BaslerCameraWidget::cameraSelectionFinished);
 
-    m_worker = new vc::runtime::CameraWorker(m_camera);
-    m_worker->moveToWorker();
-    connect(m_camera, &vc::device::CameraDevice::grabFinished,
-            this, &BaslerCameraWidget::onCameraGrabFinished);
+    // ── Wire to runner (NOT to device directly) ──────────────────────────────
+    // The runner forwards device signals onto the GUI thread; that is the
+    // whole point of routing through TaskRunner.  The Widget never touches
+    // QThread or moveToThread().
+    if (m_runner) {
+        connect(m_runner, &vc::runtime::CameraRunner::connectStatusChanged,
+                this,     &BaslerCameraWidget::onCameraConnectStatusChanged);
+        connect(m_runner, &vc::runtime::CameraRunner::grabFinished,
+                this,     &BaslerCameraWidget::onCameraGrabFinished);
+    } else {
+        LOG_DEV_ERR << "BaslerCameraWidget: no runner provided — control disabled";
+    }
 }
 
 void BaslerCameraWidget::setDoublePropertyLimit(QtVariantProperty *variant, double &max, double &min) {
@@ -298,8 +305,8 @@ void BaslerCameraWidget::onPropertyValueChanged(QtProperty *property, const QVar
         mProp.writeOnGadget(&m_params, variant);
         qDebug() << "Updated context: " << propName << "to" << variant;
         this->m_camera->setBaslerGigeConfig(m_params);
-        if (this->m_camera->isDeviceConnected()) {
-            this->m_worker->applyChangeParameters();
+        if (this->m_camera->isDeviceConnected() && m_runner) {
+            m_runner->requestApplyParams();
         }
         return;
     }
@@ -331,6 +338,12 @@ void BaslerCameraWidget::btn_choose_camera_clicked() {
 }
 
 void BaslerCameraWidget::btn_connect_clicked() {
+    if (!m_runner) {
+        QMessageBox::warning(this, tr("Connect error"),
+                             tr("No camera runner available."));
+        return;
+    }
+
     if (!m_camera->isDeviceConnected()) {
         QHostAddress address;
         if (!address.setAddress(m_params.ipAddress())) {
@@ -340,19 +353,18 @@ void BaslerCameraWidget::btn_connect_clicked() {
             return;
         }
 
-        m_worker->connectCamera();
-
+        m_runner->requestConnect();
     } else {
-        m_worker->disconnectCamera();
+        m_runner->requestDisconnect();
     }
 }
 
 void BaslerCameraWidget::btn_trigger_clicked() {
-    if (!m_camera->isDeviceConnected()) {
+    if (!m_camera->isDeviceConnected() || !m_runner) {
         return;
     }
 
-    m_worker->singleShot();
+    m_runner->requestSingleShot();
 }
 
 void BaslerCameraWidget::onCameraConnected() {

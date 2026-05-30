@@ -1,0 +1,129 @@
+@startuml class_model
+title Class Diagram --vc::model
+
+
+package "vc::model" {
+
+    class ProjectRepository {
+        + {static} createNew{path, project_name} : bool
+        + {static} load(path, out: Project&) : bool
+        + {static} save(path, project: Project&) : bool
+        + {static} saveAs(path, project: Project&) : bool
+        - {static} saveImages(connName, tasks) : bool
+        - {static} loadImages(connName, tasks) : bool
+        - {static} lastMsg() : QString
+        - {static} lastError() : QString
+    }
+
+    class Project << QOBject >> {
+        - m_name : QString
+        - m_version : QString
+        - m_createAt : QString
+        - m_updateAt : QString
+
+    }
+}
+
+package "Project file schema" {
+    
+    class ProjectInfo << table >> {
+        + key : TEXT
+        + value : TEXT
+        .. rows ..
+        name, version
+        created_at, updated_at
+        schema_version, project_json
+        .. note ..
+        row key is text
+        project_json contains optional information of project
+    }
+
+    class TaskData << table >> {
+        + id : INTEGER PK (= 1)
+        + json : TEXT
+        .. contains ..
+        full task JSON
+        (no templateImage)
+        .. note ..
+        * each task key is unique number
+        * json contains task information except images
+        * json must contains images map field 
+        to retrieve images from Images table
+    }
+
+    class Images << table >> {
+        + task_id : TEXT
+        + image_number : INTEGER
+        + image_data : BLOB
+        .. PNG compressed ..
+        cv::imencode / imdecode
+        .. note ..
+        * compressed image to reduce database size
+        * retrieve image with images map field from 
+        Task data table
+    }
+
+}
+
+package "vc::device" {
+
+    class IDevice {
+        + {abstract} connectToDevice()
+        + {abstract} disconnectFromDevice()
+    }
+
+    class CameraDevice {
+        
+        
+    }
+
+    class MCProtocolDevice {
+        + {abstract} intefaceType() : McItfType
+        + 
+    }
+
+    class McContext {
+        + m_msg_itf : McMsgItf
+    }
+
+    class McMsgInterface {
+        + {abstract} setConnectTimeout() : bool
+        + {abstract} setWriteTimeout() : bool
+        + {abstract} setWaitResponseTimeout() : bool
+        + {abstract} connectionCheck() : void 
+        + {abstract} connectToDevice() : bool
+        + {abstract} disconnectFromDevice() : bool
+        + {abstract} currentState() : MsgItfState
+        + {abstract} sendMsg() : MsgItfState
+        + {abstract} receiveMsg() : MsgItfState
+        + {abstract} type() : McItfType
+        + {abstract} clone() : void
+
+        .. Signals ..
+        + connectionCheckingFinished(bool) : void
+    }
+
+    class McMsgEthernetTCP {
+
+    }
+
+    class McMsgSerialPort {
+
+    }
+
+
+    class MCEthernetTCPDevice {
+
+    }
+    
+
+}
+
+' Inheritance
+IDevice <|-- CameraDevice
+IDevice <|-- MCProtocolDevice
+MCProtocolDevice <|-- MCEthernetTCPDevice
+McMsgInterface <|-- McMsgEthernetTCP
+McMsgInterface <|-- McMsgSerialPort
+
+@enduml

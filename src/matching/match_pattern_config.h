@@ -40,6 +40,9 @@ struct MatchPatternConfig {
     double m_angle          = 0.0;
     double m_toleranceAngle = 180.0;
     double m_maxOverlap     = 0.1;
+    /// TODO: change toleranceAngle parameters
+    // double m_toleranceAngleMin = -180.0;
+    // double m_toleranceAngleMax = 180.0;
 
     // ── Pick position ─────────────────────────────────────────────────────
     cv::Point2f m_pickPosition;

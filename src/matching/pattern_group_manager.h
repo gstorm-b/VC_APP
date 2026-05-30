@@ -71,6 +71,11 @@ public:
     /// Sort patterns inside a single group by number ascending.
     ManagerResult sortPatternsByNumber(const QString &groupName);
 
+
+    // ── Serialisation helpers
+    QJsonObject toJson() const;
+    bool fromJson(const QJsonObject &obj);
+
 signals:
     // ── Group-level ──────────────────────────────────────────────────────────
     void groupAdded     (std::shared_ptr<MatchGroup> group);
@@ -82,12 +87,6 @@ signals:
     void patternAdded   (MatchGroup *group, MatchPattern *pattern);
     void patternRemoved (MatchGroup *group, const MatchPatternConfig &removedConfig);
     void patternChanged (MatchGroup *group, MatchPattern *pattern, const QString &field);
-
-    // =========================================================================
-    //  Serialisation helpers (implement as needed)
-    // =========================================================================
-    // bool saveToFile(const QString &path) const;
-    // bool loadFromFile(const QString &path);
 
 private:
     ManagerResult validateGroupConfig(const MatchGroupConfig &cfg,

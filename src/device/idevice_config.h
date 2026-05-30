@@ -3,21 +3,33 @@
 
 #include <QJsonObject>
 
-#define DEVICE_TYPE_NAME_CAMERA     "Camera"
-#define DEVICE_TYPE_NAME_MC_PTC_DV  "MC Protocol Device"
-#define DEVICE_TYPE_NAME_PLC        "PLC"
-#define DEVICE_TYPE_NAME_TCP_IP_DV  "TCP/IP Device"
-#define DEVICE_TYPE_NAME_ROBOT      "Robot"
+#define DEVICE_TYPE_NAME_CAMERA          "Camera"
+#define DEVICE_TYPE_NAME_PLC             "PLC"
+#define DEVICE_TYPE_NAME_TCP_IP_DV       "TCP/IP Device"
+#define DEVICE_TYPE_NAME_VISION_OUTPUT   "Vision Output Device"
+#define DEVICE_TYPE_NAME_ROBOT           "Robot"
 
 #define DEVICE_JSK_ID               "DeviceId"
 #define DEVICE_JSK_NAME             "DeviceName"
 #define DEVICE_JSK_TASKID           "AssignedTaskId"
 #define DEVICE_JSK_TYPE             "DeviceType"
 #define DEVICE_JSK_CONFIG           "DeviceConfig"
-#define DEVICE_JSK_CAM_TYPE         "CameraType"
+#define DEVICE_JSK_CAM_TYPE             "CameraType"
+#define DEVICE_JSK_CALIBRATOR           "CameraCalibrator"
+#define DEVICE_JSK_CALIB_BOARD_PRESET   "CalibBoardPreset"
 
+#define DEVICE_JSK_ROBOT_TYPE           "RobotType"
+
+#define DEVICE_JSK_PLC_TYPE         "PlcType"
 #define DEVICE_JSK_MC_FRAME         "McFrameType"
 #define DEVICE_JSK_MC_CONTEXT       "McContext"
+
+#define DEVICE_JSK_VOUT_TYPE               "VisionOutputType"
+#define DEVICE_JSK_VOUT_LISTEN_ADDR        "ListenAddress"
+#define DEVICE_JSK_VOUT_MAIN_PORT          "MainPort"
+#define DEVICE_JSK_VOUT_HB_PORT            "HeartbeatPort"
+#define DEVICE_JSK_VOUT_HB_INTERVAL        "HeartbeatIntervalMs"
+#define DEVICE_JSK_VOUT_HB_TIMEOUT         "HeartbeatTimeoutMs"
 // #define DEVICE_JSK_PLC_BRAND        "PlcBrand"
 // #define DEVICE_JSK_PLC_TYPE         "PlcType"
 
@@ -26,9 +38,8 @@ namespace vc::device {
 enum DeviceType {
     UserType,
     Camera,
-    McDevice,
     PLC,
-    TCPIP_DEVICE,
+    VisionOutput,
     Robot
 };
 
@@ -38,10 +49,10 @@ enum DeviceType {
         return "";
     case vc::device::DeviceType::Camera:
         return DEVICE_TYPE_NAME_CAMERA;
-    case vc::device::DeviceType::McDevice:
-        return DEVICE_TYPE_NAME_MC_PTC_DV;
-    case vc::device::DeviceType::TCPIP_DEVICE:
-        return DEVICE_TYPE_NAME_TCP_IP_DV;
+    case vc::device::DeviceType::PLC:
+        return DEVICE_TYPE_NAME_PLC;
+    case vc::device::DeviceType::VisionOutput:
+        return DEVICE_TYPE_NAME_VISION_OUTPUT;
     case vc::device::DeviceType::Robot:
         return DEVICE_TYPE_NAME_ROBOT;
     default:
@@ -53,10 +64,10 @@ enum DeviceType {
 [[maybe_unused]] static DeviceType DeviceTypeFromString(QString t) {
     if (t == DEVICE_TYPE_NAME_CAMERA) {
         return DeviceType::Camera;
-    } else if (t == DEVICE_TYPE_NAME_MC_PTC_DV) {
-        return DeviceType::McDevice;
-    } else if (t == DEVICE_TYPE_NAME_TCP_IP_DV) {
-        return DeviceType::TCPIP_DEVICE;
+    } else if (t == DEVICE_TYPE_NAME_PLC) {
+        return DeviceType::PLC;
+    } else if (t == DEVICE_TYPE_NAME_VISION_OUTPUT) {
+        return DeviceType::VisionOutput;
     } else if (t == DEVICE_TYPE_NAME_ROBOT) {
         return DeviceType::Robot;
     }

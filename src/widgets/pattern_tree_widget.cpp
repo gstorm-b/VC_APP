@@ -118,6 +118,7 @@ void PatternGroupItemWidget::setupUi()
     m_deleteBtn->setFixedSize(24, 24);
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     m_deleteBtn->setStyleSheet(Style::destructiveBtn());
+    m_deleteBtn->setContentsMargins(8, 0, 8, 0);
     root->addWidget(m_deleteBtn);
 
     connect(m_deleteBtn,     &QPushButton::clicked,
@@ -219,6 +220,8 @@ void PatternItemWidget::setupUi()
     m_deleteBtn->setFixedSize(22, 22);
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     m_deleteBtn->setStyleSheet(Style::destructiveBtn());
+    m_deleteBtn->setContentsMargins(8, 0, 8, 0);
+
     root->addWidget(m_deleteBtn, 0, Qt::AlignVCenter);
 
     connect(m_deleteBtn, &QPushButton::clicked,
@@ -321,6 +324,7 @@ void PatternTreeWidget::setGroups(const QList<MatchGroupConfig> &groups)
 {
     m_groups = groups;
     rebuildTree();
+    expandAll();
 }
 
 QList<MatchGroupConfig> PatternTreeWidget::groups() const
@@ -538,17 +542,17 @@ void PatternTreeWidget::appendGroupItem(const MatchGroupConfig &group, int group
             });
 
     connect(w, &PatternGroupItemWidget::deleteRequested, this,
-            [this, groupIndex, group]() {
+            [this, group]() {
                 // Emit intent first (so host can veto or react before removal)
                 emit deleteGroupRequested(group.number);
-                // Then apply: deferred to avoid destroying widget mid-signal
-                QTimer::singleShot(0, this, [this, groupIndex]() {
-                    if (groupIndex >= 0 && groupIndex < m_groups.size()) {
-                        m_groups.removeAt(groupIndex);
-                        rebuildTree();
-                        emit groupsChanged(m_groups);
-                    }
-                });
+                // // Then apply: deferred to avoid destroying widget mid-signal
+                // QTimer::singleShot(0, this, [this, groupIndex]() {
+                //     if (groupIndex >= 0 && groupIndex < m_groups.size()) {
+                //         m_groups.removeAt(groupIndex);
+                //         rebuildTree();
+                //         emit groupsChanged(m_groups);
+                //     }
+                // });
             });
 
     // ── Patterns ─────────────────────────────────────────────────────────────
@@ -579,18 +583,18 @@ void PatternTreeWidget::appendPatternItem(QTreeWidgetItem *parentItem,
     connect(w, &PatternItemWidget::deleteRequested, this,
             [this, groupIndex, patternIndex, patternIdx]() {
                 emit deletePatternRequested(m_groups[groupIndex].number, patternIdx);
-                QTimer::singleShot(0, this, [this, groupIndex, patternIndex]() {
-                    if (groupIndex < m_groups.size()) {
-                        auto &patterns = m_groups[groupIndex].patterns;
-                        if (patternIndex < patterns.size()) {
-                            patterns.removeAt(patternIndex);
-                            rebuildTree();
-                            // emit groupChanged(groupIndex, m_groups[groupIndex]);
-                            emit groupChanged(m_groups[groupIndex].number, m_groups[groupIndex]);
-                            emit groupsChanged(m_groups);
-                        }
-                    }
-                });
+                // QTimer::singleShot(0, this, [this, groupIndex, patternIndex]() {
+                //     if (groupIndex < m_groups.size()) {
+                //         auto &patterns = m_groups[groupIndex].patterns;
+                //         if (patternIndex < patterns.size()) {
+                //             patterns.removeAt(patternIndex);
+                //             rebuildTree();
+                //             // emit groupChanged(groupIndex, m_groups[groupIndex]);
+                //             emit groupChanged(m_groups[groupIndex].number, m_groups[groupIndex]);
+                //             emit groupsChanged(m_groups);
+                //         }
+                //     }
+                // });
             });
 }
 

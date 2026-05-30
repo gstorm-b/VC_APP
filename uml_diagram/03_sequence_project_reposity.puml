@@ -1,0 +1,50 @@
+@startuml reposity
+
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowColor #1F4E79
+skinparam sequenceLifeLineBorderColor #2E75B6
+skinparam sequenceParticipantBackgroundColor #EBF3FB
+skinparam sequenceParticipantBorderColor #2E75B6
+skinparam shadowing false
+
+participant "UI_Action\n[UI]" as ui_action
+participant "DeviceWizard\n[UI]" as Wizard
+participant "Project\n[QObject]" as Proj
+participant "Task\n[QObject]" as Task
+participant "DeviceManager\n[QObject]" as DeviceManager
+participant "Device\n[QObject]" as Device
+participant "DeviceFactory" as Factory
+
+== Create New Device == 
+
+ui_action -> Wizard
+
+activate DeviceManager
+Wizard -> DeviceManager : getPendingId()
+DeviceManager --> Wizard : id
+deactivate DeviceManager
+Wizard -> ui_action
+
+alt accept create device
+    ui_action -> Wizard
+    activate Factory
+    Wizard -> Factory : fromJson(QJsonObject)
+    Factory -> DeviceManager : commitDevice(id, name, device)
+    deactivate Factory
+    
+    DeviceManager --> ui_action : refreshUI()
+else reject create device
+
+    Factory -> DeviceManager : releaseDevice(id)
+end
+
+== Create Project Json object ==
+activate Project
+Project -> Task : toJson()
+Task --> Project : JsonObject
+
+Project -> Device : toJson()
+Device --> Project : JsonObject
+deactivate Project
+
+@enduml

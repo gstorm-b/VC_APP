@@ -1,26 +1,26 @@
 #ifndef MC_PROTOCOL_CONFIG_H
 #define MC_PROTOCOL_CONFIG_H
 
-#include "device/idevice_config.h"
+#include "device/plc/plc_device.h"
 #include "device/plc/mc_context.h"
 #include "device/plc/mc_msg_interface.h"
 #include "device/plc/mc_context_factory.h"
 
 namespace vc::device {
 
-class McProtocolConfig : public IDeviceCfg {
+class McProtocolConfig : public PlcCfg {
     Q_GADGET
 
 public:
     explicit McProtocolConfig()
-        : IDeviceCfg() {}
+        : PlcCfg() {}
 
-    const QMetaObject &getMetaObject() const override {        
+    const QMetaObject &getMetaObject() const override {
         return vc::device::McProtocolConfig::staticMetaObject;
     }
 
-    DeviceType deviceType() const override {
-        return DeviceType::PLC;
+    PlcType plcType() const override {
+        return PlcType::MitsubishiMc;
     }
 
     McFrameType currentFrameType() const {
@@ -52,7 +52,7 @@ public:
     }
 
     QJsonObject toJson() const override {
-        QJsonObject obj;
+        QJsonObject obj = PlcCfg::toJson();
         if (m_context) {
             obj[DEVICE_JSK_MC_FRAME] = McFrameTypeToString(m_context->frameType());
             obj[DEVICE_JSK_MC_CONTEXT] = m_context->toJson();
@@ -63,6 +63,7 @@ public:
     }
 
     bool fromJson(const QJsonObject &obj) override {
+        if (!PlcCfg::fromJson(obj)) return false;
         McFrameType frame_type = McFrameTypeFromString(obj[DEVICE_JSK_MC_FRAME].toString());
         m_context = Factory::contextFactory(frame_type);
         if (m_context) {

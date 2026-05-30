@@ -162,7 +162,7 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
         cv::Mat roi_mat = imageThresh(cv::Range(ROI_tl.y, ROI_br.y),
                                       cv::Range(ROI_tl.x, ROI_br.x)).clone();
         clearImageBorder(roi_mat, border_offset);
-        cv::imwrite("Test.bmp", roi_mat);
+        // cv::imwrite("Test.bmp", roi_mat);
         findContours(roi_mat, srcContours, srcHierarchy,
                      cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
     } else {
@@ -258,8 +258,10 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
                                   m_model_src.config().m_pickingBoxDistance,
                                   m_model_src.config().m_pickingBoxAngle);
             obj.checkCollisionObject(srcContours, possibleCollisionContourIndex);
-            if (!obj.hasCollision())
+            if (!obj.hasCollision()) {
+
                 match_result.totalPossiblePicking++;
+            }
             match_result.Objects.push_back(obj);
         }
 
@@ -299,11 +301,12 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
         vsu::drawAxes2Img(match_result.Image, obj.point_Center, obj.point_angle,
                           false, 20, 0.4, DEFAULT_COLOR_BLUE, DEFAULT_COLOR_RED);
 
-        if (obj.hasCollision())
+        if (obj.hasCollision()) {
+            std::cout << "Has collision";
             obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_RED);
-        else
+        } else {
             obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_GREEN);
-
+        }
         obj.setParent(nullptr);
     }
 }

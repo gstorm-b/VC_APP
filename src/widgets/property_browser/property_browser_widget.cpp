@@ -104,12 +104,20 @@ void PropertyBrowserWidget::setupManagers()
     // ── SizePropertyManager ───────────────────────────────────────────────────
     m_sizeManager = new SizePropertyManager(this);
 
-    // A single shared QtDoubleSpinBoxFactory serves both custom managers
-    // (each manager owns its own internal QtDoublePropertyManager, but they
-    // all need the same factory type registered).
+    // ── PointPropertyManager (int XY/XYZ) ─────────────────────────────────────
+    m_pointManager = new PointPropertyManager(this);
+
+    // ── PointFPropertyManager (double XY/XYZ) ─────────────────────────────────
+    m_pointFManager = new PointFPropertyManager(this);
+
+    // Shared factories — each custom manager owns its own sub-manager, but
+    // they all need the matching editor factory registered on the browser.
     m_dblFactory = new QtDoubleSpinBoxFactory(this);
+    m_intFactory = new QtSpinBoxFactory(this);
     m_browser->setFactoryForManager(m_positionManager->subDoubleManager(), m_dblFactory);
-    m_browser->setFactoryForManager(m_sizeManager->subDoubleManager(), m_dblFactory);
+    m_browser->setFactoryForManager(m_sizeManager->subDoubleManager(),     m_dblFactory);
+    m_browser->setFactoryForManager(m_pointFManager->subDoubleManager(),   m_dblFactory);
+    m_browser->setFactoryForManager(m_pointManager->subIntManager(),       m_intFactory);
 }
 
 // ── Search bar ────────────────────────────────────────────────────────────────

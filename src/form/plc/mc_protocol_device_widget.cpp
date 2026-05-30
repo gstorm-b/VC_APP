@@ -91,7 +91,6 @@ static void populateBrowser_Device(vc::device::IDevice *gadget, QtVariantPropert
     }
 }
 
-
 static void populateBrowser_MsgInterface(vc::device::McMsgItfConfig *gadget, QtVariantPropertyManager *manager, QtTreePropertyBrowser *browser) {
     QtProperty *topItem = manager->addProperty(QtVariantPropertyManager::groupTypeId(),
                                                QLatin1String("Interface"));
@@ -129,7 +128,7 @@ static void populateBrowser_McContext(vc::device::McContext *gadget, QtVariantPr
 }
 
 McProtocolDeviceWidget::McProtocolDeviceWidget(std::shared_ptr<vc::device::IDevice> dv,
-                                          vc::runtime::McDeviceRunner *runner,
+                                          vc::runtime::PlcRunner *runner,
                                           ads::CDockWidget *dock, QWidget *parent)
     : IDeviceWidget(parent),
     ui(new Ui::McProtocolDeviceWidget),
@@ -145,16 +144,16 @@ McProtocolDeviceWidget::~McProtocolDeviceWidget() {
     delete ui;
 }
 
-void McProtocolDeviceWidget::loadConfigToDevice() {
+QString McProtocolDeviceWidget::deviceId() {
+    return m_device->id();
+}
 
+void McProtocolDeviceWidget::loadConfigToDevice() {
+    // do nothing
 }
 
 void McProtocolDeviceWidget::loadConfigToWidget() {
-
-}
-
-QString McProtocolDeviceWidget::deviceId() {
-    return m_device->id();
+    // do nothing
 }
 
 void McProtocolDeviceWidget::onPropertyValueChanged(QtProperty *property, const QVariant &variant) {
@@ -193,7 +192,7 @@ void McProtocolDeviceWidget::onPropertyValueChanged(QtProperty *property, const 
     if (index != -1) {
         QMetaProperty mProp = meta_context.property(index);
         mProp.writeOnGadget(context, variant);
-        qDebug() << "Updated context: " << propName << "to" << variant;
+        // qDebug() << "Updated context: " << propName << "to" << variant;
         this->saveConfig();
         rebuildMonitorRanges();
         refreshMetaSummary();
@@ -205,7 +204,7 @@ void McProtocolDeviceWidget::onPropertyValueChanged(QtProperty *property, const 
     if (index != -1) {
         QMetaProperty mProp = meta_msg.property(index);
         mProp.writeOnGadget(msg_cfg, variant);
-        qDebug() << "Updated context: " << propName << "to" << variant;
+        // qDebug() << "Updated context: " << propName << "to" << variant;
         this->saveConfig();
         populateConnectionFields();
         return;
@@ -242,16 +241,16 @@ void McProtocolDeviceWidget::onConnectionStateChanged(vc::device::ConnectStatus 
     }
 }
 
-void McProtocolDeviceWidget::onPollingUpdateValue(vc::device::McDeviceMap device_map) {
-    m_device_map = device_map;
+void McProtocolDeviceWidget::onPollingUpdateValue(std::shared_ptr<vc::device::PlcValueMap> device_map) {
+    m_device_map = *(static_cast<vc::device::McDeviceMap*>(device_map.get()));
     if (m_monitor_m) {
-        const auto &m_map = device_map.device_map_m;
+        const auto &m_map = m_device_map.device_map_m;
         for (auto it = m_map.begin(); it != m_map.end(); ++it) {
             m_monitor_m->setBitState(it->first, it->second);
         }
     }
     if (m_monitor_d) {
-        const auto &d_map = device_map.device_map_d;
+        const auto &d_map = m_device_map.device_map_d;
         for (auto it = d_map.begin(); it != d_map.end(); ++it) {
             m_monitor_d->setWordValue(it->first, it->second);
         }
@@ -270,9 +269,9 @@ void McProtocolDeviceWidget::initWidget() {
         // QueuedConnection, so it is safe to update widgets from these slots.
         // Widget never owns a QThread.
         if (m_runner) {
-            connect(m_runner, &vc::runtime::McDeviceRunner::connectStatusChanged,
+            connect(m_runner, &vc::runtime::PlcRunner::connectStatusChanged,
                     this,     &McProtocolDeviceWidget::onConnectionStateChanged);
-            connect(m_runner, &vc::runtime::McDeviceRunner::pollingUpdate,
+            connect(m_runner, &vc::runtime::PlcRunner::pollingUpdate,
                     this,     &McProtocolDeviceWidget::onPollingUpdateValue);
         } else {
             LOG_DEV_ERR << "McProtocolDeviceWidget: no runner provided — control disabled";

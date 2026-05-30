@@ -2,6 +2,7 @@
 #define CAMERA_DEVICE_H
 
 #include "device/idevice.h"
+#include "calibration/calibrator.h"
 #include <opencv2/opencv.hpp>
 
 #define CAM_TYPE_REALSENSE       "Realsense"
@@ -64,10 +65,23 @@ public:
     virtual QJsonObject toJson() const override {
         QJsonObject obj;
         obj[DEVICE_JSK_CAM_TYPE] = CameraTypeToString(this->cameraType());
+        obj[DEVICE_JSK_CALIBRATOR] = QString::fromStdString(m_calibrator.toJson());
+        obj[DEVICE_JSK_CALIB_BOARD_PRESET] = m_calibBoardPreset;
         return obj;
     }
 
     virtual bool fromJson(const QJsonObject &obj) override {
+        if (!obj.contains(DEVICE_JSK_CALIBRATOR)) {
+            LOG_USER_WARN << "Camera load calibrator failed.";
+        } else {
+            std::string calib_str = obj[DEVICE_JSK_CALIBRATOR].toString().toStdString();
+            m_calibrator.fromJson(calib_str);
+        }
+
+        if (obj.contains(DEVICE_JSK_CALIB_BOARD_PRESET)) {
+            m_calibBoardPreset = obj[DEVICE_JSK_CALIB_BOARD_PRESET].toString();
+        }
+
         if (cameraType() != CameraTypeFromString(obj[DEVICE_JSK_CAM_TYPE].toString())) {
             LOG_DEV_ERR << "Cannot convert camera parameters, wrong camera type";
             LOG_DEV_ERR << obj[DEVICE_JSK_CAM_TYPE].toString();
@@ -75,6 +89,28 @@ public:
         }
         return true;
     }
+
+    virtual calib::Calibrator calibrator() const {
+        return m_calibrator;
+    }
+
+    virtual void setCalibrator(calib::Calibrator calib)  {
+        m_calibrator = calib;
+    }
+
+    virtual QString calibBoardPreset() const {
+        return m_calibBoardPreset;
+    }
+
+    virtual void setCalibBoardPreset(const QString &preset) {
+        m_calibBoardPreset = preset;
+    }
+
+protected:
+    calib::Calibrator m_calibrator;
+    // Stored preset name (resolved by calib::CalibrationBoardFactory). Default
+    // matches iRVision 22.5 mm dot grid; UI lets the user change it.
+    QString m_calibBoardPreset{"iRvision-22.5mm"};
 };
 
 struct GrabResult {

@@ -58,7 +58,15 @@ public:
 
 protected:
     // ── Initialization ────────────────────────────────────────────────────
+    /**
+     * @brief initPropertyBrowser: create property widget
+     * @param container
+     */
     void initPropertyBrowser(QWidget *container) {
+        if (container == nullptr) {
+            return;
+        }
+
         m_propBrowser = new PropertyBrowserWidget(this);
 
         m_variantManager = m_propBrowser->variantManager();
@@ -68,7 +76,15 @@ protected:
         if (container) embedBrowserInWidget(container);
     }
 
+    /**
+     * @brief embedBrowserInWidget: embed property widget into container widget
+     * @param container
+     */
     void embedBrowserInWidget(QWidget *container) {
+        if (container == nullptr) {
+            return;
+        }
+
         auto *layout = new QHBoxLayout(container);
         layout->setContentsMargins(0, 0, 0, 0);
         layout->addWidget(m_propBrowser);    
@@ -92,6 +108,14 @@ protected:
         }
 
         m_browserStackWidget->setCurrentWidget(wg);
+    }
+
+    void changePropertyBrowserDefault() {
+        if (!m_propBrowser) {
+            m_propBrowser = new PropertyBrowserWidget(this);
+            m_browserStackWidget->addWidget(m_propBrowser);
+        }
+        m_browserStackWidget->setCurrentWidget(m_propBrowser);
     }
 
     void removePropertyBrowserWidget(PropertyBrowserWidget *wg) {

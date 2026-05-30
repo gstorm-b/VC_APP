@@ -83,15 +83,15 @@ public:
     }
 
     void setConnectionStatus(ConnectStatus status, QString msg = "") {
-        if (m_connect_status != status) {
-            m_connect_status = status;
-            emit connectStatusChanged(m_connect_status);
+        // if (m_connect_status != status) {
+        m_connect_status = status;
+        emit connectStatusChanged(m_connect_status);
 
-            if (status == ConnectStatus::ConnectFailed) {
-                m_last_msg = msg;
-                emit connectionFailed(msg);
-            }
+        if (status == ConnectStatus::ConnectFailed) {
+            m_last_msg = msg;
+            emit connectionFailed(msg);
         }
+        // }
     }
 
     virtual void setDeviceConfig(IDeviceCfg *cfg) {
@@ -174,12 +174,22 @@ public slots:
 
     virtual void deviceTerminate() = 0;
 
+    virtual void deviceDetachThread(QThread *dest) {
+        if (dest == nullptr) {
+            return;
+        }
+
+        this->moveToThread(dest);
+        emit deviceThreadDetached();
+    }
+
 signals:
     void nameChanged();
     void configChanged();
     void connectStatusChanged(ConnectStatus status);
     void connectionFailed(QString msg);
     void errorOccurred(const QString& msg);
+    void deviceThreadDetached();
 
 protected:
     QMutex m_mutex;

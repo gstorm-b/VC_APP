@@ -7,7 +7,8 @@ namespace vc::device {
 
 enum RequestType {
     Request_MC,
-    Request_PLC
+    Request_PLC,
+    Request_VisionOutput
 };
 
 class IRequest {

@@ -164,6 +164,8 @@ bool ProjectRepository::save(const QString& path,
         const QByteArray json =
             QJsonDocument(project.toJson()).toJson(QJsonDocument::Compact);
 
+        qDebug() << "Project respository:" << json;
+
         q.prepare("INSERT OR REPLACE INTO project_data (id, json) "
                   "VALUES (1, ?)");
         q.addBindValue(QString::fromUtf8(json));

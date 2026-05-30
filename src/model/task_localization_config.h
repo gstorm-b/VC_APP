@@ -43,14 +43,11 @@ public:
 
     TaskLocalizeConfigPrivate(const TaskLocalizeConfigPrivate &other) = default;
 
-    QString m_outputDevice;
-    QStringList m_cameras;
-
-    // num
+    // number signals
     QString m_nActiveCamera;
     QString m_nActivePattern;
 
-    // bool
+    // bool signals
     QString m_bCameraValid;
     QString m_bPatternValid;
     QString m_bTaskReady;
@@ -62,13 +59,14 @@ public:
     QString m_bMatchingLowArea;
     QString m_nDetectedNumber;
 
-    QString m_sCommDeviceId;
-    QString m_sOutputDeviceId;
-
     // <active number, Device id>
     QMap<int, QString> m_sCameraNumberMap;
 
+    // PLC communication device ID
+    QString m_sCommDeviceId;
 
+    // Vision output device ID
+    QString m_sOutputDeviceId;
 };
 
 class TaskLocalizeConfig : public ITaskConfig {

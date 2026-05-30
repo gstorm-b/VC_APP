@@ -72,18 +72,9 @@ private:
 
     // ── Old config helpers (settings page) ────────────────────────────────
     void populateBrowser(const QString &id);
-    // void populateBrowser_Task();
-    // void populateBrowser_Config();
-    // void updateCommDeviceInfo();
-    // void updateOutputDeviceInfo();
-    // void updateCameraMappingToWidget();
 
 private slots:
-    // void onSelectCommDeviceClicked();
-    // void onSelectOutputDeviceClicked();
-    // void onUpdateCompleter();
     // void onCameraMappingChanged(const QMap<int, QString> &mapping);
-    // void onPropertyManagerValueChanged(QtProperty *property, const QVariant &variant);
     void saveConfig();
 
     void onDeviceNavClicked(const QString &deviceId);
@@ -102,7 +93,7 @@ private:
     vc::model::TaskLocalization  *m_localizeTask{nullptr};
     vc::model::TaskLocalizeConfig m_config;
 
-    bool m_populating_browser{false};
+    // bool m_populating_browser{false};
     QStringList m_BitsAddressList;
     QStringList m_WordsAddressList;
     std::shared_ptr<vc::device::IDevice> m_commDevice;
@@ -131,9 +122,10 @@ private:
 
     // ── Patterns page (LocalizationTask only) ─────────────────────────────
     // Per design handoff `Sidebar.jsx`: "Patterns tab — LocalizationTask only".
-    // Lazily instantiated when user clicks the Patterns nav button.
-    QPushButton *m_btnNavPatterns{nullptr};
+    // The nav button now lives in the .ui (`ui->btn_nav_patterns`); the
+    // content widget below is still lazily instantiated on first click.
     QWidget     *m_patternsPage{nullptr};
+    QWidget     *m_settingPage{nullptr};
 };
 
 #endif // LOCALIZATION_TASK_WIDGET_H

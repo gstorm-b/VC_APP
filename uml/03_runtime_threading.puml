@@ -1,0 +1,145 @@
+@startuml runtime_threading
+title vc::runtime - Task and Device Threading
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam ClassBackgroundColor #EEF5FF
+
+package "vc::model" {
+  abstract class ITask <<QObject>> {
+    +beginCommission()
+    +endCommission()
+    +beginRuntime(mergeToTaskThread=false)
+    +endRuntime()
+    +stopAll()
+    +resyncDevices()
+    #syncRunnersWithDevices()
+  }
+
+  class TaskLocalization <<QObject>> {
+    +setupTask()
+    +executeLocalization()
+    +startCommissionMatching(group, image)
+  }
+}
+
+package "vc::runtime" {
+  enum Phase {
+    Idle
+    Commission
+    Runtime
+  }
+
+  abstract class IDeviceRunner <<QObject>> {
+    +start()
+    +stop()
+    +attach()
+    +detach(dest)
+    +workerThread() : QThread*
+    +device() : IDevice*
+    +isAttached() : bool
+    +isRunning() : bool
+  }
+
+  abstract class "DeviceRunner<TDevice>" as DeviceRunner {
+    +start()
+    +stop()
+    +attach()
+    +detach(dest)
+    +typedDevice() : TDevice*
+    #wireSignals()
+    #unwireSignals()
+  }
+
+  class TaskRunner <<QObject>> {
+    +registerDevice(deviceId, device)
+    +unregisterDevice(deviceId)
+    +runnerFor(deviceId) : IDeviceRunner*
+    +hasRunner(deviceId) : bool
+    +enterCommission()
+    +enterRuntime(mergeToTaskThread=false)
+    +enterIdle()
+    -createRunner(device) : IDeviceRunner*
+  }
+
+  class CameraRunner <<QObject>> {
+    +requestConnect()
+    +requestDisconnect()
+    +requestSingleShot()
+    +requestApplyParams()
+  }
+
+  class PlcRunner <<QObject>> {
+    +requestConnect()
+    +requestDisconnect()
+  }
+
+  class VisionOutputRunner <<QObject>> {
+    +requestConnect()
+    +requestDisconnect()
+  }
+}
+
+package "vc::device" {
+  abstract class IDevice <<QObject>> {
+    +deviceDetachThread(dest)
+    +deviceThreadDetached()
+  }
+
+  abstract class CameraDevice <<QObject>>
+  abstract class PlcDevice <<QObject>>
+  abstract class VisionOutputDevice <<QObject>>
+  abstract class RobotDevice <<QObject>>
+}
+
+ITask <|-- TaskLocalization
+ITask *-- TaskRunner : m_taskRunner
+TaskRunner *-- "0..*" IDeviceRunner : m_runners[deviceId]
+TaskRunner *-- "1" QThread : m_runtimeThread
+TaskRunner --> Phase : currentPhase
+
+IDeviceRunner <|-- DeviceRunner
+DeviceRunner <|-- CameraRunner
+DeviceRunner <|-- PlcRunner
+DeviceRunner <|-- VisionOutputRunner
+
+DeviceRunner *-- QThread : per-device worker
+DeviceRunner o-- IDevice : raw pointer, not owned
+CameraRunner --> CameraDevice
+PlcRunner --> PlcDevice
+VisionOutputRunner --> VisionOutputDevice
+
+TaskRunner ..> CameraRunner : Camera devices
+TaskRunner ..> PlcRunner : PLC devices
+TaskRunner ..> VisionOutputRunner : VisionOutput devices
+TaskRunner ..> RobotDevice : unsupported by createRunner()
+
+note right of TaskRunner
+  createRunner() currently supports:
+  Camera, PLC, VisionOutput.
+
+  Robot devices are ignored because
+  RobotRunner does not exist yet.
+end note
+
+state "TaskRunner::Phase" as task_phase {
+  [*] --> Idle
+  Idle --> Commission : enterCommission()
+  Commission --> Runtime : enterRuntime()
+  Idle --> Runtime : enterRuntime()
+  Runtime --> Idle : enterIdle()
+  Commission --> Idle : enterIdle()
+}
+
+note bottom of task_phase
+  Commission: each device has its own HighPriority thread.
+  Runtime, default: per-device threads stay alive and the task runtime
+  thread acts as coordinator.
+  Runtime, merge mode: devices are moved into m_runtimeThread.
+end note
+
+@enduml
+

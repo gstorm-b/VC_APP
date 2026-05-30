@@ -2,6 +2,12 @@
     <qresource prefix="/">
         <file alias="styles/dark.qss">resrc/styles/dark.qss</file>
         <file alias="styles/light.qss">resrc/styles/light.qss</file>
+        <file alias="styles/add_device_wizard_dark.qss">resrc/styles/add_device_wizard_dark.qss</file>
+        <file alias="styles/add_device_wizard_light.qss">resrc/styles/add_device_wizard_light.qss</file>
+        <file alias="styles/camera_mapping_widget_dark.qss">resrc/styles/camera_mapping_widget_dark.qss</file>
+        <file alias="styles/camera_mapping_widget_light.qss">resrc/styles/camera_mapping_widget_light.qss</file>
+        <file alias="styles/signals_monitor_widget_dark.qss">resrc/styles/signals_monitor_widget_dark.qss</file>
+        <file alias="styles/signals_monitor_widget_light.qss">resrc/styles/signals_monitor_widget_light.qss</file>
         <file>resrc/icon/dashboard.svg</file>
         <file>resrc/icon/dashboard_dark.svg</file>
         <file>resrc/icon/edit_file.svg</file>

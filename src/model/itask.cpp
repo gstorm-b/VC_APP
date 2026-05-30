@@ -1,7 +1,39 @@
 #include "itask.h"
 #include "model/project.h"
+#include "device/device_manager.h"
 
 namespace vc::model {
+
+// ── Assigned-device helpers ───────────────────────────────────────────────────
+
+std::shared_ptr<vc::device::IDevice>
+ITask::getTaskDevice(const QString &deviceId) const {
+    std::shared_ptr<vc::device::IDevice> result;
+    if (!m_proj) return result;
+
+
+    auto dm = m_proj->deviceManager();
+    if (!dm) return result;
+
+    result = m_proj->deviceManager()->deviceById(deviceId);
+    return result;
+}
+
+QList<std::shared_ptr<vc::device::IDevice>>
+ITask::assignedDevicesOfType(vc::device::DeviceType t) const {
+    QList<std::shared_ptr<vc::device::IDevice>> result;
+    if (!m_proj) return result;
+
+    auto dm = m_proj->deviceManager();
+    if (!dm) return result;
+
+    for (const QString &id : m_assignedDeviceIds) {
+        auto dev = dm->deviceById(id);
+        if (dev && dev->deviceType() == t)
+            result.append(dev);
+    }
+    return result;
+}
 
 // ── Phase management ──────────────────────────────────────────────────────────
 

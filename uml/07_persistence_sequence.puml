@@ -1,0 +1,83 @@
+@startuml persistence_sequence
+title Project Persistence - Save and Load
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam sequenceArrowThickness 1
+skinparam ArrowColor #2B4C7E
+skinparam ParticipantBackgroundColor #EEF5FF
+skinparam ParticipantBorderColor #2B4C7E
+
+actor User
+participant "UI / MainWindow" as UI
+participant "ProjectRepository" as Repo
+participant "Project" as Project
+participant "DeviceManager" as DeviceManager
+participant "DeviceFactory" as DeviceFactory
+participant "TaskFactory" as TaskFactory
+participant "ITask / TaskLocalization" as Task
+participant "PatternGroupManager" as PatternManager
+database "project DB" as DB
+
+== Save ==
+
+User -> UI : Save project
+UI -> Repo : save(path, project)
+Repo -> Project : toJson()
+
+Project -> DeviceManager : getCurrentDevices()
+loop each device
+  Project -> DeviceManager : device.toJson()
+  DeviceManager -> DeviceManager : include DeviceId, DeviceName,\nAssignedTaskId, DeviceType, DeviceConfig
+end
+
+Project -> Task : toJson()
+Task -> PatternManager : toJson()
+PatternManager --> Task : patternManager JSON
+Task --> Project : task JSON
+Project --> Repo : project JSON
+
+Repo -> DB : write project JSON
+Repo -> Task : getTaskImageMap()
+Task --> Repo : key -> cv::Mat\n(g{groupNumber}_p{patternNumber})
+Repo -> DB : write project_images BLOB rows
+Repo --> UI : success/failure
+
+== Load ==
+
+User -> UI : Open project
+UI -> Repo : load(path, outProject)
+Repo -> DB : read project JSON
+Repo -> Project : fromJson(json)
+
+Project -> DeviceFactory : fromJson(deviceObj)
+DeviceFactory -> DeviceFactory : dispatch by DeviceType
+DeviceFactory -> DeviceFactory : dispatch by family sub-type\n(CameraType, PlcType, VisionOutputType, RobotType)
+DeviceFactory --> Project : IDevice*
+Project -> DeviceManager : commit/reserve device shared_ptr
+
+Project -> TaskFactory : fromJson(taskObj)
+TaskFactory -> TaskFactory : dispatch by TaskType
+TaskFactory -> Task : fromJson(taskObj)
+Task -> PatternManager : fromJson(patternManager JSON)
+PatternManager --> Task : groups and patterns restored
+TaskFactory --> Project : ITask*
+Project -> Task : setProject(project)
+
+Repo -> DB : read project_images BLOB rows
+Repo -> Task : loadTaskImageMap(mapping)
+Task -> PatternManager : setPatternImage(groupName, patternName, image)
+Repo --> UI : loaded Project
+
+note over DeviceFactory
+  Current factory returns nullptr for declared but unimplemented sub-types:
+  Realsense, BaslerUSB, VisionSerial, Huayan, and unknown sub-types.
+end note
+
+note over Task, PatternManager
+  Pattern JSON is owned by PatternGroupManager.
+  Binary images are restored separately by stable keys.
+end note
+
+@enduml
+

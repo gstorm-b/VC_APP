@@ -1,7 +1,7 @@
 #ifndef MC_PROTOCOL_DEVICE_H
 #define MC_PROTOCOL_DEVICE_H
 
-#include "device/idevice.h"
+#include "device/plc/plc_device.h"
 #include "device/plc/mc_protocol_config.h"
 #include "device/plc/mc_fame_3e.h"
 
@@ -12,7 +12,7 @@
 
 namespace vc::device {
 
-class McProtocolDevice : public IDevice {
+class McProtocolDevice : public PlcDevice {
     Q_OBJECT
 
 public:
@@ -25,8 +25,8 @@ public:
         return connectStatus() == device::ConnectStatus::Connected;
     }
 
-    virtual DeviceType deviceType() const override {
-        return DeviceType::McDevice;
+    PlcType plcType() const override {
+        return PlcType::MitsubishiMc;
     }
 
     McFrameType currentFrameType() const {
@@ -53,6 +53,12 @@ private slots:
     void onSetCommActiveDevice();
 
 private:
+    enum DataQueryState {
+        QueryTriggerByTimer,
+        QueryContinue,
+        QueryFinished
+    };
+
     bool initialize_mc_device();
     void excute_request();
     void polling_query();
@@ -70,7 +76,6 @@ private:
 
 signals:
     void requestFinished(vc::device::McResult result);
-    void pollingUpdate(vc::device::McDeviceMap device_map);
     void deviceMChanged(int number, quint8 last_state, quint8 new_state);
     void deviceDChanged(int number, qint16 last_val, qint16 new_val);
 
@@ -92,6 +97,7 @@ private:
 
     bool m_comm_active_m_device_value{false};
     int m_comm_active_m_device;
+    DataQueryState m_data_update_state;
     int m_update_command_index;
     bool is_first_time_polling;
     bool m_wait_for_response;

@@ -1,0 +1,17 @@
+Mô tả hành vi của task localization:
+- Entry commissioning phase:
+    - Start runner riêng cho tất cả các device mà nó đang sở hữu.
+    - Khi có signak test matching, handle matching trong thread của task và trả về kết quả qua signal.
+- Entry runtime phase:
+    - Connect to all device:
+        - Connect to selected Camera.
+        - Connect to assigned Communication device (PLC).
+        - Connect to assigned Output device.
+    - Load selected pattern group to matcher (ImageMatching)
+- Runtime operate (after finished entry prepare):
+    - Trigger signal -> execute matching -> send result to Vision Output device.
+    - Incase camera lost connect: retry to connect camera for 10 times, retry inverval 5s. Over 10 times retry: raise error (Camera error).
+    - Incase Vision output device lost connect: retry to connect camera for 10 times, retry inverval 5s. Over 10 times retry: raise error (Vision output error).
+    - Incase Communication device lost connect: retry to connect camera for 10 times, retry inverval 5s. Over 10 times retry: raise error (Communicaion device error).
+- Runtime about to stop:
+    - Disconnect to all device.

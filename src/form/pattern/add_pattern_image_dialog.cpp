@@ -123,7 +123,7 @@ void AddPatternImageDialog::keyPressEvent(QKeyEvent *event) {
 }
 
 void AddPatternImageDialog::btn_trigger_clicked() {
-    emit this->requestImage();
+    emit this->requestImage("");
 }
 
 void AddPatternImageDialog::btn_choose_image_clicked() {

@@ -1,0 +1,48 @@
+@startuml nachi_client_task2_state
+title TASK2_HEARTBEAT - State Machine
+
+skinparam shadowing false
+skinparam state {
+    BackgroundColor #F8FAFC
+    BorderColor #475569
+    FontColor #0F172A
+    ArrowColor #1E40AF
+}
+
+[*] --> Init
+
+state Init : INIT_STATE\n- GB_SERVER_ALIVE      = 0\n- GB_TASK1_RESET_REQ   = 1\n- GI_HB_MSG_COUNT      = 0\n- O_VISION_LINK_OK/ERR = 0
+Init --> Connecting : enter MAIN_LOOP
+
+state Connecting : CONNECT_HB\nTCP_OPEN + TCP_CONNECT(SK_HB)
+Connecting --> Granted    : ret = 0
+Connecting --> LostDeclare : ret != 0\n(reason = "connect_failed")
+
+state Granted : GRANT_TASK1\n- GB_SERVER_ALIVE      = 1\n- GB_TASK1_RESET_REQ   = 0\n- O_VISION_LINK_OK     = 1
+Granted --> WaitProbe
+
+state WaitProbe : RECV_PROBE\nTCP_RECV(SK_HB, rx$, HB_RECV_TIMEOUT)
+WaitProbe --> Validate    : data received
+WaitProbe --> LostDeclare : timeout / socket error\n(reason = "recv_timeout")
+
+state Validate : VALIDATE_PROBE\nrx$ == "connection_check." ?
+Validate --> SendAck      : OK
+Validate --> LostDeclare  : sai format\n(reason = "invalid_probe")
+
+state SendAck : SEND_ACK\nTCP_SEND(SK_HB, "ack,{count}.")
+SendAck --> IncCount      : ret = 0
+SendAck --> LostDeclare   : ret != 0\n(reason = "send_failed")
+
+state IncCount : INC_MSG_COUNT\ncount = (count + 1) mod 2^16
+IncCount --> WaitProbe
+
+state LostDeclare : DECLARE_LOST(reason)\n- GB_SERVER_ALIVE      = 0\n- GB_TASK1_RESET_REQ   = 1\n- O_VISION_LINK_OK     = 0\n- O_VISION_LINK_ERR    = 1\n- PRINT reason
+LostDeclare --> Closing
+
+state Closing : CLOSE_HB\nTCP_CLOSE(SK_HB)
+Closing --> Wait
+
+state Wait : WAIT_RECONNECT\nDELAY RECONNECT_DELAY
+Wait --> Init
+
+@enduml

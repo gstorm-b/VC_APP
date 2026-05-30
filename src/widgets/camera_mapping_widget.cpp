@@ -1,18 +1,29 @@
 #include "camera_mapping_widget.h"
+
+#include "utils/theme_manager.h"
+
+#include <QFile>
 #include <QMouseEvent>
 #include <QSet>
 #include <algorithm>
+
+namespace {
+constexpr int kRowHeight = 40;
+constexpr const char *kAddRowToken = "__cmw_add_row__";  // sentinel, never visible
+} // namespace
 
 // ==========================================
 // EditableComboWidget Implementation
 // ==========================================
 EditableComboWidget::EditableComboWidget(QWidget *parent) : QStackedWidget(parent) {
+    setObjectName(QStringLiteral("cmwEditableWrap"));
+
     m_label = new QLabel(this);
-    m_label->setStyleSheet("QLabel { padding: 4px; border: 1px solid transparent; } "
-                           "QLabel:hover { border: 1px solid #aaa; background-color: #f0f0f0; }");
+    m_label->setObjectName(QStringLiteral("cmwEditableLabel"));
     m_label->installEventFilter(this);
 
     m_comboBox = new QComboBox(this);
+    m_comboBox->setObjectName(QStringLiteral("cmwEditableCombo"));
 
     addWidget(m_label);
     addWidget(m_comboBox);
@@ -20,8 +31,11 @@ EditableComboWidget::EditableComboWidget(QWidget *parent) : QStackedWidget(paren
 
     connect(m_comboBox, &QComboBox::activated, this, [this](int index) {
         if (index >= 0) {
-            setText(m_comboBox->itemText(index));
-            emit valueChanged(m_label->text());
+            const QString display = m_comboBox->itemText(index);
+            const QString value   = m_comboBox->itemData(index).toString();
+            setText(display);
+            m_userData = value.isEmpty() ? display : value;
+            emit valueChanged(m_userData);
         }
         setCurrentWidget(m_label);
     });
@@ -37,6 +51,7 @@ bool EditableComboWidget::eventFilter(QObject *watched, QEvent *event) {
         return true;
     }
     if (watched == m_comboBox && event->type() == QEvent::FocusIn) {
+        // Combobox is purely a popup host — its visual rep stays hidden.
         setCurrentWidget(m_label);
     }
     return QStackedWidget::eventFilter(watched, event);
@@ -50,11 +65,32 @@ QString EditableComboWidget::text() const {
     return m_label->text();
 }
 
-void EditableComboWidget::setOptions(const QStringList &options, const QString &currentSelection) {
+QString EditableComboWidget::userData() const {
+    return m_userData.isEmpty() ? m_label->text() : m_userData;
+}
+
+void EditableComboWidget::setUserData(const QString &value) {
+    m_userData = value;
+}
+
+void EditableComboWidget::setOptions(const QStringList &options,
+                                     const QString &currentSelection) {
+    setOptions(options, options, currentSelection);
+}
+
+void EditableComboWidget::setOptions(const QStringList &displayNames,
+                                     const QStringList &values,
+                                     const QString &currentValue) {
     m_comboBox->blockSignals(true);
     m_comboBox->clear();
-    m_comboBox->addItems(options);
-    int idx = m_comboBox->findText(currentSelection);
+    const int n = qMin(displayNames.size(), values.size());
+    for (int i = 0; i < n; ++i) {
+        m_comboBox->addItem(displayNames[i], values[i]);
+    }
+    int idx = -1;
+    for (int i = 0; i < n; ++i) {
+        if (values[i] == currentValue) { idx = i; break; }
+    }
     if (idx >= 0) m_comboBox->setCurrentIndex(idx);
     m_comboBox->blockSignals(false);
 }
@@ -63,16 +99,25 @@ void EditableComboWidget::setOptions(const QStringList &options, const QString &
 // CameraRowWidget Implementation
 // ==========================================
 CameraRowWidget::CameraRowWidget(QWidget *parent) : QWidget(parent) {
+    setObjectName(QStringLiteral("cmwRow"));
+
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(4, 4, 4, 4);
 
-    nameWidget = new EditableComboWidget(this);
+    nameWidget   = new EditableComboWidget(this);
     numberWidget = new EditableComboWidget(this);
-    btnDelete = new QPushButton("Delete", this);
 
-    layout->addWidget(new QLabel("Camera:", this));
+    btnDelete = new QPushButton(tr("Delete"), this);
+    btnDelete->setObjectName(QStringLiteral("cmwDeleteBtn"));
+
+    auto *lbCam = new QLabel(tr("Camera:"), this);
+    lbCam->setObjectName(QStringLiteral("cmwRowFieldLabel"));
+    auto *lbNum = new QLabel(tr("Number:"), this);
+    lbNum->setObjectName(QStringLiteral("cmwRowFieldLabel"));
+
+    layout->addWidget(lbCam);
     layout->addWidget(nameWidget, 1);
-    layout->addWidget(new QLabel("Number:", this));
+    layout->addWidget(lbNum);
     layout->addWidget(numberWidget, 1);
     layout->addWidget(btnDelete);
 }
@@ -81,6 +126,7 @@ CameraRowWidget::CameraRowWidget(QWidget *parent) : QWidget(parent) {
 // AddRowWidget Implementation
 // ==========================================
 AddRowWidget::AddRowWidget(QWidget *parent) : QStackedWidget(parent) {
+    setObjectName(QStringLiteral("cmwAddRow"));
     addWidget(createAddButtonPage());
     addWidget(createSelectCameraPage());
     setCurrentIndex(0);
@@ -90,7 +136,9 @@ QWidget* AddRowWidget::createAddButtonPage() {
     QWidget *w = new QWidget(this);
     QHBoxLayout *layout = new QHBoxLayout(w);
     layout->setContentsMargins(0, 0, 0, 0);
-    btnAddRow = new QPushButton("+ Add New Row", this);
+
+    btnAddRow = new QPushButton(tr("+ Add New Row"), this);
+    btnAddRow->setObjectName(QStringLiteral("cmwAddRowBtn"));
     layout->addWidget(btnAddRow);
 
     connect(btnAddRow, &QPushButton::clicked, this, [this]() {
@@ -105,7 +153,10 @@ QWidget* AddRowWidget::createSelectCameraPage() {
     layout->setContentsMargins(0, 0, 0, 0);
 
     cbCameraSelect = new QComboBox(this);
-    btnCancel = new QPushButton("Cancel", this);
+    cbCameraSelect->setObjectName(QStringLiteral("cmwAddSelectCombo"));
+
+    btnCancel = new QPushButton(tr("Cancel"), this);
+    btnCancel->setObjectName(QStringLiteral("cmwCancelBtn"));
 
     layout->addWidget(cbCameraSelect, 1);
     layout->addWidget(btnCancel);
@@ -115,9 +166,10 @@ QWidget* AddRowWidget::createSelectCameraPage() {
     });
 
     connect(cbCameraSelect, &QComboBox::activated, this, [this](int index) {
-        // Index 0 luôn là "-- Select Camera to Add --"
-        if(index > 0) {
-            emit addRequested(cbCameraSelect->currentText());
+        // Index 0 is the placeholder hint, ignore.
+        if (index > 0) {
+            const QString id = cbCameraSelect->itemData(index).toString();
+            emit addRequested(id);
             setCurrentIndex(0);
         }
     });
@@ -125,25 +177,67 @@ QWidget* AddRowWidget::createSelectCameraPage() {
     return w;
 }
 
-void AddRowWidget::setAvailableCameras(const QStringList &cameras) {
+void AddRowWidget::setAvailableCameras(const QStringList &displayNames,
+                                       const QStringList &ids) {
     cbCameraSelect->blockSignals(true);
     cbCameraSelect->clear();
-    cbCameraSelect->addItem("-- Select Camera to Add --");
-    cbCameraSelect->addItems(cameras);
+    cbCameraSelect->addItem(tr("-- Select Camera to Add --"));
+    const int n = qMin(displayNames.size(), ids.size());
+    for (int i = 0; i < n; ++i) {
+        cbCameraSelect->addItem(displayNames[i], ids[i]);
+    }
     cbCameraSelect->setCurrentIndex(0);
     cbCameraSelect->blockSignals(false);
+
+    btnAddRow->setEnabled(n > 0);
+    btnAddRow->setToolTip(n > 0 ? QString()
+                                : tr("No more cameras available to map."));
 }
 
 // ==========================================
 // CameraMappingWidget Implementation
 // ==========================================
 CameraMappingWidget::CameraMappingWidget(QWidget *parent) : QListWidget(parent) {
+    setObjectName(QStringLiteral("cmwList"));
     setSelectionMode(QAbstractItemView::NoSelection);
     setupAddRow();
+
+    reloadStyleSheet();
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, [this](const QString &, bool) { reloadStyleSheet(); });
+}
+
+void CameraMappingWidget::reloadStyleSheet() {
+    const QString path = ThemeManager::instance()->isDark()
+        ? QStringLiteral(":/styles/camera_mapping_widget_dark.qss")
+        : QStringLiteral(":/styles/camera_mapping_widget_light.qss");
+    QFile f(path);
+    if (f.open(QFile::ReadOnly | QFile::Text)) {
+        setStyleSheet(QString::fromUtf8(f.readAll()));
+    }
+}
+
+QString CameraMappingWidget::displayFor(const QString &id) const {
+    auto it = m_camIdToName.constFind(id);
+    return it != m_camIdToName.constEnd() ? it.value() : id;
+}
+
+QStringList CameraMappingWidget::displaysFor(const QStringList &ids) const {
+    QStringList out;
+    out.reserve(ids.size());
+    for (const QString &id : ids) out << displayFor(id);
+    return out;
 }
 
 void CameraMappingWidget::setCameraList(const QStringList &cameras) {
     m_allCameras = cameras;
+    m_camIdToName.clear();             // legacy: id == display
+    onDataChanged();
+}
+
+void CameraMappingWidget::setCameraOptions(const QMap<QString, QString> &idToName) {
+    m_allCameras = idToName.keys();
+    m_camIdToName = idToName;
     onDataChanged();
 }
 
@@ -153,75 +247,55 @@ void CameraMappingWidget::setNumberLimit(int limit) {
 
 void CameraMappingWidget::setupAddRow() {
     m_addRowItem = new SortableCameraItem(this);
-    // Gán giá trị cực lớn để khi sort, item này luôn nằm ở cuối
+    // Sentinel sort key so the Add row stays at the bottom.
     m_addRowItem->setData(Qt::UserRole, INT_MAX);
 
     m_addRowWidget = new AddRowWidget(this);
-    m_addRowItem->setSizeHint(QSize(0, 40));
+    m_addRowItem->setSizeHint(QSize(0, kRowHeight));
     setItemWidget(m_addRowItem, m_addRowWidget);
 
-    connect(m_addRowWidget, &AddRowWidget::addRequested, this, &CameraMappingWidget::onRowAdded);
+    connect(m_addRowWidget, &AddRowWidget::addRequested,
+            this, &CameraMappingWidget::onRowAdded);
 }
 
-void CameraMappingWidget::addMappingRow(const QString &cameraName, int number) {
+void CameraMappingWidget::wireRow(CameraRowWidget *row, SortableCameraItem *item) {
+    connect(row->btnDelete, &QPushButton::clicked, this, [this, item]() {
+        onRowDeleted(item);
+    });
+    connect(row->nameWidget, &EditableComboWidget::editRequested, this, [this, row]() {
+        provideNameOptions(row->nameWidget);
+    });
+    connect(row->nameWidget, &EditableComboWidget::valueChanged,
+            this, &CameraMappingWidget::onDataChanged);
+    connect(row->numberWidget, &EditableComboWidget::editRequested, this, [this, row]() {
+        provideNumberOptions(row->numberWidget);
+    });
+    connect(row->numberWidget, &EditableComboWidget::valueChanged,
+            this, &CameraMappingWidget::onDataChanged);
+}
+
+void CameraMappingWidget::addMappingRow(const QString &cameraId, int number) {
     SortableCameraItem *newItem = new SortableCameraItem();
-    newItem->setSizeHint(QSize(0, 40));
+    newItem->setSizeHint(QSize(0, kRowHeight));
 
-    CameraRowWidget *rowWidget = new CameraRowWidget(this);
-    rowWidget->nameWidget->setText(cameraName);
-    rowWidget->numberWidget->setText(QString::number(number));
+    CameraRowWidget *row = new CameraRowWidget(this);
+    row->nameWidget->setUserData(cameraId);
+    row->nameWidget->setText(displayFor(cameraId));
+    row->numberWidget->setUserData(QString::number(number));
+    row->numberWidget->setText(QString::number(number));
 
-    // Connect các signals cho row mới
-    connect(rowWidget->btnDelete, &QPushButton::clicked, this, [this, newItem]() {
-        onRowDeleted(newItem);
-    });
+    wireRow(row, newItem);
 
-    connect(rowWidget->nameWidget, &EditableComboWidget::editRequested, this, [this, rowWidget]() {
-        provideNameOptions(rowWidget->nameWidget);
-    });
-    connect(rowWidget->nameWidget, &EditableComboWidget::valueChanged, this, &CameraMappingWidget::onDataChanged);
-
-    connect(rowWidget->numberWidget, &EditableComboWidget::editRequested, this, [this, rowWidget]() {
-        provideNumberOptions(rowWidget->numberWidget);
-    });
-    connect(rowWidget->numberWidget, &EditableComboWidget::valueChanged, this, &CameraMappingWidget::onDataChanged);
-
-    // Luôn chèn vào trước nút "Add Row" (đang nằm ở count() - 1)
+    // Always insert above the Add row (currently at count()-1).
     insertItem(count() - 1, newItem);
-    setItemWidget(newItem, rowWidget);
+    setItemWidget(newItem, row);
 }
 
-void CameraMappingWidget::onRowAdded(const QString &cameraName) {
+void CameraMappingWidget::onRowAdded(const QString &cameraId) {
     int autoNumber = getSmallestAvailableNumber();
     if (autoNumber > m_limitNumber) return;
 
-    // Sử dụng Custom Item
-    SortableCameraItem *newItem = new SortableCameraItem();
-    newItem->setSizeHint(QSize(0, 40));
-
-    CameraRowWidget *rowWidget = new CameraRowWidget(this);
-    rowWidget->nameWidget->setText(cameraName);
-    rowWidget->numberWidget->setText(QString::number(autoNumber));
-
-    // Xử lý connections
-    connect(rowWidget->btnDelete, &QPushButton::clicked, this, [this, newItem]() {
-        onRowDeleted(newItem);
-    });
-
-    connect(rowWidget->nameWidget, &EditableComboWidget::editRequested, this, [this, rowWidget]() {
-        provideNameOptions(rowWidget->nameWidget);
-    });
-    connect(rowWidget->nameWidget, &EditableComboWidget::valueChanged, this, &CameraMappingWidget::onDataChanged);
-
-    connect(rowWidget->numberWidget, &EditableComboWidget::editRequested, this, [this, rowWidget]() {
-        provideNumberOptions(rowWidget->numberWidget);
-    });
-    connect(rowWidget->numberWidget, &EditableComboWidget::valueChanged, this, &CameraMappingWidget::onDataChanged);
-
-    // Thêm vào list
-    insertItem(count() - 1, newItem);
-    setItemWidget(newItem, rowWidget);
-
+    addMappingRow(cameraId, autoNumber);
     onDataChanged();
 }
 
@@ -234,59 +308,56 @@ void CameraMappingWidget::onRowDeleted(QListWidgetItem *item) {
 void CameraMappingWidget::updateSortingData() {
     for (int i = 0; i < count(); ++i) {
         QListWidgetItem *item = this->item(i);
-        if (item == m_addRowItem) continue; // Bỏ qua Add Row (đã set INT_MAX)
+        if (item == m_addRowItem) continue;
 
         CameraRowWidget *rowWidget = qobject_cast<CameraRowWidget*>(itemWidget(item));
         if (rowWidget) {
-            // Cập nhật UserRole bằng giá trị number hiện tại để chuẩn bị sort
-            int num = rowWidget->numberWidget->text().toInt();
+            int num = rowWidget->numberWidget->userData().toInt();
             item->setData(Qt::UserRole, num);
         }
     }
 }
 
 void CameraMappingWidget::onDataChanged() {
-    // 1. Cập nhật dữ liệu số cho các Item
     updateSortingData();
-
-    // 2. Thực hiện sort (Add Row sẽ tự động ở lại cuối nhờ INT_MAX)
     sortItems(Qt::AscendingOrder);
 
-    // 3. Cập nhật UI cho Add Row
-    m_addRowWidget->setAvailableCameras(getAvailableCameras());
+    const QStringList availableIds = getAvailableCameraIds();
+    m_addRowWidget->setAvailableCameras(displaysFor(availableIds), availableIds);
 
-    // 4. Phát event ra ngoài hệ thống
     emit mappingChanged(getCurrentMapping());
 }
 
 void CameraMappingWidget::provideNameOptions(EditableComboWidget *widget) {
-    QStringList available = getAvailableCameras();
-    QString current = widget->text();
-    if (!current.isEmpty()) {
-        available.append(current);
+    QStringList availableIds = getAvailableCameraIds();
+    const QString currentId  = widget->userData();
+    if (!currentId.isEmpty() && !availableIds.contains(currentId)) {
+        availableIds.append(currentId);
     }
 
-    QStringList sortedOptions;
-    for (const QString &cam : m_allCameras) {
-        if (available.contains(cam)) sortedOptions.append(cam);
+    // Keep order stable with m_allCameras.
+    QStringList orderedIds;
+    for (const QString &id : m_allCameras) {
+        if (availableIds.contains(id)) orderedIds.append(id);
+    }
+    if (!currentId.isEmpty() && !orderedIds.contains(currentId)) {
+        orderedIds.append(currentId);
     }
 
-    widget->setOptions(sortedOptions, current);
+    widget->setOptions(displaysFor(orderedIds), orderedIds, currentId);
 }
 
 void CameraMappingWidget::provideNumberOptions(EditableComboWidget *widget) {
     QList<int> availableNums = getAvailableNumbers();
-    int currentNum = widget->text().toInt();
-    if (currentNum > 0) {
+    int currentNum = widget->userData().toInt();
+    if (currentNum > 0 && !availableNums.contains(currentNum)) {
         availableNums.append(currentNum);
     }
     std::sort(availableNums.begin(), availableNums.end());
 
     QStringList options;
-    for (int n : availableNums) {
-        options.append(QString::number(n));
-    }
-    widget->setOptions(options, widget->text());
+    for (int n : availableNums) options.append(QString::number(n));
+    widget->setOptions(options, QString::number(currentNum));
 }
 
 QMap<int, QString> CameraMappingWidget::getCurrentMapping() const {
@@ -297,10 +368,10 @@ QMap<int, QString> CameraMappingWidget::getCurrentMapping() const {
 
         CameraRowWidget *rowWidget = qobject_cast<CameraRowWidget*>(itemWidget(item));
         if (rowWidget) {
-            QString name = rowWidget->nameWidget->text();
-            int num = rowWidget->numberWidget->text().toInt();
-            if (!name.isEmpty() && num > 0) {
-                map.insert(num, name);
+            QString id = rowWidget->nameWidget->userData();
+            int num    = rowWidget->numberWidget->userData().toInt();
+            if (!id.isEmpty() && num > 0) {
+                map.insert(num, id);
             }
         }
     }
@@ -308,26 +379,22 @@ QMap<int, QString> CameraMappingWidget::getCurrentMapping() const {
 }
 
 void CameraMappingWidget::setCurrentMapping(const QMap<int, QString> &mapping) {
-    // 1. Chặn tín hiệu tạm thời để tránh gọi onDataChanged quá nhiều lần gây giật lag
     this->blockSignals(true);
 
-    // 2. Xóa các row cũ (giữ lại row cuối cùng là m_addRowItem)
     while (count() > 1) {
         QListWidgetItem *item = takeItem(0);
         delete item;
     }
 
-    // 3. Thêm các row từ mapping
     for (auto it = mapping.constBegin(); it != mapping.constEnd(); ++it) {
         addMappingRow(it.value(), it.key());
     }
 
-    // 4. Mở lại tín hiệu và cập nhật UI/Sorting một lần duy nhất
     this->blockSignals(false);
     onDataChanged();
 }
 
-QStringList CameraMappingWidget::getAvailableCameras() const {
+QStringList CameraMappingWidget::getAvailableCameraIds() const {
     QStringList available = m_allCameras;
     QMap<int, QString> currentMap = getCurrentMapping();
     for (auto it = currentMap.constBegin(); it != currentMap.constEnd(); ++it) {

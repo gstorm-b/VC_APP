@@ -13,11 +13,15 @@
 #include "windows_helper.h"
 #include "form/camera/basler_camera_widget.h"
 #include "form/plc/mc_protocol_device_widget.h"
+#include "form/vision_output/vision_output_device_widget.h"
 #include "device/idevice_config.h"
 #include "runtime/camera_runner.h"
-#include "runtime/mc_device_runner.h"
+#include "runtime/plc_runner.h"
+#include "runtime/vision_output_runner.h"
 #include "form/pattern/pattern_theme.h"
+#include "form/task/localization_dashboard_widget.h"
 #include "form/task/localization_patterns_widget.h"
+#include "form/task/localization_setting_widget.h"
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Device type → accent color
@@ -26,7 +30,7 @@ static QColor accentForDeviceType(vc::device::DeviceType t)
 {
     switch (t) {
     case vc::device::DeviceType::Camera:   return QColor(0x2b, 0x8c, 0xe8);
-    case vc::device::DeviceType::McDevice: return QColor(0x22, 0xd1, 0x7a);
+    case vc::device::DeviceType::PLC: return QColor(0x22, 0xd1, 0x7a);
     case vc::device::DeviceType::Robot:    return QColor(0xf5, 0xa6, 0x23);
     default:                               return QColor(0x6b, 0x7e, 0xa0);
     }
@@ -36,7 +40,7 @@ static QString typeShortLabel(vc::device::DeviceType t)
 {
     switch (t) {
     case vc::device::DeviceType::Camera:   return "CAM";
-    case vc::device::DeviceType::McDevice: return "PLC";
+    case vc::device::DeviceType::PLC: return "PLC";
     case vc::device::DeviceType::Robot:    return "BOT";
     default:                               return "DEV";
     }
@@ -46,7 +50,7 @@ static QString deviceIconPath(vc::device::DeviceType t)
 {
     switch (t) {
     case vc::device::DeviceType::Camera:   return ":/resrc/icon/camera.svg";
-    case vc::device::DeviceType::McDevice: return ":/resrc/icon/plc_icon.svg";
+    case vc::device::DeviceType::PLC: return ":/resrc/icon/plc_icon.svg";
     case vc::device::DeviceType::Robot:    return ":/resrc/icon/robot_movement.svg";
     default:                               return ":/resrc/icon/setting.svg";
     }
@@ -114,8 +118,6 @@ void LocalizationTaskWidget::initWidget()
         "  border-bottom: 1px solid #2a2d2e; }"
         "QFrame#frame_nav_top { background: %1; }"
         "QFrame#frame_devices_header { background: %1; }"
-        "QFrame#frame_nav_bottom { background: %1; "
-        "  border-top: 1px solid #2a2d2e; }"
         "QScrollArea#scroll_devices { background: %1; border: none; }"
         "QWidget#scroll_devices_content { background: %1; }"
 
@@ -130,14 +132,17 @@ void LocalizationTaskWidget::initWidget()
         "QLabel#lbl_devices_section {"
         "  color: %6; font: 700 7.5pt 'Segoe UI'; letter-spacing: 1.6px; }"
 
-        // ── Nav buttons (Dashboard / Settings) ──────────────────────────────
-        "QPushButton#btn_nav_dashboard, QPushButton#btn_nav_settings {"
+        // ── Nav buttons (Dashboard / Patterns / Settings) ───────────────────
+        "QPushButton#btn_nav_dashboard, QPushButton#btn_nav_patterns,"
+        " QPushButton#btn_nav_settings {"
         "  text-align: left; padding: 7px 12px;"
         "  background: transparent; border: 1px solid transparent; border-left: 2px solid transparent;"
         "  color: %4; font: 600 10.5pt 'Segoe UI'; border-radius: 3px; }"
-        "QPushButton#btn_nav_dashboard:hover, QPushButton#btn_nav_settings:hover {"
+        "QPushButton#btn_nav_dashboard:hover, QPushButton#btn_nav_patterns:hover,"
+        " QPushButton#btn_nav_settings:hover {"
         "  background: %8; color: %4; }"
-        "QPushButton#btn_nav_dashboard:checked, QPushButton#btn_nav_settings:checked {"
+        "QPushButton#btn_nav_dashboard:checked, QPushButton#btn_nav_patterns:checked,"
+        " QPushButton#btn_nav_settings:checked {"
         "  background: rgba(43,140,232,28); color: %7;"
         "  border-left: 2px solid %7; }"
 
@@ -169,13 +174,7 @@ void LocalizationTaskWidget::initWidget()
     initBrowserInWidget(ui->wg_property_browser);
     initNavPanel();
     initStatusLamps();
-    initContentStack();
-
-    ui->nav_splitter->setStretchFactor(0, 3);
-    ui->nav_splitter->setStretchFactor(1, 7);
-
-    ui->splitter_main_content->setStretchFactor(0, 7);
-    ui->splitter_main_content->setStretchFactor(1, 3);
+    // initContentStack();
 
     // Settings page: comm/output device, camera mapping
     // ui->ledit_comm_device->setReadOnly(true);
@@ -232,6 +231,12 @@ void LocalizationTaskWidget::initWidget()
         m_localizeTask->beginCommission();
     }
 
+    ui->nav_splitter->setStretchFactor(0, 3);
+    ui->nav_splitter->setStretchFactor(1, 7);
+
+    ui->splitter_main_content->setStretchFactor(0, 7);
+    ui->splitter_main_content->setStretchFactor(1, 3);
+
     // Dashboard tab (default active)
     showDashboardPage();
 }
@@ -284,48 +289,30 @@ void LocalizationTaskWidget::initNavPanel()
     ui->tbtn_add_device->setIcon(svgIcon(":/resrc/icon/plus_square.svg", 14));
     ui->tbtn_add_device->setToolTip(tr("Add device to task"));
 
-    // Nav buttons
+    // Nav buttons — order: Dashboard → Patterns → Settings.  All three
+    // live in the .ui (vl_nav_top) so they share the same stylesheet
+    // selectors and parent layout.
     ui->btn_nav_dashboard->setText(tr("  Dashboard"));
     ui->btn_nav_dashboard->setIcon(svgIcon(":/resrc/icon/dashboard.svg", 14));
     ui->btn_nav_dashboard->setIconSize({14, 14});
+
+    ui->btn_nav_patterns->setText(tr("  Patterns"));
+    ui->btn_nav_patterns->setIcon(svgIcon(":/resrc/icon/setting.svg", 14));
+    ui->btn_nav_patterns->setIconSize({14, 14});
 
     ui->btn_nav_settings->setText(tr("  Settings"));
     ui->btn_nav_settings->setIcon(svgIcon(":/resrc/icon/setting.svg", 14));
     ui->btn_nav_settings->setIconSize({14, 14});
 
-    // ── Patterns nav button (added programmatically — not in .ui) ──────────
-    // Per design handoff `Sidebar.jsx` / `TaskWorkspace.jsx`: LocalizationTask
-    // gets a "Patterns" tab between Dashboard and the device list. Inserted
-    // into the same vl_nav_top layout right under Dashboard so it inherits
-    // the same QSS rules already defined for #btn_nav_dashboard / _settings.
-    m_btnNavPatterns = new QPushButton(tr("  Patterns"));
-    m_btnNavPatterns->setObjectName("btn_nav_patterns");
-    m_btnNavPatterns->setCheckable(true);
-    m_btnNavPatterns->setIcon(svgIcon(":/resrc/icon/setting.svg", 14));
-    m_btnNavPatterns->setIconSize({14, 14});
-    // Reuse the dashboard/settings stylesheet (same object id selector pattern).
-    m_btnNavPatterns->setStyleSheet(QString(
-        "QPushButton#btn_nav_patterns {"
-        "  text-align: left; padding: 7px 12px;"
-        "  background: transparent; border: 1px solid transparent; border-left: 2px solid transparent;"
-        "  color: %1; font: 600 10.5pt 'Segoe UI'; border-radius: 3px; }"
-        "QPushButton#btn_nav_patterns:hover { background: %2; color: %1; }"
-        "QPushButton#btn_nav_patterns:checked {"
-        "  background: rgba(43,140,232,28); color: %3;"
-        "  border-left: 2px solid %3; }"
-    ).arg(ptn::TXT2, ptn::SURF2, ptn::ACC));
-    if (auto *navTopLay = qobject_cast<QVBoxLayout*>(ui->frame_nav_top->layout()))
-        navTopLay->addWidget(m_btnNavPatterns);
-
     m_navBtnGroup = new QButtonGroup(this);
     m_navBtnGroup->addButton(ui->btn_nav_dashboard);
-    m_navBtnGroup->addButton(m_btnNavPatterns);
+    m_navBtnGroup->addButton(ui->btn_nav_patterns);
     m_navBtnGroup->addButton(ui->btn_nav_settings);
     m_navBtnGroup->setExclusive(true);
 
     connect(ui->btn_nav_dashboard, &QPushButton::clicked,
             this, &LocalizationTaskWidget::showDashboardPage);
-    connect(m_btnNavPatterns,      &QPushButton::clicked,
+    connect(ui->btn_nav_patterns,  &QPushButton::clicked,
             this, &LocalizationTaskWidget::showPatternsPage);
     connect(ui->btn_nav_settings,  &QPushButton::clicked,
             this, &LocalizationTaskWidget::showSettingsPage);
@@ -376,7 +363,7 @@ void LocalizationTaskWidget::initNavPanel()
 // ──────────────────────────────────────────────────────────────────────────────
 void LocalizationTaskWidget::initStatusLamps()
 {
-    const QStringList labels = { "READY", "CAM", "PLC", "BOT" };
+    const QStringList labels = { "READY", "CAM", "PLC", "OUT" };
 
     auto *hl = qobject_cast<QHBoxLayout*>(ui->frame_status_lamps->layout());
     if (!hl) return;
@@ -424,7 +411,7 @@ void LocalizationTaskWidget::updateStatusLamps()
             if (!dev) continue;
             switch (dev->deviceType()) {
             case vc::device::DeviceType::Camera:   hasCam = true; break;
-            case vc::device::DeviceType::McDevice: hasPlc = true; break;
+            case vc::device::DeviceType::PLC: hasPlc = true; break;
             case vc::device::DeviceType::Robot:    hasBot = true; break;
             default: break;
             }
@@ -462,21 +449,23 @@ void LocalizationTaskWidget::updateStatusLamps()
 // ──────────────────────────────────────────────────────────────────────────────
 void LocalizationTaskWidget::initContentStack()
 {
+    // showDashboardPage();
+
     // Insert a dashboard placeholder at index 0
     // page_task_config (from .ui) shifts to index kSettingsPage = 1
-    m_dashboardPage = new QWidget(this);
-    m_dashboardPage->setStyleSheet(QString("background: %1;").arg(ptn::BG));
-    auto *dashLayout = new QVBoxLayout(m_dashboardPage);
-    dashLayout->setAlignment(Qt::AlignCenter);
-    auto *dashLbl = new QLabel(tr("Dashboard"), m_dashboardPage);
-    QFont f = dashLbl->font();
-    f.setPointSize(12);
-    dashLbl->setFont(f);
-    dashLbl->setAlignment(Qt::AlignCenter);
-    dashLbl->setStyleSheet(QString("color: %1;").arg(ptn::TXT3));
-    dashLayout->addWidget(dashLbl);
+    // m_dashboardPage = new QWidget(this);
+    // m_dashboardPage->setStyleSheet(QString("background: %1;").arg(ptn::BG));
+    // auto *dashLayout = new QVBoxLayout(m_dashboardPage);
+    // dashLayout->setAlignment(Qt::AlignCenter);
+    // auto *dashLbl = new QLabel(tr("Dashboard"), m_dashboardPage);
+    // QFont f = dashLbl->font();
+    // f.setPointSize(12);
+    // dashLbl->setFont(f);
+    // dashLbl->setAlignment(Qt::AlignCenter);
+    // dashLbl->setStyleSheet(QString("color: %1;").arg(ptn::TXT3));
+    // dashLayout->addWidget(dashLbl);
 
-    ui->content_stack->insertWidget(kDashboardPage, m_dashboardPage);
+    // ui->content_stack->insertWidget(kDashboardPage, m_dashboardPage);
     // Now: 0=dashboard, 1=page_task_config (settings)
 }
 
@@ -615,6 +604,22 @@ void LocalizationTaskWidget::rebuildDeviceNav()
 // ──────────────────────────────────────────────────────────────────────────────
 void LocalizationTaskWidget::showDashboardPage()
 {
+    // Lazy-construct the patterns widget the first time the user clicks here.
+    // This matches the design handoff (`TaskWorkspace.jsx → "Patterns tab"`),
+    // and keeps the patterns widget cheap when never viewed.
+    if (!m_dashboardPage) {
+        if (m_localizeTask) {
+            m_dashboardPage = new LocalizationDashboardWidget(m_task, nullptr, this);
+        } else {
+            // Fallback: empty placeholder so the stack index is stable.
+            m_dashboardPage = new QWidget(this);
+            m_dashboardPage->setStyleSheet(QString("background: %1;").arg(ptn::BG));
+        }
+        // Insert at fixed index kPatternsPage (= 2). ui pages and dashboard
+        // are already at 0/1, so this becomes index 2 on first creation.
+        ui->content_stack->insertWidget(kDashboardPage, m_dashboardPage);
+    }
+
     m_activeDeviceId.clear();
     ui->content_stack->setCurrentIndex(kDashboardPage);
     ui->btn_nav_dashboard->setChecked(true);
@@ -626,6 +631,22 @@ void LocalizationTaskWidget::showDashboardPage()
 
 void LocalizationTaskWidget::showSettingsPage()
 {
+    // Lazy-construct the patterns widget the first time the user clicks here.
+    // This matches the design handoff (`TaskWorkspace.jsx → "Patterns tab"`),
+    // and keeps the patterns widget cheap when never viewed.
+    if (!m_settingPage) {
+        if (m_localizeTask) {
+            m_settingPage = new LocalizationSettingWidget(m_task, nullptr, this);
+        } else {
+            // Fallback: empty placeholder so the stack index is stable.
+            m_settingPage = new QWidget(this);
+            m_settingPage->setStyleSheet(QString("background: %1;").arg(ptn::BG));
+        }
+        // Insert at fixed index kPatternsPage (= 2). ui pages and dashboard
+        // are already at 0/1, so this becomes index 2 on first creation.
+        ui->content_stack->insertWidget(kSettingsPage, m_settingPage);
+    }
+
     m_activeDeviceId.clear();
     ui->content_stack->setCurrentIndex(kSettingsPage);
     ui->btn_nav_settings->setChecked(true);
@@ -658,9 +679,10 @@ void LocalizationTaskWidget::showPatternsPage()
 
     m_activeDeviceId.clear();
     ui->content_stack->setCurrentWidget(m_patternsPage);
-    if (m_btnNavPatterns) m_btnNavPatterns->setChecked(true);
+    ui->btn_nav_patterns->setChecked(true);
     refreshNavItemStyles();
     updateBreadcrumb(tr("Patterns"), QColor(ptn::ACC));
+
     ui->wg_property_browser->setVisible(false);
 }
 
@@ -689,6 +711,9 @@ void LocalizationTaskWidget::showDeviceConfigPage(const QString &deviceId)
     populateBrowser(deviceId);
 
     ui->wg_property_browser->setVisible(true);
+
+    ui->scrollAreaWidgetContents->setMinimumSize(page->minimumSizeHint());
+    ui->content_stack->setMinimumSize(page->minimumSizeHint());
 }
 
 void LocalizationTaskWidget::onDeviceNavClicked(const QString &deviceId)
@@ -762,7 +787,6 @@ QWidget *LocalizationTaskWidget::getOrCreateDeviceConfigPage(const QString &devi
         taskRunner ? taskRunner->runnerFor(deviceId) : nullptr;
 
     // device widget factory
-
     QWidget *page = nullptr;
     switch (device->deviceType()) {
     case vc::device::DeviceType::Camera: {
@@ -770,9 +794,14 @@ QWidget *LocalizationTaskWidget::getOrCreateDeviceConfigPage(const QString &devi
         page = new BaslerCameraWidget(device, camRunner, nullptr, this);
         break;
     }
-    case vc::device::DeviceType::McDevice: {
-        auto *mcRunner = qobject_cast<vc::runtime::McDeviceRunner *>(runner);
-        page = new McProtocolDeviceWidget(device, mcRunner, nullptr, this);
+    case vc::device::DeviceType::PLC: {
+        auto *plcRunner = qobject_cast<vc::runtime::PlcRunner *>(runner);
+        page = new McProtocolDeviceWidget(device, plcRunner, nullptr, this);
+        break;
+    }
+    case vc::device::DeviceType::VisionOutput: {
+        auto *outputRunner = qobject_cast<vc::runtime::VisionOutputRunner *>(runner);
+        page = new VisionOutputDeviceWidget(device, outputRunner, nullptr, this);
         break;
     }
     default: {
@@ -825,185 +854,16 @@ bool LocalizationTaskWidget::eventFilter(QObject *obj, QEvent *ev)
 // ──────────────────────────────────────────────────────────────────────────────
 void LocalizationTaskWidget::populateBrowser(const QString &id)
 {
-    // m_variantEditor->blockSignals(true);
-    // m_variantManager->clear();
-    m_populating_browser = true;
-
     QWidget *w = m_devicePages.value(id, nullptr);
     if (w) {
         IDeviceWidget *dw = qobject_cast<IDeviceWidget*>(w);
         if (dw) {
             changePropertyBrowserWidget(dw->getPropertyBrowser());
+        } else {
+            changePropertyBrowserDefault();
         }
     }
-
-    // if (m_devicePages.contains(id)) {
-    //     m_devicePages.value(id)->doSetProperty()
-
-
-    // }
-    // m_propBrowser
-
-    // populateBrowser_Task();
-    // populateBrowser_Config();
-    m_populating_browser = false;
-    // m_variantEditor->blockSignals(false);
 }
-
-// void LocalizationTaskWidget::populateBrowser_Task()
-// {
-//     auto *topItem = m_variantManager->addProperty(
-//         QtVariantPropertyManager::groupTypeId(), tr("Task information"));
-//     m_variantEditor->addProperty(topItem);
-//     const QMetaObject *meta = m_localizeTask->metaObject();
-//     int count = meta->propertyCount();
-//     for (int i = 0; i < count; ++i) {
-//         QMetaProperty mp = meta->property(i);
-//         QVariant val     = m_localizeTask->property(mp.name());
-//         auto *vp = LocalizationTaskWidget::addPropertyToBrowser(
-//             *meta, mp, val, m_variantManager, m_variantEditor);
-//         if (vp) topItem->addSubProperty(vp);
-//     }
-// }
-
-// void LocalizationTaskWidget::populateBrowser_Config()
-// {
-//     auto *topItem = m_variantManager->addProperty(
-//         QtVariantPropertyManager::groupTypeId(), tr("Configuration"));
-//     m_variantEditor->addProperty(topItem);
-//     const QMetaObject &meta = m_config.getMetaObject();
-//     int count = meta.propertyCount();
-//     for (int i = 0; i < count; ++i) {
-//         QMetaProperty mp = meta.property(i);
-//         QVariant val     = mp.readOnGadget(&m_config);
-//         auto *vp = LocalizationTaskWidget::addPropertyToBrowser(
-//             meta, mp, val, m_variantManager, m_variantEditor);
-//         if (!vp) continue;
-//         topItem->addSubProperty(vp);
-//         QString pn = mp.name();
-//         if (!pn.isEmpty()) {
-//             if (pn.front() == 'b') vp->setAttribute("completer", m_BitsAddressList);
-//             else if (pn.front() == 'n') vp->setAttribute("completer", m_WordsAddressList);
-//         }
-//     }
-// }
-
-// ──────────────────────────────────────────────────────────────────────────────
-//  Settings page: device info updates
-// ──────────────────────────────────────────────────────────────────────────────
-// void LocalizationTaskWidget::updateCommDeviceInfo()
-// {
-//     if (!m_localizeTask) return;
-//     if (m_commDevice) {
-//         disconnect(m_commDevice.get(), &vc::device::IDevice::configChanged,
-//                    this, &LocalizationTaskWidget::onUpdateCompleter);
-//     }
-//     m_commDevice = m_localizeTask->project()->deviceById(m_config.d->m_sCommDeviceId);
-//     if (m_commDevice) {
-//         ui->ledit_comm_device->setText(m_commDevice->name());
-//         connect(m_commDevice.get(), &vc::device::IDevice::configChanged,
-//                 this, &LocalizationTaskWidget::onUpdateCompleter);
-//         onUpdateCompleter();
-//     } else {
-//         populateBrowser();
-//     }
-// }
-
-// void LocalizationTaskWidget::updateOutputDeviceInfo()
-// {
-//     if (!m_localizeTask) return;
-//     auto dev = m_localizeTask->project()->deviceById(m_config.d->m_sOutputDeviceId);
-//     if (dev) ui->ledit_output_device->setText(dev->name());
-// }
-
-// void LocalizationTaskWidget::updateCameraMappingToWidget()
-// {
-//     ui->camera_mapping_wg->setCameraList(
-//         m_localizeTask->project()->deviceManager()->cameraDevicesNameList());
-
-//     QMap<int, QString> config_map = m_config.d->m_sCameraNumberMap;
-//     QMap<int, QString> name_map;
-//     for (auto it = config_map.cbegin(); it != config_map.cend(); ++it) {
-//         auto *dv = m_localizeTask->project()->deviceManager()->deviceById(it.value()).get();
-//         if (dv) name_map.insert(it.key(), dv->name());
-//     }
-//     ui->camera_mapping_wg->setCurrentMapping(name_map);
-// }
-
-// // ──────────────────────────────────────────────────────────────────────────────
-// //  Slots
-// // ──────────────────────────────────────────────────────────────────────────────
-// void LocalizationTaskWidget::onSelectCommDeviceClicked()
-// {
-//     if (!m_localizeTask) return;
-//     auto *proj = m_localizeTask->project();
-//     QMap<QString, QString> devMap  = proj->deviceManager()->commDevices();
-//     QMap<QString, QString> idsMap;
-//     QStringList names;
-//     for (auto it = devMap.cbegin(); it != devMap.cend(); ++it) {
-//         names << it.value();
-//         idsMap.insert(it.value(), it.key());
-//     }
-//     bool ok = false;
-//     QString sel = QInputDialog::getItem(this, tr("Communication device"),
-//                                         tr("Available devices:"), names, 0, false, &ok,
-//                                         Qt::MSWindowsFixedSizeDialogHint);
-//     if (ok) {
-//         ui->ledit_comm_device->setText(sel);
-//         m_config.d->m_sCommDeviceId = idsMap.value(sel);
-//         updateCommDeviceInfo();
-//     }
-// }
-
-// void LocalizationTaskWidget::onSelectOutputDeviceClicked() {}
-
-// void LocalizationTaskWidget::onUpdateCompleter()
-// {
-//     m_BitsAddressList  = m_commDevice->getAvailableBits();
-//     m_WordsAddressList = m_commDevice->getAvailableWords();
-//     populateBrowser();
-// }
-
-// void LocalizationTaskWidget::onCameraMappingChanged(const QMap<int, QString> &mapping)
-// {
-//     auto cameraIds = m_localizeTask->project()->deviceManager()->cameraDevices();
-//     auto &config_map = m_config.d->m_sCameraNumberMap;
-//     config_map.clear();
-//     for (auto it = mapping.cbegin(); it != mapping.cend(); ++it) {
-//         QString id = cameraIds.key(it.value());
-//         if (!id.isEmpty()) config_map.insert(it.key(), id);
-//     }
-//     m_localizeTask->setTaskLocalizeConfig(m_config);
-// }
-
-// void LocalizationTaskWidget::onPropertyManagerValueChanged(QtProperty *property,
-//                                                             const QVariant &variant)
-// {
-//     if (m_populating_browser) return;
-
-//     const QString propName = property->propertyName();
-//     const QMetaObject *meta_task   = m_localizeTask->metaObject();
-//     const QMetaObject &meta_config = m_config.getMetaObject();
-
-//     int idx = meta_task->indexOfProperty(propName.toUtf8());
-//     if (idx != -1) {
-//         if (propName == "name") {
-//             if (m_localizeTask->name() == variant.toString()) return;
-//             if (!m_localizeTask->project()->changeTaskName(m_localizeTask->id(),
-//                                                            variant.toString())) {
-//                 m_variantManager->setValue(property, m_localizeTask->name());
-//             }
-//         }
-//         return;
-//     }
-
-//     idx = meta_config.indexOfProperty(propName.toUtf8());
-//     if (idx != -1) {
-//         QMetaProperty mp = meta_config.property(idx);
-//         mp.writeOnGadget(&m_config, variant);
-//         saveConfig();
-//     }
-// }
 
 void LocalizationTaskWidget::saveConfig()
 {

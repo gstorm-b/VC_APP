@@ -16,6 +16,10 @@
 #include "runtime/camera_runner.h"
 #include "form/device_widget.h"
 
+#include "calibration/calibration_board.h"
+
+#include <memory>
+
 namespace Ui {
 class BaslerCameraWidget;
 }
@@ -60,11 +64,21 @@ private slots:
     // void btn_backlight_toggle_clicked();
     // void btn_save_image_clicked();
 
+    void btn_setup_board_clicked();
+    void btn_calib_detect_clicked();
+    void btn_calib_apply_clicked();
+    void onCalibPointsEdited();
+
 private:
     void onCameraConnected();
     void onCameraDisconnected();
     void onCameraGrabFinished(vc::device::GrabResult result);
     void populateBrowser();
+
+    void initCalibrationUi();
+    void setCalibBoardPreset(const QString &preset);
+    void refreshBoardInfoLabel();
+    void refreshCalibrationStatusLabels(const QString &extraSuffix = QString());
 
 private:
     Ui::BaslerCameraWidget *ui;
@@ -81,6 +95,12 @@ private:
     vc::runtime::CameraRunner *m_runner{nullptr};
 
     bool m_populating_browser{false};
+
+    // Calibration board the user picked; rebuilt on preset change.
+    std::unique_ptr<calib::CalibrationBoard> m_board;
+    // True for the single grabFinished that follows btn_calib_detect_clicked();
+    // tells onCameraGrabFinished() to run board detection on that frame.
+    bool m_pendingCalibDetect{false};
 };
 
 #endif // BASLER_CAMERA_WIDGET_H

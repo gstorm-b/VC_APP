@@ -2,7 +2,186 @@
 #include "setting_keys.h"
 #include "vision_utils.h"
 
+#include "match_pattern.h"
+#include "match_pattern_config.h"
+#include "edge_match_config.h"
+#include "matching_types.h"
+
+#include "logger/app_logger.h"
+
 namespace mtc {
+
+// ============================================================================
+//  JSON helpers — pattern-library serialisation
+//
+//  Local to this translation unit.  Schema (top-level shape produced by
+//  PatternGroupManager::toJson):
+//
+//    {
+//      "groups": [
+//        { "name", "number",
+//          "pickingBoxSize":  { "w", "h" },
+//          "pickingBoxDistance", "pickingBoxAngle",
+//          "pickingOffset":   { "x", "y", "z" },
+//          "lowWorkpieceRatio",
+//          "patterns": [
+//            { "name", "number",
+//              "minScore", "angle", "toleranceAngle", "maxOverlap",
+//              "pickPosition": { "x", "y" },
+//              "matchingType": "Edge-Based" | "Correlation",
+//              "typeConfig":   { /* per-algorithm fields */ }
+//            }, …
+//          ]
+//        }, …
+//      ]
+//    }
+//
+//  Training images (m_rawImage) are NOT in JSON — they travel through the
+//  project_images BLOB table.
+// ============================================================================
+
+namespace {
+
+// ── MatchingType ↔ string ────────────────────────────────────────────────────
+// MatchingType is a plain enum class (no Q_ENUM), so we hand-roll the mapping
+// to keep the JSON stable across future enum re-orderings.
+QString matchingTypeToString(MatchingType t) {
+    return QString::fromLatin1(matchingTypeName(t));
+}
+
+MatchingType matchingTypeFromString(const QString &s,
+                                    MatchingType defaultValue = MatchingType::EdgeBased) {
+    if (s == QLatin1String("Edge-Based"))  return MatchingType::EdgeBased;
+    if (s == QLatin1String("Correlation")) return MatchingType::Correlation;
+    return defaultValue;
+}
+
+// ── EdgeMatchConfig ↔ JSON ───────────────────────────────────────────────────
+
+QJsonObject edgeConfigToJson(const EdgeMatchConfig &c) {
+    QJsonObject o;
+    o["threshLower"]           = c.threshLower;
+    o["threshUpper"]           = c.threshUpper;
+    o["kernelSize"]            = c.kernelSize;
+    o["blurWidth"]             = c.blurWidth;
+    o["blurHeight"]            = c.blurHeight;
+    o["greediness"]            = c.greediness;
+    o["minReduceLength"]       = c.minReduceLength;
+    o["tSamples"]              = c.tSamples;
+    o["invertBinaryThreshold"] = c.invertBinaryThreshold;
+    o["subPixelEstimation"]    = c.subPixelEstimation;
+    o["stopAtLayer1"]          = c.stopAtLayer1;
+    return o;
+}
+
+void edgeConfigFromJson(const QJsonObject &o, EdgeMatchConfig &c) {
+    c.threshLower           = o["threshLower"]          .toDouble(c.threshLower);
+    c.threshUpper           = o["threshUpper"]          .toDouble(c.threshUpper);
+    c.kernelSize            = o["kernelSize"]           .toInt   (c.kernelSize);
+    c.blurWidth             = o["blurWidth"]            .toInt   (c.blurWidth);
+    c.blurHeight            = o["blurHeight"]           .toInt   (c.blurHeight);
+    c.greediness            = o["greediness"]           .toDouble(c.greediness);
+    c.minReduceLength       = o["minReduceLength"]      .toInt   (c.minReduceLength);
+    c.tSamples              = o["tSamples"]             .toInt   (c.tSamples);
+    c.invertBinaryThreshold = o["invertBinaryThreshold"].toBool  (c.invertBinaryThreshold);
+    c.subPixelEstimation    = o["subPixelEstimation"]   .toBool  (c.subPixelEstimation);
+    c.stopAtLayer1          = o["stopAtLayer1"]         .toBool  (c.stopAtLayer1);
+}
+
+// ── MatchPatternConfig ↔ JSON ────────────────────────────────────────────────
+
+QJsonObject patternConfigToJson(const MatchPatternConfig &c) {
+    QJsonObject o;
+    o["name"]           = QString::fromStdWString(c.m_patternName);
+    o["number"]         = c.m_patternIndex;
+    o["minScore"]       = c.m_minScore;
+    o["angle"]          = c.m_angle;
+    o["toleranceAngle"] = c.m_toleranceAngle;
+    o["maxOverlap"]     = c.m_maxOverlap;
+
+    QJsonObject pick;
+    pick["x"] = c.m_pickPosition.x;
+    pick["y"] = c.m_pickPosition.y;
+    o["pickPosition"] = pick;
+
+    o["matchingType"] = matchingTypeToString(c.matchingType());
+    if (auto *ecfg = c.edgeConfig())
+        o["typeConfig"] = edgeConfigToJson(*ecfg);
+
+    return o;
+}
+
+MatchPatternConfig patternConfigFromJson(const QJsonObject &o) {
+    MatchPatternConfig c;
+    c.m_patternName    = o["name"].toString().toStdWString();
+    c.m_patternIndex   = o["number"]        .toInt   (0);
+    c.m_minScore       = o["minScore"]      .toDouble(c.m_minScore);
+    c.m_angle          = o["angle"]         .toDouble(c.m_angle);
+    c.m_toleranceAngle = o["toleranceAngle"].toDouble(c.m_toleranceAngle);
+    c.m_maxOverlap     = o["maxOverlap"]    .toDouble(c.m_maxOverlap);
+
+    const QJsonObject pick = o["pickPosition"].toObject();
+    c.m_pickPosition.x = static_cast<float>(pick["x"].toDouble(0.0));
+    c.m_pickPosition.y = static_cast<float>(pick["y"].toDouble(0.0));
+
+    c.setMatchingType(matchingTypeFromString(o["matchingType"].toString()));
+    if (auto *ecfg = c.edgeConfig())
+        edgeConfigFromJson(o["typeConfig"].toObject(), *ecfg);
+
+    return c;
+}
+
+// ── MatchGroupConfig ↔ JSON ──────────────────────────────────────────────────
+
+QJsonObject groupToJson(const MatchGroup &group) {
+    const MatchGroupConfig &g = group.config();
+    QJsonObject o;
+    o["name"]               = QString::fromStdWString(g.m_groupName);
+    o["number"]             = g.m_groupIndex;
+    o["pickingBoxSize"]     = QJsonObject{{ "w", g.m_pickingBoxSize.width  },
+                                          { "h", g.m_pickingBoxSize.height }};
+    o["pickingBoxDistance"] = g.m_pickingBoxDistance;
+    o["pickingBoxAngle"]    = g.m_pickingBoxAngle;
+    o["pickingOffset"]      = QJsonObject{{ "x", g.m_pickingOffset.x },
+                                          { "y", g.m_pickingOffset.y },
+                                          { "z", g.m_pickingOffset.z }};
+    o["lowWorkpieceRatio"]  = g.m_lowWorkpieceRatio;
+
+    QJsonArray patterns;
+    for (const auto &p : group.patterns())
+        if (p) patterns.append(patternConfigToJson(p->config()));
+    o["patterns"] = patterns;
+
+    return o;
+}
+
+MatchGroupConfig groupConfigFromJson(const QJsonObject &o) {
+    MatchGroupConfig g;
+    g.m_groupName  = o["name"].toString().toStdWString();
+    g.m_groupIndex = o["number"].toInt(0);
+
+    const QJsonObject sz = o["pickingBoxSize"].toObject();
+    g.m_pickingBoxSize = cv::Size2f(static_cast<float>(sz["w"].toDouble(0.0)),
+                                    static_cast<float>(sz["h"].toDouble(0.0)));
+
+    g.m_pickingBoxDistance = o["pickingBoxDistance"].toDouble(0.0);
+    g.m_pickingBoxAngle    = o["pickingBoxAngle"]   .toDouble(0.0);
+
+    const QJsonObject off = o["pickingOffset"].toObject();
+    g.m_pickingOffset = cv::Point3f(static_cast<float>(off["x"].toDouble(0.0)),
+                                    static_cast<float>(off["y"].toDouble(0.0)),
+                                    static_cast<float>(off["z"].toDouble(0.0)));
+
+    g.m_lowWorkpieceRatio = o["lowWorkpieceRatio"].toDouble(g.m_lowWorkpieceRatio);
+
+    // m_patterns vector left empty here — patterns are inserted via the
+    // manager's addPattern() after the group is added, which creates the
+    // MatchPattern instances correctly.
+    return g;
+}
+
+} // anonymous namespace
+
 
 PatternGroupManager::PatternGroupManager(QObject *parent)
     : QObject{parent} {
@@ -90,7 +269,9 @@ ManagerResult PatternGroupManager::setGroupConfig(const QString &currentName,
     if (auto r = validateGroupConfig(newConfig, currentName); !r)
         return r;
 
-    return group->setConfig(newConfig);
+    auto r = group->setConfig(newConfig);
+    if (r) emit groupChanged(group, QStringLiteral("*"));
+    return r;
 }
 
 ManagerResult PatternGroupManager::renameGroup(const QString &currentName,
@@ -114,7 +295,9 @@ ManagerResult PatternGroupManager::renameGroup(const QString &currentName,
             QStringLiteral("Group \"%1\" not found.").arg(currentName).toStdWString());
     }
 
-    return group->setName(newName.toStdWString());
+    auto r = group->setName(newName.toStdWString());
+    if (r) emit groupChanged(group, QStringLiteral("name"));
+    return r;
 }
 
 ManagerResult PatternGroupManager::renumberGroup(const QString &groupName,
@@ -134,7 +317,9 @@ ManagerResult PatternGroupManager::renumberGroup(const QString &groupName,
             QStringLiteral("Group number %1 already exists.").arg(newNumber).toStdWString());
     }
 
-    return group->setNumber(newNumber);
+    auto r = group->setNumber(newNumber);
+    if (r) emit groupChanged(group, QStringLiteral("number"));
+    return r;
 }
 
 // ── Pattern mutations (pass-throughs) ─────────────────────────────────────────
@@ -170,7 +355,13 @@ ManagerResult PatternGroupManager::setPatternConfig(const QString &groupName,
         return ManagerResult::fail(
             QStringLiteral("Group \"%1\" not found.").arg(groupName).toStdWString());
 
-    return group->setPatternConfig(currentPatternName.toStdWString(), newConfig);
+    auto r = group->setPatternConfig(currentPatternName.toStdWString(), newConfig);
+    if (r) {
+        // Pattern identity may have changed (rename); resolve by new name.
+        if (auto *p = group->findPatternByName(newConfig.m_patternName))
+            emit patternChanged(group.get(), p, QStringLiteral("*"));
+    }
+    return r;
 }
 
 ManagerResult PatternGroupManager::renamePattern(const QString &groupName,
@@ -182,7 +373,12 @@ ManagerResult PatternGroupManager::renamePattern(const QString &groupName,
         return ManagerResult::fail(
             QStringLiteral("Group \"%1\" not found.").arg(groupName).toStdWString());
 
-    return group->renamePattern(currentName.toStdWString(), newName.toStdWString());
+    auto r = group->renamePattern(currentName.toStdWString(), newName.toStdWString());
+    if (r) {
+        if (auto *p = group->findPatternByName(newName.toStdWString()))
+            emit patternChanged(group.get(), p, QStringLiteral("name"));
+    }
+    return r;
 }
 
 ManagerResult PatternGroupManager::renumberPattern(const QString &groupName,
@@ -194,7 +390,12 @@ ManagerResult PatternGroupManager::renumberPattern(const QString &groupName,
         return ManagerResult::fail(
             QStringLiteral("Group \"%1\" not found.").arg(groupName).toStdWString());
 
-    return group->renumberPattern(patternName.toStdWString(), newNumber);
+    auto r = group->renumberPattern(patternName.toStdWString(), newNumber);
+    if (r) {
+        if (auto *p = group->findPatternByName(patternName.toStdWString()))
+            emit patternChanged(group.get(), p, QStringLiteral("number"));
+    }
+    return r;
 }
 
 ManagerResult PatternGroupManager::setPatternImage(const QString &groupName,
@@ -206,7 +407,12 @@ ManagerResult PatternGroupManager::setPatternImage(const QString &groupName,
         return ManagerResult::fail(
             QStringLiteral("Group \"%1\" not found.").arg(groupName).toStdWString());
 
-    return group->setPatternImage(patternName.toStdWString(), image);
+    auto r = group->setPatternImage(patternName.toStdWString(), image);
+    if (r) {
+        if (auto *p = group->findPatternByName(patternName.toStdWString()))
+            emit patternChanged(group.get(), p, QStringLiteral("image"));
+    }
+    return r;
 }
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
@@ -258,17 +464,47 @@ ManagerResult PatternGroupManager::validateGroupConfig(
     return ManagerResult::success();
 }
 
-// void PatternGroupManager::savePatternGroupImage(mtc::MatchGroup &group, QString &absolute_dir) {
-//     const std::vector<mtc::MatchPattern>& src = group.getPatternSource();
-//     for (int ptIndex=0;ptIndex<src.size();ptIndex++) {
-//         //　using wide string, to save path with kanji char
-//         // save file format: absolute path/GroupName_PatternName.bmp
-//         std::wstring file_name = absolute_dir.toStdWString() + L"/" +
-//                                  group.getName() + L"_" +
-//                                  src[ptIndex].patternConfigPtr()->m_patternName + L".bmp";
-//         std::wcout << file_name;
-//         vsu::imwrite_wstring(file_name, src[ptIndex].getRawImage());
-//     }
-// }
+QJsonObject PatternGroupManager::toJson() const {
+    QJsonArray groupsArr;
+    for (const auto &group : m_groups)
+        if (group) groupsArr.append(groupToJson(*group));
+
+    QJsonObject o;
+    o["groups"] = groupsArr;
+    return o;
+}
+
+bool PatternGroupManager::fromJson(const QJsonObject &obj) {
+    // Reset to empty state.  No clearAll() exists, so iterate by number;
+    // groups() returns a snapshot copy, so removing during iteration is safe.
+    const auto existing = m_groups;
+    for (const auto &g : existing)
+        if (g) removeGroupByNumber(g->number());
+
+    bool allOk = true;
+    const QJsonArray groupsArr = obj["groups"].toArray();
+    for (const QJsonValue &gv : groupsArr) {
+        const QJsonObject gObj  = gv.toObject();
+        const MatchGroupConfig gcfg = groupConfigFromJson(gObj);
+
+        if (auto r = addGroup(gcfg); !r) {
+            LOG_DEV_ERR << "PatternGroupManager::fromJson – addGroup failed: "
+                        << QString::fromStdWString(r.error);
+            allOk = false;
+            continue;
+        }
+
+        const QString groupName = QString::fromStdWString(gcfg.m_groupName);
+        for (const QJsonValue &pv : gObj["patterns"].toArray()) {
+            const MatchPatternConfig pcfg = patternConfigFromJson(pv.toObject());
+            if (auto r = addPattern(groupName, pcfg); !r) {
+                LOG_DEV_ERR << "PatternGroupManager::fromJson – addPattern failed: "
+                            << QString::fromStdWString(r.error);
+                allOk = false;
+            }
+        }
+    }
+    return allOk;
+}
 
 }

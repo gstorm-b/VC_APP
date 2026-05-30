@@ -4,15 +4,11 @@
 #include <QWidget>
 #include "DockWidget.h"
 
-#include "widgets/qtpropertybrowser/qtpropertymanager.h"
-#include "widgets/qtpropertybrowser/qtvariantproperty.h"
-#include "widgets/qtpropertybrowser/qttreepropertybrowser.h"
-
 #include "device/idevice.h"
 #include "device/device_manager.h"
 #include "device/plc/mc_protocol_device.h"
 
-#include "runtime/mc_device_runner.h"
+#include "runtime/plc_runner.h"
 
 #include "form/device_widget.h"
 #include "widgets/plc_widget/devices_monitor_widget.h"
@@ -28,7 +24,7 @@ public:
     // Runner is owned by TaskRunner (not by this widget).  See header
     // comment in BaslerCameraWidget for the same rationale.
     explicit McProtocolDeviceWidget(std::shared_ptr<vc::device::IDevice> dv,
-                                 vc::runtime::McDeviceRunner *runner,
+                                 vc::runtime::PlcRunner *runner,
                                  ads::CDockWidget *dock = nullptr,
                                  QWidget *parent = nullptr);
     ~McProtocolDeviceWidget();
@@ -55,7 +51,7 @@ private slots:
     void onResponseTimeoutEditFinished();
 
     void onConnectionStateChanged(vc::device::ConnectStatus state);
-    void onPollingUpdateValue(vc::device::McDeviceMap device_map);
+    void onPollingUpdateValue(std::shared_ptr<vc::device::PlcValueMap> device_map);
 
 private:
     void initWidget();
@@ -75,8 +71,7 @@ private:
     vc::device::McProtocolConfig m_config;
     vc::device::McDeviceMap m_device_map;
 
-    // Not owned — provided by TaskRunner.  Widget never creates a thread.
-    vc::runtime::McDeviceRunner *m_runner{nullptr};
+    vc::runtime::PlcRunner *m_runner{nullptr};
 
     // Two stacked monitors for M (bit) and D (word) registers.
     vc::widgets::DevicesMonitorWidget *m_monitor_m{nullptr};

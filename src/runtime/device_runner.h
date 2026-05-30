@@ -2,6 +2,8 @@
 #define DEVICE_RUNNER_H
 
 #include "runtime/idevice_runner.h"
+#include <QApplication>
+#include <QEventLoop>
 
 namespace vc::runtime {
 
@@ -31,17 +33,22 @@ public:
     {
         Q_ASSERT(device != nullptr);
         m_thread = new QThread(this);
+        // m_thread = new QThread();
     }
 
     ~DeviceRunner() override {
         stop();
+        // m_thread->deleteLater();
     }
 
     // ── IDeviceRunner ─────────────────────────────────────────────────────────
 
     void start() override {
-        if (!m_thread->isRunning())
+        if (!m_thread->isRunning()) {
             m_thread->start(QThread::HighPriority);
+            LOG_USER_INFO << QString("Device {%1} - ID %2, runner thread started.")
+                                 .arg(m_device->name()).arg(m_device->id());
+        }
     }
 
     void stop() override {
@@ -61,7 +68,7 @@ public:
     void detach(QThread *dest = nullptr) override {
         if (!m_attached) return;
         unwireSignals();
-        m_device->moveToThread(dest ? dest : QThread::currentThread());
+        detachFromOutsideThread(dest ? dest : QThread::currentThread());
         m_attached = false;
     }
 

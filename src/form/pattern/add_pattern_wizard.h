@@ -61,11 +61,33 @@ public:
     // Result accessors (valid only after Accepted) ─────────────────────────
     QString patternName()   const { return m_name; }
     int     patternNumber() const { return m_number; }
-    cv::Mat patternImage()  const { return m_capturedMat; }
+    cv::Mat rawImage()      const { return m_capturedMat; }
+    cv::Mat patternImage()  const {
+        cv::Mat patternImage = m_capturedMat;
+        if (!m_keepOriginal) {
+            const QRect r = m_crop;
+            if (r.width() > 0 && r.height() > 0
+                && r.x() >= 0 && r.y() >= 0
+                && r.x() + r.width()  <= patternImage.cols
+                && r.y() + r.height() <= patternImage.rows)
+            {
+                patternImage = patternImage(cv::Rect(r.x(), r.y(),
+                                                     r.width(), r.height())).clone();
+            }
+        }
+        return patternImage;
+    }
     bool    keepOriginal()  const { return m_keepOriginal; }
     QRect   cropRect()      const { return m_crop; }
-    int     pickX()         const { return m_pick.x(); }
-    int     pickY()         const { return m_pick.y(); }
+
+    // Pick coordinates — relative to the crop origin when the user cropped,
+    // otherwise raw source-image coordinates.  m_pick is always stored in
+    // source-image pixels; we translate at the accessor boundary so callers
+    // get the pick in the same frame as the pattern image they receive.
+    int     pickX()         const { return m_keepOriginal ? m_pick.x()
+                                                          : m_pick.x() - m_crop.x(); }
+    int     pickY()         const { return m_keepOriginal ? m_pick.y()
+                                                          : m_pick.y() - m_crop.y(); }
     double  pickBoxW()      const { return m_boxW;     }
     double  pickBoxH()      const { return m_boxH;     }
     double  pickBoxDist()   const { return m_boxDist;  }
@@ -105,7 +127,7 @@ private slots:
     void onCenter1to1Crop();
 
     // Step 3 ──────────────────────────────────────────────────────────────
-    void onPickChanged(const QPoint &p);
+    void onPickChanged(const QPoint &p, const QPoint &imgp);
     void onPickCenter();
 
     // Step 4 ──────────────────────────────────────────────────────────────
@@ -132,6 +154,11 @@ private:
     bool currentStepValid() const;
     void goToStep(int step);
 
+    // Resize all geometry spin boxes so they can mirror the canvas for the
+    // currently-loaded image, and clamp the default crop/pick to fit.  Called
+    // from setCameraImage() / setLoadedImage().
+    void onImageSizeChanged(int imageW, int imageH);
+
     // Helpers ─────────────────────────────────────────────────────────────
     QLabel *makeStepBubble(int idx);
 
@@ -143,7 +170,7 @@ private:
 
     // Result state ───────────────────────────────────────────────────────
     QString m_name;
-    int     m_number{0};
+    int     m_number{1};
     cv::Mat m_capturedMat;
     QString m_imageSource;       // "camera" | "file" | empty
     QString m_imageFilename;

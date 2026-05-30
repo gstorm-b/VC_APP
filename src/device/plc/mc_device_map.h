@@ -5,17 +5,11 @@
 #include <QByteArray>
 #include <QSet>
 #include <map>
-// #include "device/plc/mc_protocol_device.h"
+#include "device/plc/plc_device.h"
 
 #define MC_MAXIMUM_DEVICE_AMOUNT   256
 
 namespace vc::device {
-
-class PlcValueMap {
-public:
-    virtual ~PlcValueMap() = default;
-    virtual std::shared_ptr<PlcValueMap> clone() const = 0;
-};
 
 class McDeviceRange {
 public:
@@ -96,7 +90,6 @@ public:
         y_devices.clearRanges();
         m_devices.clearRanges();
         d_devices.clearRanges();
-
 
         device_map_m.clear();
         device_map_d.clear();

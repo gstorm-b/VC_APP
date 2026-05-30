@@ -26,12 +26,14 @@ public:
     void loadConfigToWidget() override;
 
 private:
-    Ui::LocalizationDashboardWidget *ui;
-    ads::CDockWidget *m_dock{nullptr};
-    std::shared_ptr<vc::model::ITask> m_task;
-    vc::model::TaskLocalization *m_localizeTask;
-    vc::model::TaskLocalizeConfig m_config;
+    void initWidget();
+    void pushSignalTagsFromConfig();
 
+private:
+    Ui::LocalizationDashboardWidget *ui;
+
+    vc::model::TaskLocalization *m_localizeTask{nullptr};
+    vc::model::TaskLocalizeConfig m_config;
 };
 
 #endif // LOCALIZATION_DASHBOARD_WIDGET_H

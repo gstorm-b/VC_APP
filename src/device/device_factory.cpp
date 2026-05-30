@@ -4,10 +4,17 @@
 #include <QJsonObject>
 #include <QMutexLocker>
 #include <QDebug>
+#include <QThread>
 
 #include "device/camera/camera_device.h"
+#include "device/plc/plc_device.h"
 #include "device/plc/mc_protocol_device.h"
 #include "device/camera/camera_basler_gige.h"
+#include "device/output_device/vision_output_device.h"
+#include "device/output_device/vision_tcpip_device.h"
+#include "device/robot/robot_device.h"
+#include "device/robot/kawasaki_robot_device.h"
+#include "device/robot/nachi_robot_device.h"
 
 namespace vc::device {
 
@@ -33,18 +40,18 @@ IDevice* DeviceFactory::create(const DeviceType& type,
                                const QJsonObject& obj,
                                QObject* parent) {
 
-
+    // qDebug() << "Device created from thread:" << QThread::currentThread();
     switch (type) {
         case vc::device::DeviceType::UserType:
             return nullptr;
         case vc::device::DeviceType::Camera:
             return createCamera(obj, parent);
-        case vc::device::DeviceType::McDevice:
-            return createMcProtocolDevice(obj, parent);
-        case vc::device::DeviceType::TCPIP_DEVICE:
-            return nullptr;
+        case vc::device::DeviceType::PLC:
+            return createPlcDevice(obj, parent);
+        case vc::device::DeviceType::VisionOutput:
+            return createVisionOutputDevice(obj, parent);
         case vc::device::DeviceType::Robot:
-            return nullptr;
+            return createRobotDevice(obj, parent);
         default:
             return nullptr;
     }
@@ -91,6 +98,21 @@ IDevice* DeviceFactory::createBaslerGigeCamera(const QJsonObject& obj,
     return device;
 }
 
+IDevice* DeviceFactory::createPlcDevice(const QJsonObject& obj, QObject* parent) {
+    const QJsonObject cfg = obj[DEVICE_JSK_CONFIG].toObject();
+    if (!cfg.contains(DEVICE_JSK_PLC_TYPE)) {
+        LOG_DEV_INFO << "Cannot convert PLC device from json, unknown sub-type.";
+        return nullptr;
+    }
+    PlcType pt = PlcTypeFromString(cfg[DEVICE_JSK_PLC_TYPE].toString());
+    switch (pt) {
+    case PlcType::MitsubishiMc: return createMcProtocolDevice(obj, parent);
+    case PlcType::PlcTypeNone:
+        return nullptr;
+    }
+    return nullptr;
+}
+
 IDevice* DeviceFactory::createMcProtocolDevice(const QJsonObject& obj, QObject* parent) {
     QString deviceId = obj[DEVICE_JSK_ID].toString();
     QString deviceName = obj[DEVICE_JSK_NAME].toString();
@@ -102,9 +124,81 @@ IDevice* DeviceFactory::createMcProtocolDevice(const QJsonObject& obj, QObject* 
     McProtocolDevice *device = new McProtocolDevice(deviceId, deviceName, parent);
     if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
         device->fromJson(obj);
-        // McProtocolConfig *config = new McProtocolConfig();
-        // config->fromJson(obj[DEVICE_JSK_CONFIG].toObject());
-        // device->setDeviceConfig(config);
+    }
+    return device;
+}
+
+IDevice* DeviceFactory::createVisionOutputDevice(const QJsonObject& obj, QObject* parent) {
+    const QJsonObject cfg = obj[DEVICE_JSK_CONFIG].toObject();
+    if (!cfg.contains(DEVICE_JSK_VOUT_TYPE)) {
+        LOG_DEV_INFO << "Cannot convert vision-output device from json, unknown sub-type.";
+        return nullptr;
+    }
+    VisionOutputType vt = VisionOutputTypeFromString(cfg[DEVICE_JSK_VOUT_TYPE].toString());
+    switch (vt) {
+    case VisionOutputType::VisionTCPIP:  return createVisionTcpipDevice(obj, parent);
+    case VisionOutputType::VisionSerial: return nullptr;
+    case VisionOutputType::VisionOutputTypeNone:
+        return nullptr;
+    }
+    return nullptr;
+}
+
+IDevice* DeviceFactory::createVisionTcpipDevice(const QJsonObject& obj, QObject* parent) {
+    QString deviceId = obj[DEVICE_JSK_ID].toString();
+    QString deviceName = obj[DEVICE_JSK_NAME].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new VisionTcpipDevice(deviceId, deviceName, parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+IDevice* DeviceFactory::createRobotDevice(const QJsonObject& obj, QObject* parent) {
+    const QJsonObject cfg = obj[DEVICE_JSK_CONFIG].toObject();
+    if (!cfg.contains(DEVICE_JSK_ROBOT_TYPE)) {
+        LOG_DEV_INFO << "Cannot convert robot device from json, unknown robot type.";
+        return nullptr;
+    }
+    RobotType rt = RobotTypeFromString(cfg[DEVICE_JSK_ROBOT_TYPE].toString());
+    switch (rt) {
+    case RobotType::Kawasaki: return createKawasakiRobot(obj, parent);
+    case RobotType::Nachi:    return createNachiRobot(obj, parent);
+    case RobotType::Huayan:   return nullptr;
+    case RobotType::RobotTypeNone:
+        return nullptr;
+    }
+    return nullptr;
+}
+
+IDevice* DeviceFactory::createKawasakiRobot(const QJsonObject& obj, QObject* parent) {
+    QString deviceId = obj[DEVICE_JSK_ID].toString();
+    QString deviceName = obj[DEVICE_JSK_NAME].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new KawasakiRobotDevice(deviceId, deviceName, parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+IDevice* DeviceFactory::createNachiRobot(const QJsonObject& obj, QObject* parent) {
+    QString deviceId = obj[DEVICE_JSK_ID].toString();
+    QString deviceName = obj[DEVICE_JSK_NAME].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new NachiRobotDevice(deviceId, deviceName, parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
     }
     return device;
 }

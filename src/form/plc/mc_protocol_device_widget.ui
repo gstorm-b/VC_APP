@@ -10,6 +10,12 @@
     <height>720</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="windowTitle">
    <string>MC Protocol Device</string>
   </property>
@@ -29,10 +35,14 @@
    <property name="bottomMargin">
     <number>0</number>
    </property>
-
-   <!-- Outer scrollable surface (so the connection card and tables compose like a panel) -->
    <item>
     <widget class="QFrame" name="frame_root">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="frameShape">
       <enum>QFrame::Shape::NoFrame</enum>
      </property>
@@ -52,8 +62,6 @@
       <property name="bottomMargin">
        <number>16</number>
       </property>
-
-      <!-- ── Connection card ─────────────────────────────────────────── -->
       <item>
        <widget class="QFrame" name="frame_connection">
         <property name="frameShape">
@@ -75,8 +83,6 @@
          <property name="bottomMargin">
           <number>16</number>
          </property>
-
-         <!-- Header row: title • status • connect button -->
          <item>
           <layout class="QHBoxLayout" name="connHeaderRow">
            <property name="spacing">
@@ -104,9 +110,6 @@
            </item>
            <item>
             <widget class="QLabel" name="lbl_conn_dot">
-             <property name="text">
-              <string/>
-             </property>
              <property name="minimumSize">
               <size>
                <width>10</width>
@@ -118,6 +121,9 @@
                <width>10</width>
                <height>10</height>
               </size>
+             </property>
+             <property name="text">
+              <string/>
              </property>
             </widget>
            </item>
@@ -143,8 +149,6 @@
            </item>
           </layout>
          </item>
-
-         <!-- Field grid: IP / Port / Connect Timeout / Response Timeout -->
          <item>
           <layout class="QGridLayout" name="connFieldGrid">
            <property name="horizontalSpacing">
@@ -225,8 +229,6 @@
            </item>
           </layout>
          </item>
-
-         <!-- Meta row (frame / data code / refresh interval) -->
          <item>
           <layout class="QHBoxLayout" name="connMetaRow">
            <property name="spacing">
@@ -264,8 +266,6 @@
         </layout>
        </widget>
       </item>
-
-      <!-- ── Stacked monitors (M then D), resizable ─────────────────── -->
       <item>
        <widget class="QSplitter" name="splitter_device_table">
         <property name="orientation">

@@ -1,0 +1,166 @@
+@startuml ui_widgets
+title UI Forms and Reusable Widgets
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam ClassBackgroundColor #EEF5FF
+
+package "Base widgets" {
+  abstract class ITaskWidget <<QWidget>> {
+    +loadConfigToTask()
+    +loadConfigToWidget()
+    #initPropertyBrowser(container)
+    #changePropertyBrowserWidget(widget)
+  }
+
+  abstract class IDeviceWidget <<QWidget>> {
+    +deviceId() : QString
+    +loadConfigToDevice()
+    +loadConfigToWidget()
+    +getPropertyBrowser() : PropertyBrowserWidget*
+  }
+
+  class PropertyBrowserWidget <<QWidget>>
+}
+
+package "Task UI" {
+  class LocalizationTaskWidget <<ITaskWidget>> {
+    +loadConfigToTask()
+    +loadConfigToWidget()
+    -initNavPanel()
+    -initContentStack()
+    -rebuildDeviceNav()
+    -getOrCreateDeviceConfigPage(deviceId) : QWidget*
+  }
+
+  class LocalizationDashboardWidget <<ITaskWidget>>
+
+  class LocalizationPatternsWidget <<ITaskWidget>> {
+    -wireManagerSignals()
+    -rebuildPatternTree()
+    -onStartCommissionMatching()
+  }
+
+  class LocalizationSettingWidget <<ITaskWidget>> {
+    -rebuildDeviceCombos()
+    -rebuildCameraList()
+    -refreshCommTags(deviceId)
+    -pushConfigToTask()
+  }
+}
+
+package "Device config UI" {
+  class BaslerCameraWidget <<IDeviceWidget>>
+  class McProtocolDeviceWidget <<IDeviceWidget>>
+  class VisionOutputDeviceWidget <<IDeviceWidget>>
+}
+
+package "Device creation UI" {
+  class AddDeviceWizard <<QDialog>> {
+    -initCards()
+    -selectCard(type)
+    -buildDeviceJson() : QJsonObject
+  }
+}
+
+package "Pattern UI" {
+  class AddPatternWizard <<QDialog>>
+  class EditPatternWizard <<QDialog>>
+  class AddPatternImageDialog <<QDialog>>
+  class AddPatternImageCanvas <<QWidget>>
+  class PatternSettingPanel <<QWidget>>
+  class PatternGroupItemWidget <<QWidget>>
+  class PatternItemWidget <<QWidget>>
+  class FooterItemWidget <<QWidget>>
+}
+
+package "Mapping widgets" {
+  class CameraMappingWidget <<QListWidget>> {
+    +setCameraOptions(idToName)
+    +setCurrentMapping(mapping)
+    +getCurrentMapping() : QMap<int, QString>
+  }
+
+  class EditableComboWidget <<QStackedWidget>>
+  class CameraRowWidget <<QWidget>>
+  class AddRowWidget <<QStackedWidget>>
+  class SignalsMapWidget <<QTableWidget>> {
+    +appendRow(internalName, displayName, type)
+    +setNumberTags(tags)
+    +setBoolTags(tags)
+    +checkEmpty() : QStringList
+  }
+
+  class SignalsMonitorWidget <<QWidget>>
+}
+
+package "Calibration UI" {
+  class CalibrationBoardDialog <<QDialog>>
+  class CalibrationPointsTable <<QTableWidget>>
+}
+
+package "Models and devices" {
+  class "vc::model::TaskLocalization" as TaskLocalization
+  class "mtc::PatternGroupManager" as PatternGroupManager
+  class "vc::device::CameraDevice" as CameraDevice
+  class "vc::device::PlcDevice" as PlcDevice
+  class "vc::device::VisionOutputDevice" as VisionOutputDevice
+}
+
+ITaskWidget <|-- LocalizationTaskWidget
+ITaskWidget <|-- LocalizationDashboardWidget
+ITaskWidget <|-- LocalizationPatternsWidget
+ITaskWidget <|-- LocalizationSettingWidget
+
+IDeviceWidget <|-- BaslerCameraWidget
+IDeviceWidget <|-- McProtocolDeviceWidget
+IDeviceWidget <|-- VisionOutputDeviceWidget
+
+LocalizationTaskWidget *-- LocalizationDashboardWidget : dashboard page
+LocalizationTaskWidget *-- LocalizationPatternsWidget : patterns page
+LocalizationTaskWidget *-- LocalizationSettingWidget : settings page
+LocalizationTaskWidget *-- BaslerCameraWidget : camera device page
+LocalizationTaskWidget *-- McProtocolDeviceWidget : PLC device page
+LocalizationTaskWidget *-- VisionOutputDeviceWidget : output device page
+
+LocalizationTaskWidget --> TaskLocalization
+LocalizationPatternsWidget --> TaskLocalization
+LocalizationPatternsWidget --> PatternGroupManager
+LocalizationPatternsWidget --> AddPatternWizard
+LocalizationPatternsWidget --> EditPatternWizard
+LocalizationPatternsWidget --> PatternSettingPanel
+LocalizationSettingWidget --> TaskLocalization
+LocalizationSettingWidget *-- CameraMappingWidget
+LocalizationSettingWidget *-- SignalsMapWidget
+
+CameraMappingWidget *-- CameraRowWidget
+CameraMappingWidget *-- AddRowWidget
+CameraRowWidget *-- EditableComboWidget
+
+BaslerCameraWidget --> CameraDevice
+McProtocolDeviceWidget --> PlcDevice
+VisionOutputDeviceWidget --> VisionOutputDevice
+IDeviceWidget *-- PropertyBrowserWidget
+ITaskWidget *-- PropertyBrowserWidget
+
+CalibrationBoardDialog ..> "calib::CalibrationBoardFactory"
+CalibrationPointsTable ..> "calib::Calibrator"
+
+AddDeviceWizard ..> "vc::device::DeviceType"
+AddDeviceWizard ..> "vc::device::DeviceFactory" : JSON consumed later
+
+note right of AddDeviceWizard
+  Current cards: Camera, PLC, VisionOutput.
+  Robot card is not implemented in the wizard.
+end note
+
+note bottom of VisionOutputDeviceWidget
+  This widget is named at family level but is
+  currently TCP/IP-specific in implementation.
+end note
+
+@enduml
+

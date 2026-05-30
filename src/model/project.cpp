@@ -172,7 +172,7 @@ QJsonObject Project::toJson() const {
         it_task++;
     }
 
-    qDebug() << deviceArr;
+    // qDebug() << deviceArr;
 
     return QJsonObject {
                        { "name",    m_name    },

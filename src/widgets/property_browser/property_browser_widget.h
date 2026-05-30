@@ -39,6 +39,8 @@
 //    variantManager()  — QtVariantPropertyManager (int/double/bool/string …)
 //    positionManager() — PositionPropertyManager  (XY / XYZ / XYZRPY)
 //    sizeManager()     — SizePropertyManager      (WH / WHD)
+//    pointManager()    — PointPropertyManager     (int XY / XYZ — QPoint, cv::Point, cv::Point3i)
+//    pointFManager()   — PointFPropertyManager    (double XY / XYZ — QPointF, cv::Point2f/d, cv::Point3f/d)
 //
 //  String properties with completer:
 //    auto *p = variantManager()->addProperty(QMetaType::QString, "File path");
@@ -75,6 +77,8 @@ public:
     QtVariantEditorFactory   *variantFactory()  const { return m_variantFactory; }
     PositionPropertyManager  *positionManager() const { return m_positionManager; }
     SizePropertyManager      *sizeManager()     const { return m_sizeManager; }
+    PointPropertyManager     *pointManager()    const { return m_pointManager; }
+    PointFPropertyManager    *pointFManager()   const { return m_pointFManager; }
 
     // ── Search bar ─────────────────────────────────────────────────────────
     void setSearchVisible(bool visible);
@@ -129,7 +133,10 @@ private:
     QtVariantEditorFactory   *m_variantFactory  {nullptr};
     PositionPropertyManager  *m_positionManager {nullptr};
     SizePropertyManager      *m_sizeManager     {nullptr};
+    PointPropertyManager     *m_pointManager    {nullptr};
+    PointFPropertyManager    *m_pointFManager   {nullptr};
     QtDoubleSpinBoxFactory   *m_dblFactory      {nullptr};  // shared by custom managers
+    QtSpinBoxFactory         *m_intFactory      {nullptr};  // for integer point manager
 
     QTimer  m_filterTimer;   // debounce rapid key input
     QString m_filterText;

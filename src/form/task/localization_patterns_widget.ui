@@ -6,33 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1180</width>
-    <height>720</height>
+    <width>975</width>
+    <height>638</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Localization Patterns</string>
   </property>
-  <layout class="QVBoxLayout" name="rootLayout">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="leftMargin">
-    <number>0</number>
-   </property>
-   <property name="topMargin">
-    <number>0</number>
-   </property>
-   <property name="rightMargin">
-    <number>0</number>
-   </property>
-   <property name="bottomMargin">
-    <number>0</number>
-   </property>
-
-   <!-- ============================================================== -->
-   <!--  Top toolbar                                                    -->
-   <!-- ============================================================== -->
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <widget class="QFrame" name="frame_toolbar">
      <property name="minimumSize">
@@ -48,46 +29,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">QFrame#frame_toolbar {
-    background-color: #2b3340;
-    border-bottom: 1px solid #1a212c;
-}
-QFrame#frame_toolbar QToolButton {
-    color: #e6ecf3;
-    background-color: transparent;
-    border: 1px solid transparent;
-    padding: 4px 12px;
-    border-radius: 3px;
-    font: 600 10pt &quot;Segoe UI&quot;;
-}
-QFrame#frame_toolbar QToolButton:hover {
-    background-color: #38465a;
-    border: 1px solid #4a5b73;
-}
-QFrame#frame_toolbar QToolButton:pressed {
-    background-color: #1d2632;
-}
-QFrame#frame_toolbar QToolButton#btn_run_match {
-    background-color: #2c8b3f;
-    border: 1px solid #246f33;
-}
-QFrame#frame_toolbar QToolButton#btn_run_match:hover {
-    background-color: #34a049;
-}
-QFrame#frame_toolbar QToolButton#btn_run_match:disabled {
-    background-color: #3a4452;
-    color: #7a8492;
-    border-color: #303a48;
-}
-QFrame#frame_toolbar QLabel {
-    color: #c9d2dd;
-    font: 10pt &quot;Segoe UI&quot;;
-}
-QFrame#frame_toolbar QFrame[role=&quot;separator&quot;] {
-    background-color: #1a212c;
-    max-width: 1px;
-    min-width: 1px;
-}</string>
+      <string notr="true"/>
      </property>
      <layout class="QHBoxLayout" name="toolbarLayout">
       <property name="spacing">
@@ -107,31 +49,31 @@ QFrame#frame_toolbar QFrame[role=&quot;separator&quot;] {
       </property>
       <item>
        <widget class="QToolButton" name="btn_trigger_camera">
-        <property name="text">
-         <string>▶  Trigger Camera</string>
-        </property>
         <property name="toolTip">
          <string>Capture image from active camera</string>
+        </property>
+        <property name="text">
+         <string>▶  Trigger Camera</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QToolButton" name="btn_choose_image">
-        <property name="text">
-         <string>📂  Open Image…</string>
-        </property>
         <property name="toolTip">
          <string>Load image from disk</string>
+        </property>
+        <property name="text">
+         <string>📂  Open Image…</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QToolButton" name="btn_set_workspace">
-        <property name="text">
-         <string>⊞  Set Workspace</string>
-        </property>
         <property name="toolTip">
          <string>Define matching ROI on the source image</string>
+        </property>
+        <property name="text">
+         <string>⊞  Set Workspace</string>
         </property>
        </widget>
       </item>
@@ -139,50 +81,6 @@ QFrame#frame_toolbar QFrame[role=&quot;separator&quot;] {
        <widget class="QFrame" name="sep1">
         <property name="frameShape">
          <enum>QFrame::Shape::VLine</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_active_group">
-        <property name="text">
-         <string>Active group</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="NoWheelComboBox" name="comboBox_pattern_group">
-        <property name="minimumSize">
-         <size>
-          <width>180</width>
-          <height>0</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QFrame" name="sep2">
-        <property name="frameShape">
-         <enum>QFrame::Shape::VLine</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="cbx_show_match_area">
-        <property name="text">
-         <string>Show ROI</string>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">color: #c9d2dd;</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="cbx_use_match_area">
-        <property name="text">
-         <string>Use ROI</string>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">color: #c9d2dd;</string>
         </property>
        </widget>
       </item>
@@ -207,53 +105,135 @@ QFrame#frame_toolbar QFrame[role=&quot;separator&quot;] {
           <height>26</height>
          </size>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
+        <property name="styleSheet">
+         <string notr="true"/>
         </property>
         <property name="text">
          <string>● IDLE</string>
         </property>
-        <property name="styleSheet">
-         <string notr="true">QLabel {
-    color: #d6dde6;
-    background-color: #4a5b73;
-    border-radius: 13px;
-    padding: 3px 10px;
-    font: 600 9pt &quot;Segoe UI&quot;;
-}</string>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QToolButton" name="btn_run_match">
-        <property name="text">
-         <string>▶  Run Matching</string>
-        </property>
         <property name="toolTip">
          <string>Run a matching test on the current image using the active group</string>
+        </property>
+        <property name="text">
+         <string>▶  Run Matching</string>
         </property>
        </widget>
       </item>
      </layout>
     </widget>
    </item>
-
-   <!-- ============================================================== -->
-   <!--  Main work area                                                 -->
-   <!-- ============================================================== -->
+   <item>
+    <widget class="QFrame" name="frame_operate">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>22</height>
+      </size>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Plain</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>14</number>
+      </property>
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="label_active_camera">
+        <property name="text">
+         <string>Active camera</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox_camera"/>
+      </item>
+      <item>
+       <widget class="QFrame" name="sep2">
+        <property name="frameShape">
+         <enum>QFrame::Shape::VLine</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_active_group">
+        <property name="text">
+         <string>Active group</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="NoWheelComboBox" name="comboBox_pattern_group">
+        <property name="minimumSize">
+         <size>
+          <width>180</width>
+          <height>0</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="sep3">
+        <property name="frameShape">
+         <enum>QFrame::Shape::VLine</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="cbx_show_match_area">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string>Show ROI</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="cbx_use_match_area">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string>Use ROI</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
    <item>
     <widget class="QSplitter" name="splitter_main">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
      </property>
-     <property name="handleWidth">
-      <number>2</number>
-     </property>
-     <property name="childrenCollapsible">
-      <bool>false</bool>
-     </property>
-
-     <!-- ── Pane 1: Monitor ─────────────────────────────────────── -->
      <widget class="QWidget" name="pane_monitor">
       <layout class="QVBoxLayout" name="monitorLayout">
        <property name="spacing">
@@ -286,11 +266,7 @@ QFrame#frame_toolbar QFrame[role=&quot;separator&quot;] {
           </size>
          </property>
          <property name="styleSheet">
-          <string notr="true">QFrame#frame_view_header { background-color: #1f2733; border-radius: 2px; }
-QFrame#frame_view_header QLabel { color: #e6ecf3; font: 600 10pt &quot;Segoe UI&quot;; }
-QFrame#frame_view_header QPushButton { color: #c9d2dd; background-color: transparent; border: 1px solid transparent; padding: 4px 14px; }
-QFrame#frame_view_header QPushButton:checked { color: #ffffff; background-color: #2b6cd9; border-bottom: 2px solid #5b9dff; }
-QFrame#frame_view_header QPushButton:hover:!checked { background-color: #2a3340; }</string>
+          <string notr="true"/>
          </property>
          <layout class="QHBoxLayout" name="viewHeaderLayout">
           <property name="spacing">
@@ -357,7 +333,7 @@ QFrame#frame_view_header QPushButton:hover:!checked { background-color: #2a3340;
        <item>
         <widget class="QStackedWidget" name="stackedWidget_ImageView">
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="page_raw">
           <layout class="QHBoxLayout" name="hl_page_raw">
@@ -405,8 +381,6 @@ QFrame#frame_view_header QPushButton:hover:!checked { background-color: #2a3340;
          </widget>
         </widget>
        </item>
-
-       <!-- KPI strip -->
        <item>
         <widget class="QFrame" name="frame_kpi">
          <property name="minimumSize">
@@ -422,13 +396,7 @@ QFrame#frame_view_header QPushButton:hover:!checked { background-color: #2a3340;
           </size>
          </property>
          <property name="styleSheet">
-          <string notr="true">QFrame#frame_kpi { background-color: #1f2733; border-radius: 2px; }
-QFrame#frame_kpi QLabel[role=&quot;kpi-label&quot;] { color: #8a96a8; font: 8pt &quot;Segoe UI&quot;; letter-spacing: 1px; }
-QFrame#frame_kpi QLabel[role=&quot;kpi-value&quot;] { color: #ffffff; font: 600 16pt &quot;Segoe UI&quot;; }
-QFrame#frame_kpi QLabel[role=&quot;kpi-value-warn&quot;] { color: #f0b400; font: 600 16pt &quot;Segoe UI&quot;; }
-QFrame#frame_kpi QLabel[role=&quot;sep&quot;] { background-color: #2b3340; max-width: 1px; }
-QFrame#frame_kpi QLabel[role=&quot;axis&quot;] { color: #5b9dff; font: 600 9pt &quot;Segoe UI&quot;; min-width: 14px; }
-QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 10pt &quot;Consolas&quot;; }</string>
+          <string notr="true"/>
          </property>
          <layout class="QHBoxLayout" name="hl_kpi">
           <property name="spacing">
@@ -447,6 +415,30 @@ QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 1
            <number>8</number>
           </property>
           <item>
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+             <widget class="QLabel" name="label_tl_total">
+              <property name="text">
+               <string>TOTAL</string>
+              </property>
+              <property name="role" stdset="0">
+               <string notr="true">kpi-label</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_match_total_objects">
+              <property name="text">
+               <string>—</string>
+              </property>
+              <property name="role" stdset="0">
+               <string notr="true">kpi-value</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
            <layout class="QVBoxLayout" name="vl_kpi_count">
             <property name="spacing">
              <number>2</number>
@@ -454,7 +446,7 @@ QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 1
             <item>
              <widget class="QLabel" name="label_tl_possible_objects">
               <property name="text">
-               <string>POSSIBLE OBJECTS</string>
+               <string>POSSIBLE PICKS</string>
               </property>
               <property name="role" stdset="0">
                <string notr="true">kpi-label</string>
@@ -557,122 +549,13 @@ QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 1
             </property>
            </widget>
           </item>
-          <item>
-           <layout class="QVBoxLayout" name="vl_kpi_pos">
-            <property name="spacing">
-             <number>2</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_tl_pickpos">
-              <property name="text">
-               <string>PICKING POSITION</string>
-              </property>
-              <property name="role" stdset="0">
-               <string notr="true">kpi-label</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QGridLayout" name="grid_pickpos">
-              <property name="horizontalSpacing">
-               <number>10</number>
-              </property>
-              <property name="verticalSpacing">
-               <number>0</number>
-              </property>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_axis_x">
-                <property name="text">
-                 <string>X</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_pickpos_x">
-                <property name="text">
-                 <string>0.00</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis-val</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="2">
-               <widget class="QLabel" name="label_axis_y">
-                <property name="text">
-                 <string>Y</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="3">
-               <widget class="QLabel" name="label_pickpos_y">
-                <property name="text">
-                 <string>0.00</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis-val</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_axis_z">
-                <property name="text">
-                 <string>Z</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_pickpos_z">
-                <property name="text">
-                 <string>0.00</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis-val</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <widget class="QLabel" name="label_axis_r">
-                <property name="text">
-                 <string>R</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="3">
-               <widget class="QLabel" name="label_pickpos_r">
-                <property name="text">
-                 <string>0.00</string>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">axis-val</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
          </layout>
         </widget>
        </item>
       </layout>
      </widget>
-
-     <!-- ── Pane 2: Pattern library ─────────────────────────────── -->
      <widget class="QWidget" name="pane_library">
-      <layout class="QVBoxLayout" name="libraryLayout">
+      <layout class="QVBoxLayout" name="libraryLayout" stretch="0">
        <property name="spacing">
         <number>4</number>
        </property>
@@ -686,13 +569,114 @@ QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 1
         <number>0</number>
        </property>
        <property name="bottomMargin">
-        <number>6</number>
+        <number>0</number>
        </property>
        <item>
-        <widget class="QLabel" name="label_library_title">
-         <property name="text">
-          <string>  PATTERN LIBRARY</string>
+        <widget class="QSplitter" name="splitter_thumb">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
+         <widget class="QWidget" name="verticalLayoutWidget">
+          <layout class="QVBoxLayout" name="vl_library">
+           <item>
+            <widget class="QLabel" name="label_library_title">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>26</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true"/>
+             </property>
+             <property name="text">
+              <string>  PATTERN LIBRARY</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="PatternTreeWidget" name="treeWidget_patternEditor">
+             <column>
+              <property name="text">
+               <string notr="true">1</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="layoutWidget">
+          <layout class="QVBoxLayout" name="vl_thumb" stretch="0,0,0">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>6</number>
+           </property>
+           <property name="bottomMargin">
+            <number>6</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="label_inspector_title">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>26</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true"/>
+             </property>
+             <property name="text">
+              <string>  SELECTED PATTERN</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGraphicsView" name="imageView_PatternThumb">
+             <property name="styleSheet">
+              <string notr="true"/>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_pattern_caption">
+             <property name="styleSheet">
+              <string notr="true"/>
+             </property>
+             <property name="text">
+              <string>No pattern selected</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="wg_property_container">
+      <layout class="QVBoxLayout" name="vl_props" stretch="0,1">
+       <property name="spacing">
+        <number>4</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="label_property_title">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -700,154 +684,20 @@ QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 1
           </size>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: #1f2733; color: #e6ecf3; font: 600 9pt &quot;Segoe UI&quot;; letter-spacing: 1px;</string>
+          <string notr="true"/>
+         </property>
+         <property name="text">
+          <string>  MATCH CONFIGURATION</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="PatternTreeWidget" name="treeWidget_patternEditor">
-         <column>
-          <property name="text">
-           <string notr="true">1</string>
-          </property>
-         </column>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-
-     <!-- ── Pane 3: Inspector (preview + properties) ───────────── -->
-     <widget class="QWidget" name="pane_inspector">
-      <layout class="QVBoxLayout" name="inspectorLayout">
-       <property name="spacing">
-        <number>0</number>
-       </property>
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>6</number>
-       </property>
-       <property name="rightMargin">
-        <number>6</number>
-       </property>
-       <property name="bottomMargin">
-        <number>6</number>
-       </property>
-       <item>
-        <widget class="QSplitter" name="splitter_property">
-         <property name="orientation">
-          <enum>Qt::Orientation::Vertical</enum>
-         </property>
-         <property name="handleWidth">
-          <number>2</number>
-         </property>
-         <property name="childrenCollapsible">
-          <bool>false</bool>
-         </property>
-         <widget class="QWidget" name="wg_thumb_container">
-          <layout class="QVBoxLayout" name="vl_thumb">
-           <property name="spacing">
-            <number>4</number>
-           </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="label_inspector_title">
-             <property name="text">
-              <string>  SELECTED PATTERN</string>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>26</height>
-              </size>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">background-color: #1f2733; color: #e6ecf3; font: 600 9pt &quot;Segoe UI&quot;; letter-spacing: 1px;</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGraphicsView" name="imageView_PatternThumb">
-             <property name="styleSheet">
-              <string notr="true">background-color: #11161e; border: 1px solid #2b3340;</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_pattern_caption">
-             <property name="text">
-              <string>No pattern selected</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">color: #8a96a8; font: 9pt &quot;Segoe UI&quot;; padding: 2px;</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="wg_property_container">
-          <layout class="QVBoxLayout" name="vl_props">
-           <property name="spacing">
-            <number>4</number>
-           </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="label_property_title">
-             <property name="text">
-              <string>  MATCH CONFIGURATION</string>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>26</height>
-              </size>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">background-color: #1f2733; color: #e6ecf3; font: 600 9pt &quot;Segoe UI&quot;; letter-spacing: 1px;</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QWidget" name="wg_property_browser" native="true"/>
-           </item>
-          </layout>
-         </widget>
-        </widget>
+        <widget class="QWidget" name="wg_property_browser" native="true"/>
        </item>
       </layout>
      </widget>
     </widget>
    </item>
-
-   <!-- ============================================================== -->
-   <!--  Footer status                                                  -->
-   <!-- ============================================================== -->
    <item>
     <widget class="QFrame" name="frame_status">
      <property name="minimumSize">
@@ -863,8 +713,7 @@ QFrame#frame_kpi QLabel[role=&quot;axis-val&quot;] { color: #e6ecf3; font: 600 1
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">QFrame#frame_status { background-color: #1a212c; border-top: 1px solid #11161e; }
-QFrame#frame_status QLabel { color: #8a96a8; font: 9pt &quot;Segoe UI&quot;; }</string>
+      <string notr="true"/>
      </property>
      <layout class="QHBoxLayout" name="hl_status">
       <property name="spacing">

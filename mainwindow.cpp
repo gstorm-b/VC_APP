@@ -33,7 +33,6 @@
 #include "form/task/localization_task_widget.h"
 #include "form/task/localization_dashboard_widget.h"
 #include "form/task/localization_patterns_widget.h"
-#include "form/task/localization_calibration_widget.h"
 
 using namespace ads;
 using Project     = vc::model::Project;
@@ -706,7 +705,8 @@ void MainWindow::onAddDeviceToTaskRequested(const QString &taskId) {
     if (m_project->assignDeviceToTask(deviceId, taskId)) {
         LOG_USER_INFO << QString("Device %1 assigned to task %2").arg(deviceId, taskId);
     }
-    // task->assignDevice(deviceId);    // emits devicesChanged → refreshTree
+    // task->assignDevice(deviceId);
+    // emits devicesChanged → refreshTree
 }
 
 void MainWindow::onMoveDeviceRequested(const QString &taskId,
@@ -795,39 +795,6 @@ void MainWindow::onDeleteTaskRequested(const QString &taskId)
     LOG_USER_INFO << QString("Task %1 deleted").arg(taskId);
 }
 
-// ── Widget factories ──────────────────────────────────────────────────────────
-
-// QWidget *MainWindow::createDeviceWidget(std::shared_ptr<vc::device::IDevice> device,
-//                                         ads::CDockWidget *dock) {
-//     if (!device) return nullptr;
-
-//     switch (device->deviceType()) {
-//     case vc::device::DeviceType::Camera:   return createCameraWidget(device, dock);
-//     case vc::device::DeviceType::McDevice: return createMcProtocolWidget(device, dock);
-//     default: break;
-//     }
-//     return nullptr;
-// }
-
-// QWidget *MainWindow::createCameraWidget(std::shared_ptr<vc::device::IDevice> device,
-//                                         ads::CDockWidget *dock) {
-//     if (!device) return nullptr;
-
-//     auto *camDevice = static_cast<vc::device::CameraDevice *>(device.get());
-//     switch (camDevice->cameraType()) {
-//     case vc::device::CameraType::BaslerGigE:
-//         return new BaslerCameraWidget(device,dock);
-//     default: break;
-//     }
-//     return nullptr;
-// }
-
-// QWidget *MainWindow::createMcProtocolWidget(std::shared_ptr<vc::device::IDevice> device,
-//                                             ads::CDockWidget *dock) {
-//     if (!device) return nullptr;
-//     return new McProtocolDeviceWidget(device, dock);
-// }
-
 static void configureDockWidget(ads::CDockWidget *dock, QWidget *widget) {
     dock->setWidget(widget);
     dock->setFeature(ads::CDockWidget::DockWidgetClosable,  true);
@@ -883,22 +850,22 @@ UITaskEntry MainWindow::createLocalizationEntry(std::shared_ptr<vc::model::ITask
     connect(locWidget, &LocalizationTaskWidget::addDeviceRequested,
             this, &MainWindow::onAddDeviceToTaskRequested);
 
-    UITaskEntry dashEntry  = makeTaskEntry<LocalizationDashboardWidget>  (tr("Dashboard"),   task);
-    UITaskEntry patEntry   = makeTaskEntry<LocalizationPatternsWidget>   (tr("Patterns"),    task);
-    UITaskEntry calibEntry = makeTaskEntry<LocalizationCalibrationWidget>(tr("Calibration"), task);
+    // UITaskEntry dashEntry  = makeTaskEntry<LocalizationDashboardWidget>  (tr("Dashboard"),   task);
+    // UITaskEntry patEntry   = makeTaskEntry<LocalizationPatternsWidget>   (tr("Patterns"),    task);
+    // UITaskEntry calibEntry = makeTaskEntry<LocalizationCalibrationWidget>(tr("Calibration"), task);
 
-    entry.children.insert(dashEntry.name,  dashEntry);
-    entry.children.insert(patEntry.name,   patEntry);
-    entry.children.insert(calibEntry.name, calibEntry);
+    // entry.children.insert(dashEntry.name,  dashEntry);
+    // entry.children.insert(patEntry.name,   patEntry);
+    // entry.children.insert(calibEntry.name, calibEntry);
 
     m_dockManager->addDockWidget(ads::CenterDockWidgetArea, dockWidget,             anchorDock->dockAreaWidget());
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, dashEntry.dockWidget,   anchorDock->dockAreaWidget());
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, patEntry.dockWidget,    anchorDock->dockAreaWidget());
-    m_dockManager->addDockWidget(ads::CenterDockWidgetArea, calibEntry.dockWidget,  anchorDock->dockAreaWidget());
+    // m_dockManager->addDockWidget(ads::CenterDockWidgetArea, dashEntry.dockWidget,   anchorDock->dockAreaWidget());
+    // m_dockManager->addDockWidget(ads::CenterDockWidgetArea, patEntry.dockWidget,    anchorDock->dockAreaWidget());
+    // m_dockManager->addDockWidget(ads::CenterDockWidgetArea, calibEntry.dockWidget,  anchorDock->dockAreaWidget());
 
-    dashEntry.dockWidget->closeDockWidget();
-    patEntry.dockWidget->closeDockWidget();
-    calibEntry.dockWidget->closeDockWidget();
+    // dashEntry.dockWidget->closeDockWidget();
+    // patEntry.dockWidget->closeDockWidget();
+    // calibEntry.dockWidget->closeDockWidget();
 
     dockWidget->setAsCurrentTab();
 

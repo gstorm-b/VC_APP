@@ -18,6 +18,16 @@ namespace mtc {
 // ── Common (type-agnostic) parameters ────────────────────────────────────────
 
 static const QList<PropSpec<MatchPatternConfig>> kCommonSpecs = {
+    { "patternName",       "Pattern Name",           "Name of pattern.",
+     QMetaType::QString, 0,   -1,   0,  0, false,
+     [](const auto &c){ return QVariant(QString::fromStdWString(c.m_patternName)); },
+     [](auto &c, const auto &v){ c.m_patternName = v.toString().toStdWString(); } },
+
+    { "patternIndex",       "Pattern Number",        "Number of pattern (1 – 16).",
+     QMetaType::Int, 1,   16,   1,  1, false,
+     [](const auto &c){ return QVariant(c.m_patternIndex); },
+     [](auto &c, const auto &v){ c.m_patternIndex = v.toInt(); } },
+
     { "minScore",       "Min Score",           "Minimum acceptable match score (0 – 1).",
       QMetaType::Double, 0.0,   1.0,   0.01,  3, false,
       [](const auto &c){ return QVariant(c.m_minScore); },
@@ -37,6 +47,16 @@ static const QList<PropSpec<MatchPatternConfig>> kCommonSpecs = {
       QMetaType::Double, 0.0,  1.0,    0.01,  3, false,
       [](const auto &c){ return QVariant(c.m_maxOverlap); },
       [](auto &c, const auto &v){ c.m_maxOverlap = v.toDouble(); } },
+
+    { "pickingPosX",     "Picking position (X)", "Picking position offset X on pattern.",
+     QMetaType::Double, -1000000.0,  1000000.0,    0.01,  3, false,
+     [](const auto &c){ return QVariant(c.m_pickPosition.x); },
+     [](auto &c, const auto &v){ c.m_pickPosition.x = v.toDouble(); } },
+
+    { "pickingPosY",     "Picking position (Y)", "Picking position offset Y on pattern.",
+     QMetaType::Double, -1000000.0,  1000000.0,    0.01,  3, false,
+     [](const auto &c){ return QVariant(c.m_pickPosition.y); },
+     [](auto &c, const auto &v){ c.m_pickPosition.y = v.toDouble(); } },
 };
 
 // ── EdgeBased parameters ──────────────────────────────────────────────────────
@@ -185,12 +205,17 @@ void MatchConfigPropertyAdapter::refresh()
 
 void MatchConfigPropertyAdapter::destroy()
 {
-    m_mgr->clear();
+    // The variant manager is SHARED with the host widget (group-level props,
+    // other adapters, …).  m_mgr->clear() would wipe everyone's properties.
+    // Delete only what this adapter created.
+    qDeleteAll(m_props);            // leaf spec properties
     m_props.clear();
     m_propKeys.clear();
-    m_grpCommon = nullptr;
-    m_grpType   = nullptr;
-    m_cfg       = nullptr;
+
+    delete m_grpCommon;  m_grpCommon = nullptr;
+    delete m_grpType;    m_grpType   = nullptr;
+
+    m_cfg = nullptr;
 }
 
 // ── Slot: property changed ────────────────────────────────────────────────────

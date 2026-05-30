@@ -14,11 +14,8 @@ skinparam shadowing false
 package mtc {
 
     class ImageMatcher {
-
-    }
-
-    class EdgeProfile {
-
+        + setMatchGroup(MatchGroup&) : void
+        + Match() : MatchResult
     }
 
     class MatchGroup {
@@ -87,15 +84,11 @@ package mtc {
 ' Dependencies
 MatchPattern ..> PatternLayer : return data
 
-
 ' --- Composition / Aggregation Relationships ---
-ImageMatcher *-- "2" EdgeProfile : "contains"
-ImageMatcher *-- "1" MatchGroup : "contains"
-
 MatchGroup *-- "1" MatchPattern : "contains multiple pattern"
 MatchPattern *-- MatchPatternData : "contains"
 
 PatternLayer *-- PatternPoint : "contains"
-ImageMatcher *-- PatternLayer : "match data"
+ImageMatcher <|-- MatchGroup : " match data"
 
 @enduml

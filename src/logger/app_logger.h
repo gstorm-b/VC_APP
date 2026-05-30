@@ -72,7 +72,7 @@ public:
     static AppLogger& instance();
 
     LogStream info()     { return LogStream(LogLevel::Info, this); }
-    LogStream warn()     { return LogStream(LogLevel::Warning, this); }
+    LogStream warning()     { return LogStream(LogLevel::Warning, this); }
     LogStream error()    { return LogStream(LogLevel::Error, this); }
     LogStream critical() { return LogStream(LogLevel::Critical, this); }
 

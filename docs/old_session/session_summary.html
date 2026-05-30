@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session Summary — ncr_picking</title>
+<style>
+  :root {
+    --bg:        #0f1419;
+    --surface:   #161b22;
+    --surface2:  #1e2530;
+    --border:    #2a2f3a;
+    --txt:       #d6dde6;
+    --txt2:      #98a4b3;
+    --txt3:      #6b7785;
+    --accent:    #2b8ce8;
+    --accent2:   #4aa5ff;
+    --ok:        #4ec97a;
+    --warn:      #f0b400;
+    --err:       #c0392b;
+    --mono:      "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    --sans:      "Segoe UI", system-ui, sans-serif;
+  }
+  html { background: var(--bg); }
+  body {
+    background: var(--bg); color: var(--txt);
+    font-family: var(--sans);
+    max-width: 980px; margin: 0 auto;
+    padding: 32px 28px 80px;
+    line-height: 1.55;
+  }
+  h1 {
+    color: var(--txt); border-bottom: 2px solid var(--accent);
+    padding-bottom: 10px; margin-top: 0; font-size: 1.85rem;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    color: var(--accent2); margin-top: 2.2em; font-size: 1.25rem;
+    border-bottom: 1px solid var(--border); padding-bottom: 6px;
+  }
+  h3 {
+    color: var(--txt); margin-top: 1.6em; font-size: 1.05rem;
+  }
+  p, li { color: var(--txt); }
+  strong { color: var(--txt); }
+  em { color: var(--txt2); font-style: normal; font-weight: 600; }
+  a { color: var(--accent2); }
+  code {
+    font-family: var(--mono);
+    background: var(--surface);
+    color: #d8e1ec;
+    padding: 1px 6px; border-radius: 3px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    border-collapse: collapse;
+    margin: 14px 0;
+    width: 100%;
+    font-size: 0.92rem;
+    background: var(--surface);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 7px 11px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent2);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  td code { background: var(--surface2); }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 4px 0; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 14px 0; padding: 4px 14px;
+    background: rgba(43,140,232,0.08);
+    color: var(--txt);
+  }
+  .callout {
+    background: rgba(240,180,0,0.08);
+    border: 1px solid rgba(240,180,0,0.35);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 14px 0;
+    color: var(--txt);
+  }
+  .callout strong { color: var(--warn); }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2em 0;
+  }
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 22px;
+    margin: 18px 0 28px;
+    font-size: 0.94rem;
+  }
+  .toc ol { margin: 0; padding-left: 1.2em; }
+  .toc li { margin: 2px 0; }
+  .meta {
+    color: var(--txt3); font-family: var(--mono);
+    font-size: 0.85rem; margin-top: -8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Session Summary — ncr_picking</h1>
+<p class="meta">Aggregated changes from one working session, organised by feature area.</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#sec1">Property browser — Point / PointF managers</a></li>
+    <li><a href="#sec2"><code>kMatchGroupSpecs</code> completion</a></li>
+    <li><a href="#sec3"><code>LocalizationCalibrationWidget</code> scaffolding</a></li>
+    <li><a href="#sec4">Patterns widget — property-rebuild bug</a></li>
+    <li><a href="#sec5"><code>onPropertyValueChanged</code> — commit to manager</a></li>
+    <li><a href="#sec6">Cleanup — manager owns signal emission</a></li>
+    <li><a href="#sec7">JSON save/load for <code>TaskLocalization</code></a></li>
+    <li><a href="#sec8"><code>PatternGroupManager::toJson</code> / <code>fromJson</code></a></li>
+    <li><a href="#sec9">Image BLOB I/O for the task</a></li>
+    <li><a href="#sec10"><code>AddPatternWizard</code> canvas refactor</a></li>
+    <li><a href="#sec11">Wizard polish — image-coord contract + spin-box sync</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#files">Files touched</a></li>
+  </ol>
+</div>
+
+<h2 id="sec1">1. Property browser — Point / PointF managers</h2>
+<p><strong>Goal.</strong> Add compound property managers that map cleanly to
+<code>QPoint</code>, <code>QPointF</code>, <code>cv::Point</code>,
+<code>cv::Point2f</code>, <code>cv::Point2d</code>, <code>cv::Point3i</code>,
+<code>cv::Point3f</code>, <code>cv::Point3d</code>, with <code>x</code>/<code>y</code>
+(or <code>x</code>/<code>y</code>/<code>z</code>) sub-items.</p>
+<p><strong>Pattern adopted.</strong> Mirror the existing
+<code>PositionPropertyManager</code> / <code>SizePropertyManager</code>
+style — two manager classes, mode-switched.</p>
+
+<table>
+  <tr><th>User-facing name</th><th>Manager + mode</th></tr>
+  <tr><td><code>PointXY</code></td>        <td><code>PointPropertyManager</code> + <code>XY</code></td></tr>
+  <tr><td><code>PointXYZ</code></td>       <td><code>PointPropertyManager</code> + <code>XYZ</code></td></tr>
+  <tr><td><code>PointXYDouble</code></td>  <td><code>PointFPropertyManager</code> + <code>XY</code></td></tr>
+  <tr><td><code>PointXYZDouble</code></td> <td><code>PointFPropertyManager</code> + <code>XYZ</code></td></tr>
+</table>
+
+<p><strong>Files.</strong></p>
+<ul>
+  <li><code>src/widgets/property_browser/custom_property_managers.h</code> — added two manager classes with <code>setValue</code> overloads for the OpenCV / Qt point types, gated by <code>#if __has_include(&lt;opencv2/core/types.hpp&gt;)</code> so the header stays portable.</li>
+  <li><code>src/widgets/property_browser/custom_property_managers.cpp</code> — implementations mirroring <code>PositionPropertyManager</code> (init/uninit, sub-prop creation/destruction, <code>slotIntChanged</code> / <code>slotDoubleChanged</code>, <code>valueText</code>).</li>
+  <li><code>src/widgets/property_browser/property_browser_widget.{h,cpp}</code> — added accessors <code>pointManager()</code> / <code>pointFManager()</code>; registered <code>QtSpinBoxFactory</code> + <code>QtDoubleSpinBoxFactory</code> for the sub-managers.</li>
+</ul>
+
+<h2 id="sec2">2. <code>kMatchGroupSpecs</code> completion</h2>
+<p><strong>Goal.</strong> The static <code>PropSpec</code> list in
+<code>localization_patterns_widget.cpp</code> only covered
+<code>m_groupName</code>, <code>m_groupIndex</code>, and the two
+<code>m_pickingBoxSize</code> components. Added the remaining editable members
+of <code>mtc::MatchGroupConfig</code>.</p>
+
+<table>
+  <tr><th>Key</th><th>Member</th><th>Type / range</th></tr>
+  <tr><td><code>groupPickingBoxDistance</code></td><td><code>m_pickingBoxDistance</code></td><td>double, 0…100k, step 1</td></tr>
+  <tr><td><code>groupPickingBoxAngle</code></td>   <td><code>m_pickingBoxAngle</code></td>   <td>double, ±360°, step 0.1</td></tr>
+  <tr><td><code>groupPickingOffsetX</code></td>    <td><code>m_pickingOffset.x</code></td>   <td>float (<code>toFloat()</code>), ±100k, step 0.1</td></tr>
+  <tr><td><code>groupPickingOffsetY</code></td>    <td><code>m_pickingOffset.y</code></td>   <td>float, ±100k, step 0.1</td></tr>
+  <tr><td><code>groupPickingOffsetZ</code></td>    <td><code>m_pickingOffset.z</code></td>   <td>float, ±100k, step 0.1</td></tr>
+  <tr><td><code>groupLowWorkpieceRatio</code></td> <td><code>m_lowWorkpieceRatio</code></td> <td>double, 0…100, step 0.1</td></tr>
+</table>
+
+<p><code>m_patterns</code> (the <code>std::vector&lt;MatchPatternConfig&gt;</code>) is
+intentionally omitted — patterns are managed via the pattern tree, not the
+property panel.</p>
+
+<h2 id="sec3">3. <code>LocalizationCalibrationWidget</code> scaffolding</h2>
+<p><strong>Goal.</strong> Build a property widget for
+<code>MatchPatternConfig</code> when a pattern is clicked. The
+<code>.ui</code> was empty; layout built programmatically.</p>
+
+<p><strong>Files.</strong></p>
+<ul>
+  <li><code>src/form/task/localization_calibration_widget.h</code> — added members (<code>PatternTreeWidget*</code>, container <code>QWidget*</code>, <code>mtc::PatternGroupManager*</code>, <code>mtc::MatchConfigPropertyAdapter*</code>, selection cache + bound pattern + working config) and slots <code>onTreePatternClicked(int, int, const MatchPatternConfig&amp;)</code>, <code>onPatternConfigModified()</code>.</li>
+  <li><code>src/form/task/localization_calibration_widget.cpp</code> — pulled the manager from the task, built a horizontal splitter, called the inherited <code>initPropertyBrowser(m_propContainer)</code>, constructed the adapter, wired <code>patternClicked → onTreePatternClicked</code>, populated the tree.</li>
+</ul>
+
+<p><strong>Click path:</strong></p>
+<pre><code>onTreePatternClicked
+  → findGroupByNumber → findPatternByNumber
+  → bindPatternToBrowser(pattern)
+       → rebuildPropertyBrowser():
+           m_variantEditor-&gt;clear()
+           m_configAdapter-&gt;bind(&amp;m_workingPatternCfg)
+           addProperty(adapter-&gt;rootProperties())</code></pre>
+
+<h2 id="sec4">4. Patterns widget — property-rebuild bug</h2>
+<p><strong>Bug.</strong> Clicking a pattern in the tree silently failed to
+render the property widget (or crashed on some builds).</p>
+<div class="callout">
+  <strong>Root cause.</strong> <code>MatchConfigPropertyAdapter::destroy()</code>
+  called <code>m_mgr->clear()</code>. The variant manager is <em>shared</em>
+  with <code>LocalizationPatternsWidget</code>'s group-level properties;
+  <code>clear()</code> deletes every property in the manager. Inside
+  <code>rebuildPropertyBrowser()</code> the second adapter <code>bind()</code>
+  wiped the freshly-created group properties → adding a dangling
+  <code>m_groupVariant</code> to the browser.
+</div>
+<p><strong>Fix.</strong></p>
+<ul>
+  <li><code>src/matching/match_config_property_adapter.cpp::destroy()</code> — now only deletes properties the adapter itself created (<code>qDeleteAll(m_props)</code> + <code>delete m_grpCommon</code> + <code>delete m_grpType</code>). Shared manager untouched.</li>
+  <li><code>src/form/task/localization_patterns_widget.cpp::rebuildPropertyBrowser()</code> — owns the lifecycle of <code>m_groupVariant</code>: explicit <code>qDeleteAll(m_groupProps); delete m_groupVariant;</code> before re-creating.</li>
+</ul>
+
+<h2 id="sec5">5. <code>onPropertyValueChanged</code> — commit to manager</h2>
+<p><strong>Before.</strong> The method only had a half-finished branch; the
+condition was <code>m_groupPropKeys.contains(property) || (m_boundMatchGroup)</code>
+(should be <code>&amp;&amp;</code>, saved only by <code>key.isEmpty() return;</code>).
+No null guards, no failure rollback, no UI re-sync.</p>
+<p><strong>After.</strong></p>
+<ol>
+  <li>Guard: only handle group props; require <code>m_patternManager</code> + <code>m_boundMatchGroup</code>.</li>
+  <li><code>PropSpecHelper::dispatch(...)</code> into the working copy.</li>
+  <li>Snapshot identity (<code>oldName</code>) <em>before</em> the commit — dispatch may have already written a new name into the working copy.</li>
+  <li><code>setGroupConfig(oldName, m_workingGroupConfig)</code>:
+    <ul>
+      <li>Failure → roll the working copy back from the live group, call <code>PropSpecHelper::refresh()</code> so the browser stops showing the rejected value.</li>
+      <li>Success → let the manager's <code>groupChanged</code> listener handle UI refresh (after the cleanup in §6).</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="sec6">6. Cleanup — manager owns signal emission</h2>
+<p><strong>Issue.</strong> <code>MatchGroup::setConfig</code> had a
+commented-out <code>emit configChanged</code>, but <code>MatchGroup</code>
+is not a <code>QObject</code> so the emit could never work. As a result
+<code>setGroupConfig</code> / <code>setPatternConfig</code> / etc. all
+silently succeeded without notifying listeners.</p>
+
+<p><strong>Manager now emits the right signal on every successful mutation</strong>
+(<code>src/matching/pattern_group_manager.cpp</code>):</p>
+
+<table>
+  <tr><th>Method</th><th>Signal</th></tr>
+  <tr><td><code>setGroupConfig</code></td>   <td><code>groupChanged(group, "*")</code></td></tr>
+  <tr><td><code>renameGroup</code></td>      <td><code>groupChanged(group, "name")</code></td></tr>
+  <tr><td><code>renumberGroup</code></td>    <td><code>groupChanged(group, "number")</code></td></tr>
+  <tr><td><code>setPatternConfig</code></td> <td><code>patternChanged(group, p, "*")</code> (re-resolves <code>p</code> by new name)</td></tr>
+  <tr><td><code>renamePattern</code></td>    <td><code>patternChanged(group, p, "name")</code></td></tr>
+  <tr><td><code>renumberPattern</code></td>  <td><code>patternChanged(group, p, "number")</code></td></tr>
+  <tr><td><code>setPatternImage</code></td>  <td><code>patternChanged(group, p, "image")</code></td></tr>
+</table>
+
+<p><strong>Listeners updated</strong> in
+<code>src/form/task/localization_patterns_widget.cpp</code>:</p>
+<ul>
+  <li><code>groupChanged</code> listener syncs <code>m_selectedGroupIndex</code> (when bound), calls <code>rebuildTreeFromManager()</code> + <code>rebuildGroupCombo()</code>, and re-selects by the possibly-updated number.</li>
+  <li><code>patternChanged</code> listener refreshes the tree + thumbnail for the bound pattern.</li>
+  <li><code>onPropertyValueChanged</code> collapsed: no longer manually rebuilds tree/combo — the signal listeners do it.</li>
+  <li><code>onPatternConfigModified</code> got the same rollback path: on failure, restore <code>m_workingPatternCfg</code> from <code>m_boundPattern->config()</code> and call <code>m_configAdapter->refresh()</code>.</li>
+</ul>
+
+<h2 id="sec7">7. JSON save/load for <code>TaskLocalization</code></h2>
+<p><strong>Goal.</strong> Implement <code>toJson</code>/<code>fromJson</code>
+for the task + serialise the entire pattern library, with training images
+stored as BLOBs through <code>ProjectRepository</code>.</p>
+
+<div class="callout">
+  <strong>Critical blocker fixed in <code>task_factory.cpp</code>.</strong>
+  Even after correct <code>fromJson</code>, <code>TaskFactory::createTaskLocalization</code>
+  only called <code>config.fromJson(...)</code>; it never invoked
+  <code>task->fromJson(obj)</code>. Result: <code>cameraDeviceId</code>,
+  <code>mcDeviceId</code>, <code>assignedDeviceIds</code>, and the entire
+  pattern library were silently dropped on load. Replaced the partial
+  restore with a single delegated call:
+  <pre><code>TaskLocalization* task = new TaskLocalization(taskName, taskId, parent);
+if (!task-&gt;fromJson(obj)) { /* log + keep task anyway */ }</code></pre>
+</div>
+
+<h2 id="sec8"><code>PatternGroupManager::toJson</code> / <code>fromJson</code></h2>
+<p><strong>Goal.</strong> Move pattern-library serialisation into the manager
+so it owns its own schema; have <code>TaskLocalization</code> delegate.</p>
+<p><strong>Files.</strong></p>
+<ul>
+  <li><code>src/matching/pattern_group_manager.cpp</code> — JSON helpers (<code>matchingTypeToString</code>, <code>edgeConfigToJson</code>, <code>patternConfigToJson</code>, <code>groupToJson</code>, and their <code>fromJson</code> inverses) live in an anonymous namespace inside <code>mtc::</code>. <code>toJson()</code> → <code>{ "groups": [...] }</code>; <code>fromJson(obj)</code> clears + repopulates via <code>addGroup</code>/<code>addPattern</code>.</li>
+  <li><code>src/model/task_localization.cpp</code> — now delegates: <code>obj["patternManager"] = m_patternManager->toJson()</code> on save; <code>m_patternManager->fromJson(...)</code> on load. The image-blob key helpers (<code>imageKey</code> / <code>parseImageKey</code>) stayed in the task — they bridge manager state with the BLOB table.</li>
+</ul>
+
+<p><strong>JSON schema.</strong></p>
+<pre><code>{
+  // ITask base: id, name, taskType, cameraSourceType, ownedCameraId,
+  // assignedDeviceIds, taskConfig (= TaskLocalizeConfig::toJson)
+  "cameraDeviceId": "...",
+  "mcDeviceId":     "...",
+  "patternManager": {
+    "groups": [
+      {
+        "name": "...", "number": 1,
+        "pickingBoxSize":     { "w": 100.0, "h": 50.0 },
+        "pickingBoxDistance": 0.0,
+        "pickingBoxAngle":    0.0,
+        "pickingOffset":      { "x": 0.0, "y": 0.0, "z": 0.0 },
+        "lowWorkpieceRatio":  1.5,
+        "patterns": [
+          {
+            "name": "...", "number": 1,
+            "minScore": 0.9, "angle": 0.0,
+            "toleranceAngle": 180.0, "maxOverlap": 0.1,
+            "pickPosition": { "x": 0.0, "y": 0.0 },
+            "matchingType": "Edge-Based",
+            "typeConfig":   { /* EdgeMatchConfig fields */ }
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+<h2 id="sec9">9. Image BLOB I/O for the task</h2>
+<p><code>TaskLocalization::getTaskImageMap</code> / <code>loadTaskImageMap</code>
+in <code>src/model/task_localization.cpp</code>:</p>
+<ul>
+  <li><code>getTaskImageMap</code>: walks every group → pattern, includes only patterns whose <code>m_rawImage</code> is non-empty, keyed by <code>imageKey(gn, pn)</code>.</li>
+  <li><code>loadTaskImageMap</code>: parses each key with a <code>QRegularExpression</code>, finds group/pattern by number, writes the image through <code>setPatternImage(...)</code>. Bad keys / missing groups / missing patterns are logged via <code>LOG_DEV_ERR</code>; the rest still inject.</li>
+</ul>
+<p>Stable key <code>"g{N}_p{M}"</code> — uses <em>numbers</em>, not names,
+because names can be renamed at runtime without a corresponding storage
+update.</p>
+
+<h2 id="sec10">10. <code>AddPatternWizard</code> canvas refactor</h2>
+<p><strong>Goal.</strong> Add canvas-wide pan/zoom/reset, crop body drag,
+read-only crop overlay on the Pick step, and box jaw handles.</p>
+
+<p><strong>Foundational change.</strong> Previously all geometry was in
+<em>widget pixels</em>. Refactored so every public state member is in
+<em>source-image pixels</em> and the canvas maintains a view transform
+(<code>m_zoom</code>, <code>m_offset</code>). Paint applies image → widget at
+render time; interactions convert mouse → image via <code>widgetToImage()</code>.</p>
+
+<h3>View interaction (every mode)</h3>
+<table>
+  <tr><th>Gesture</th><th>Effect</th></tr>
+  <tr><td>Mouse wheel</td>                <td>Zoom around cursor (point under cursor stays fixed). Clamped <code>[0.05, 40]×</code>.</td></tr>
+  <tr><td>Middle-button drag</td>         <td>Pan (works even when locked).</td></tr>
+  <tr><td>Middle-button double-click</td> <td><code>resetView()</code> — fit to widget + recentre.</td></tr>
+</table>
+<p><code>setImage()</code> auto-fits when a new image arrives.
+<code>resizeEvent</code> is a no-op so the user's view survives widget resize.</p>
+
+<h3>Crop mode</h3>
+<p><code>hitCropHandle()</code> returns one of
+<code>CH_TL/TR/BL/BR/Body</code>. Press → start drag, move → apply image-space delta:</p>
+<ul>
+  <li>Corners → <code>setTopLeft/TopRight/...</code></li>
+  <li>Body → <code>translate(delta)</code></li>
+</ul>
+<p>Cursor reflects handle (<code>SizeFDiagCursor</code>, <code>SizeBDiagCursor</code>,
+<code>SizeAllCursor</code>). Min size 8×8 image pixels; intersected with image
+bounds. Emits <code>cropChanged(m_crop)</code>.</p>
+
+<h3>Pick mode</h3>
+<ul>
+  <li>Paints <code>m_crop</code> as a dashed read-only outline with dim scrim; <em>not interactive</em>.</li>
+  <li>Click clamps the pick into the crop rect (or image bounds if no crop).</li>
+  <li>Wizard passes <code>m_keepOriginal ? QRect() : m_crop</code> to hide the overlay when keepOriginal is on.</li>
+  <li><code>AddPatternWizard::pickX/Y()</code> accessors return crop-relative when cropped, raw image coords otherwise.</li>
+</ul>
+
+<h3>Box mode</h3>
+<ul>
+  <li>4 corner handles → resize. Cursor → box-A-local axis-aligned coords; new <code>W = 2·|lx|</code>, <code>H = 2·|ly|</code>. Box A stays anchored; box B mirrors.</li>
+  <li>Body drag → translate the jaw pair. Polar coords from the pick set <code>m_boxDist</code> + <code>m_boxAngle</code>.</li>
+  <li>Rotation handle (filled disc on the perpendicular line from box A centre, <code>m_boxH/2 + 28 px</code> standoff) → drag rotates around the pick.</li>
+  <li>Boxes drawn without clipping to the image rect → jaws can extend off the frame.</li>
+  <li>New signal <code>boxChanged(w, h, dist, angleDeg)</code> emitted on every change; wizard listens, updates spin boxes (signal-blocked) and state.</li>
+</ul>
+
+<h2 id="sec11">11. Wizard polish — image-coord contract + spin-box sync</h2>
+<ol>
+  <li><strong><code>QPainter::SmoothPixmapTransform</code> is OFF.</strong> Antialiasing stays on for overlays; the underlying pixmap renders nearest-neighbour so pixel boundaries are visible at high zoom.</li>
+  <li><strong>All canvas signal payloads are in image pixels</strong> — documented inline in <code>pattern_canvas.h</code>. Verified every emission (<code>cropChanged</code>, <code>pickChanged</code>, <code>boxChanged</code>) uses image-coord members.</li>
+  <li><strong>Bidirectional sync canvas ↔ widget objects.</strong> The wizard already synced spin boxes from canvas signals, but they were bounded by legacy <code>CW=560</code> / <code>CH=380</code> constants — values outside silently clipped. New helper <code>AddPatternWizard::onImageSizeChanged(imageW, imageH)</code> resizes every geometry spin box on image load:
+    <ul>
+      <li><code>m_cropX/Y</code> → <code>[0, imgW/H]</code>; <code>m_cropW/H</code> → <code>[1, imgW/H]</code></li>
+      <li><code>m_pickXSpin/YSpin</code> → <code>[0, imgW/H - 1]</code></li>
+      <li><code>m_boxWSpin/HSpin</code> → <code>[1, max(maxDim, 5000)]</code></li>
+      <li><code>m_boxDistSpin</code> → <code>[0, max(hypot(W, H), 1000)]</code></li>
+      <li>All <code>setRange</code> / <code>setValue</code> inside per-spin <code>QSignalBlocker</code> so no <code>valueChanged → onCropChanged</code> cascade fires.</li>
+      <li>Re-centres / clamps <code>m_crop</code> and <code>m_pick</code> when previous defaults fall outside the new image bounds.</li>
+    </ul>
+  </li>
+</ol>
+<p><code>onResetCrop</code> / <code>onCenter1to1Crop</code> /
+<code>onPickCenter</code> now use image dimensions
+(<code>m_capturedMat.cols/rows</code>) rather than canvas constants.</p>
+
+<h2 id="followups">Known follow-ups / open items</h2>
+<ul>
+  <li><code>ITask::fromJson</code> reads <code>assignedDeviceIds</code> but does <em>not</em> read <code>cameraSourceType</code> / <code>ownedCameraId</code>, even though <code>ITask::toJson</code> writes them. Pre-existing base-class gap.</li>
+  <li><code>LocalizationCalibrationWidget</code> shares the manager with the patterns widget but does not currently listen to its signals; cross-widget refresh on simultaneous edits is missing.</li>
+  <li>Patterns come back from a load with <code>m_hasPatternLearned == false</code> — re-learn happens lazily at first use (intentional).</li>
+</ul>
+
+<h2 id="files">Files touched</h2>
+<pre><code>src/widgets/property_browser/custom_property_managers.h
+src/widgets/property_browser/custom_property_managers.cpp
+src/widgets/property_browser/property_browser_widget.h
+src/widgets/property_browser/property_browser_widget.cpp
+
+src/form/task/localization_patterns_widget.cpp
+src/form/task/localization_calibration_widget.h
+src/form/task/localization_calibration_widget.cpp
+
+src/matching/match_group.cpp
+src/matching/pattern_group_manager.cpp
+src/matching/match_config_property_adapter.cpp
+
+src/model/task_localization.h
+src/model/task_localization.cpp
+src/model/task_factory.cpp
+
+src/form/pattern/pattern_canvas.h
+src/form/pattern/pattern_canvas.cpp
+src/form/pattern/add_pattern_wizard.h
+src/form/pattern/add_pattern_wizard.cpp</code></pre>
+
+</body>
+</html>

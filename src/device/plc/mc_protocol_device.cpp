@@ -7,7 +7,7 @@
 
 namespace vc::device {
 McProtocolDevice::McProtocolDevice(QString id, QString name, QObject* parent)
-    : IDevice(id, name, parent) {
+    : PlcDevice(id, name, parent) {
 
     IDevice::setDeviceConfig(&m_config);
 }
@@ -132,6 +132,7 @@ void McProtocolDevice::onPollingTimerTimeOut() {
         return;
     }
 
+    // LOG_DEV_DEBUG << "Timeout...";
     polling_query();
 }
 
@@ -193,6 +194,7 @@ bool McProtocolDevice::initialize_mc_device() {
     m_wait_for_response = false;
     is_first_time_polling = true;
     m_update_command_index = 0;
+    m_data_update_state = DataQueryState::QueryTriggerByTimer;
     m_retry_by_timeout = 0;
     m_retry_count = 0;
 
@@ -214,8 +216,8 @@ void McProtocolDevice::polling_query() {
         if (time_lasp.count() > m_config.context()->msgConfig()->m_responseTimeout) {
             // response timeout handle;
             retry_request_handle();
+            return;
         }
-        return;
     }
 
     m_mutex.lock();
@@ -232,10 +234,14 @@ void McProtocolDevice::polling_query() {
         m_current_request = m_polling_request_queue.at(m_update_command_index++);
         if (m_update_command_index >= m_polling_request_queue.count()) {
             m_update_command_index = 0;
+            m_data_update_state = DataQueryState::QueryFinished;
             is_first_time_polling = false;
-            emit pollingUpdate(m_device_map);
-
+            // emit device's value change signal
+            // LOG_DEV_DEBUG << "Device map updated";
+            emit pollingUpdate(m_device_map.clone());
             onSetCommActiveDevice();
+        } else {
+            m_data_update_state = DataQueryState::QueryContinue;
         }
     }
 
@@ -252,6 +258,7 @@ void McProtocolDevice::request_handle() {
 
         if (rt_code == MCFrameAbstract::RequestFrameOK) {
             McMsgInterface::MsgErrorState send_state = m_msg_interface->SendMsg(send_frame);
+            // LOG_DEV_DEBUG << "MC Protocol Device sent message.";
 
             if (send_state != McMsgInterface::MsgErrorState::NoError) {
                 LOG_USER_ERR << "error while send frame";
@@ -311,6 +318,11 @@ void McProtocolDevice::response_handle() {
     m_retry_count = 0;
     m_wait_for_response = false;
     m_current_request.reset();
+
+    if (m_data_update_state == DataQueryState::QueryContinue) {
+        // LOG_DEV_DEBUG << "Continue query ...";
+        polling_query();
+    }
 }
 
 void McProtocolDevice::retry_request_handle() {
@@ -338,6 +350,7 @@ void McProtocolDevice::optimizeDeviceMap() {
     m_device_map.Subscribe_deivce('M', ctx->m_startMAddress, ctx->m_amountMAddress);
     m_device_map.Subscribe_deivce('D', ctx->m_startDAddress, ctx->m_amountDAddress);
     m_device_map.OptimizeRanges();
+    m_polling_request_queue.clear();
     update_m_map();
     update_d_map();
 }
@@ -353,6 +366,7 @@ void McProtocolDevice::update_m_map() {
 
     std::vector<McDeviceRange::DeviceRange> *m_ranges_ptr = &m_device_map.m_devices.ranges;
     int r_size = m_device_map.m_devices.ranges.size();
+    LOG_DEV_DEBUG << "RSize" << r_size;
     for (int index=0;index<r_size;index++) {
         int start_address = (m_ranges_ptr->begin())[index].start;
         int amount = (m_ranges_ptr->begin())[index].amount;
@@ -382,6 +396,7 @@ void McProtocolDevice::update_d_map() {
 
     std::vector<McDeviceRange::DeviceRange> *d_ranges_ptr = &m_device_map.d_devices.ranges;
     int r_size = m_device_map.d_devices.ranges.size();
+    LOG_DEV_DEBUG << "RSize" << r_size;
     for (int index=0;index<r_size;index++) {
         int start_address = (d_ranges_ptr->begin())[index].start;
         int amount  = (d_ranges_ptr->begin())[index].amount;
@@ -401,6 +416,7 @@ void McProtocolDevice::update_d_map() {
 }
 
 void McProtocolDevice::check_device_changed() {
+    QMap<QString, QVariant> changedValues;
     if ((!m_device_map.device_map_m.empty()) && (!m_last_device_M_map.empty())) {
 
         if (m_device_map.device_map_m.size() != m_last_device_M_map.size()) {
@@ -413,6 +429,9 @@ void McProtocolDevice::check_device_changed() {
         for (; it_new_m != m_device_map.device_map_m.end(); ++it_new_m, ++it_last_m) {
             if (it_new_m->second != it_last_m->second) {
                 if (!is_first_time_polling) {
+                    // append to changed maps;
+                    changedValues.insert(QString("M%1").arg(it_new_m->first, 4, 10, QChar('0')), it_new_m->second);
+
                     emit deviceMChanged(it_new_m->first, it_last_m->second, it_new_m->second);
                 }
                 it_last_m->second = it_new_m->second;
@@ -433,10 +452,17 @@ void McProtocolDevice::check_device_changed() {
     for (; it_new_d != m_device_map.device_map_d.end(); ++it_new_d, ++it_last_d) {
         if (it_new_d->second != it_last_d->second) {
             if (!is_first_time_polling) {
-                emit deviceDChanged(it_new_d->first, it_last_d->second, it_new_d->second);
+                // append to changed maps;
+                changedValues.insert(QString("D%1").arg(it_new_d->first, 4, 10, QChar('0')), it_new_d->second);
+
+                emit deviceDChanged(it_new_d->first, it_last_d->second, it_new_d->second);                
             }
             it_last_d->second = it_new_d->second;
         }
+    }
+
+    if (changedValues.size() > 0) {
+        emit valueChanged(changedValues);
     }
 }
 

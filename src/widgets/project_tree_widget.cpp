@@ -25,7 +25,7 @@ struct ChipInfo { QString text; QString color; };
 static ChipInfo chipForDeviceType(vc::device::DeviceType t) {
     switch (t) {
     case vc::device::DeviceType::Camera:   return { "CAM", "#2b8ce8" };
-    case vc::device::DeviceType::McDevice: return { "PLC", "#22d17a" };
+    case vc::device::DeviceType::PLC:      return { "PLC", "#22d17a" };
     default:                               return { "DEV", "#f5a623" };
     }
 }

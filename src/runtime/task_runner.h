@@ -72,6 +72,7 @@ public:
     QThread *runtimeThread() const { return m_runtimeThread;  }
 
 signals:
+    void requestDetach(QThread *dest);
     void phaseChanged(TaskRunner::Phase newPhase);
 
 private:
@@ -79,6 +80,7 @@ private:
 
     Phase   m_phase{Phase::Idle};
     QThread *m_runtimeThread{nullptr};   // task coordinator thread
+
 
     QMap<QString, IDeviceRunner *> m_runners; // deviceId → runner
 };

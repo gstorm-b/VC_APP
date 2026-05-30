@@ -1,0 +1,54 @@
+@startuml nachi_client_sequence_happy
+title Happy path - boot, heartbeat, matching cycle
+
+skinparam shadowing false
+skinparam sequenceArrowThickness 1.2
+skinparam sequenceMessageAlign center
+autonumber
+
+actor "Controller\nboot" as Boot
+participant "TASK2\nHEARTBEAT"      as T2
+participant "Shared\nGlobals + IO"  as G
+participant "TASK1\nMAIN_CHANNEL"   as T1
+participant "VisionOutputDevice\n(server)" as S
+
+Boot -> T2 : auto-start
+Boot -> T1 : auto-start
+
+== Init ==
+T2 -> G   : INIT_STATE\nGB_TASK1_RESET_REQ = 1\nO_VISION_LINK_OK/ERR = 0
+T1 -> G   : CLEAR_RESULT
+T1 -> G   : WAIT_FOR_PERMISSION (block)
+
+== Task 2 connects port 2 ==
+T2 -> S   : TCP_OPEN + TCP_CONNECT(SK_HB, :5001)
+S  --> T2 : connected
+T2 -> G   : GRANT_TASK1\nGB_SERVER_ALIVE = 1\nGB_TASK1_RESET_REQ = 0\nO_VISION_LINK_OK = 1
+
+== Task 1 unlocked, connects port 1 ==
+G  -> T1  : permission OK
+T1 -> S   : TCP_OPEN + TCP_CONNECT(SK_MAIN, :5000)
+S  --> T1 : connected
+T1 -> G   : GB_TASK1_CONNECTED = 1
+
+== Heartbeat steady state ==
+loop every ~1s
+    S  -> T2  : "connection_check."
+    T2 -> T2  : VALIDATE_PROBE  (OK)
+    T2 -> S   : "ack,{count}."
+    T2 -> G   : INC_MSG_COUNT  (wrap at 2^16)
+end
+
+== Matching cycle (in Task 1) ==
+loop work loop
+    T1 -> G  : check GB_TASK1_RESET_REQ (= 0)
+    T1 -> G  : O_TASK1_BUSY = 1
+    T1 -> S  : "trigger,1;"
+    S  --> T1 : "N,x1,y1,z1,r1,...,xN,yN,zN,rN;"
+    T1 -> T1 : PARSE_RESULT\n  POP_FIELD ... fields
+    T1 -> G  : GI_DETECTED_COUNT = N\nGR_POS_X/Y/Z/R[0..N-1] = ...
+    T1 -> G  : O_TASK1_BUSY = 0
+    T1 -> T1 : DELAY MAIN_RECV_POLL
+end
+
+@enduml

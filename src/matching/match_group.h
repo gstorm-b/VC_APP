@@ -13,11 +13,14 @@ public:
     std::wstring m_groupName;
     int m_groupIndex;
 
-    double m_lowWorkpieceRatio = 1.5;
+    cv::Size2f m_pickingBoxSize{0.0, 0.0};
+    double m_pickingBoxDistance{0.0};
+    double m_pickingBoxAngle{0.0};
 
-    cv::Size2f m_pickingBoxSize;
-    double m_pickingBoxDistance = 0.0;
-    double m_pickingBoxAngle = 0.0;
+    cv::Point3f m_pickingOffset{0.0, 0.0, 0.0};
+
+    // for edge-based match only
+    double m_lowWorkpieceRatio = 1.5;
 
     std::vector<MatchPatternConfig> m_patterns;
 };
@@ -28,6 +31,7 @@ public:
     MatchGroup(std::wstring name, int index);
     ~MatchGroup();
 
+    void cloneConfigTo(MatchGroup &group);
     const MatchGroupConfig &config() const { return m_config; }
     const std::wstring &name() const { return m_config.m_groupName; }
     int number() const { return m_config.m_groupIndex; }

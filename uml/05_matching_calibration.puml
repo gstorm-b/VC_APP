@@ -1,0 +1,188 @@
+@startuml matching_calibration
+title Matching and Calibration Modules
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam ClassBackgroundColor #EEF5FF
+
+package "mtc matching" {
+  enum MatchingType {
+    EdgeBased
+    Correlation
+  }
+
+  struct ManagerResult {
+    +ok : bool
+    +message : QString
+  }
+
+  abstract class IMatchTypeConfig {
+    +type() : MatchingType
+    +clone() : unique_ptr<IMatchTypeConfig>
+    +createDefault(type) : unique_ptr<IMatchTypeConfig>
+  }
+
+  class EdgeMatchConfig {
+    +type() : EdgeBased
+    +clone() : unique_ptr<IMatchTypeConfig>
+  }
+
+  struct MatchPatternConfig {
+    +m_patternName : wstring
+    +m_patternIndex : int
+    +m_rawImage : cv::Mat
+    +typeConfig : IMatchTypeConfig
+  }
+
+  class PatternLayer
+  class MatchParams
+  class MatchedObject
+  class MatchBoxGripper
+
+  class MatchPattern {
+    +name() : wstring
+    +number() : int
+    +config() : MatchPatternConfig
+    +setConfig(cfg)
+    +setRawImage(image)
+    +learnPattern() : bool
+    +isPatternLearned() : bool
+  }
+
+  class MatchGroupConfig {
+    +m_groupName : wstring
+    +m_groupIndex : int
+    +m_pickingBoxSize : cv::Size2f
+    +m_pickingBoxDistance : double
+    +m_pickingBoxAngle : double
+    +m_pickingOffset : cv::Point3f
+    +m_patterns : vector<MatchPatternConfig>
+  }
+
+  class MatchGroup {
+    +config() : MatchGroupConfig
+    +name() : wstring
+    +number() : int
+    +patterns() : vector<shared_ptr<MatchPattern>>
+    +addPattern(config) : ManagerResult
+    +removePattern(name) : ManagerResult
+    +setPatternConfig(currentName, config) : ManagerResult
+  }
+
+  class PatternGroupManager <<QObject>> {
+    +groups() : QList<shared_ptr<MatchGroup>>
+    +addGroup(config) : ManagerResult
+    +removeGroup(name) : ManagerResult
+    +setGroupConfig(currentName, config) : ManagerResult
+    +addPattern(groupName, config) : ManagerResult
+    +setPatternImage(groupName, patternName, image) : ManagerResult
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  struct MatchResult {
+    +Objects : vector<MatchedObject>
+    +cropOffsetPoint : cv::Point
+    +ExecutionTime : double
+    +Image : cv::Mat
+    +isFoundMatchObject : bool
+    +totalPossiblePicking : int
+    +isAreaLessThanLimits : bool
+  }
+
+  class ImageMatcher {
+    +setImageSource(image)
+    +setMatchingROI(tl, br)
+    +matching(image, boundingBoxChecking, objectsNum, usingRoi)
+    +MatchEdge(imgEdge, pattern, matchObjs) : bool
+    +match_result : MatchResult
+  }
+
+  class MatchConfigPropertyAdapter <<QObject>>
+}
+
+package "calib calibration" {
+  abstract class CalibrationBoard {
+    +generateImage(pixelsPerMm) : cv::Mat
+    +writePrintableImage(path, dpi) : bool
+    +detect(image, imagePoints, cornerImagePoints, debugOverlay) : bool
+    +totalDots() : int
+    +objectPoints() : vector<cv::Point3f>
+    +objectPointsXY() : vector<cv::Point2f>
+    +cornerObjectPointsXY() : vector<cv::Point2f>
+    +typeName() : string
+    +toJson() : string
+  }
+
+  class FanucIRvisionBoard {
+    +params() : Params
+    +generateImage(pixelsPerMm) : cv::Mat
+    +detect(image, imagePoints, cornerImagePoints, debugOverlay) : bool
+    +targetIndices() : vector<int>
+    +centerIndex() : vector<int>
+    +coordIndices() : vector<int>
+  }
+
+  class CalibrationBoardFactory <<static>> {
+    +create(type) : unique_ptr<CalibrationBoard>
+    +createFanucIRvision(params) : unique_ptr<CalibrationBoard>
+    +createFromPreset(name) : unique_ptr<CalibrationBoard>
+    +availablePresets() : vector<string>
+    +createFromJson(json) : unique_ptr<CalibrationBoard>
+  }
+
+  class Calibrator {
+    +addCorrespondences(imagePoints, robotPointsMm)
+    +calibrate(ransacReprojThreshold) : bool
+    +isCalibrated() : bool
+    +imageToRobot(imagePx) : cv::Point3f
+    +robotToImage(robotMm) : cv::Point2f
+    +rotateImageToRobot(angleImg, radians) : double
+    +rotateRobotToImage(angleRob, radians) : double
+    +toJson() : string
+    +fromJson(json) : bool
+  }
+
+  enum CalibrationBoardType {
+    FanucIRvision
+  }
+}
+
+IMatchTypeConfig <|-- EdgeMatchConfig
+MatchPatternConfig *-- IMatchTypeConfig
+MatchPattern *-- MatchPatternConfig
+MatchPattern *-- "0..*" PatternLayer
+MatchGroup *-- MatchGroupConfig
+MatchGroup o-- "0..*" MatchPattern
+PatternGroupManager o-- "0..*" MatchGroup
+PatternGroupManager ..> ManagerResult
+
+ImageMatcher *-- MatchGroup : internal model source
+ImageMatcher *-- MatchResult
+ImageMatcher ..> MatchPattern
+ImageMatcher ..> MatchParams
+ImageMatcher ..> MatchedObject
+
+MatchConfigPropertyAdapter ..> MatchPatternConfig
+MatchConfigPropertyAdapter ..> MatchGroupConfig
+
+CalibrationBoard <|-- FanucIRvisionBoard
+CalibrationBoardFactory ..> CalibrationBoard : creates
+CalibrationBoardFactory ..> FanucIRvisionBoard
+CalibrationBoardFactory --> CalibrationBoardType
+Calibrator ..> CalibrationBoard : consumes detected correspondences
+
+note right of Calibrator
+  Fits image px <-> robot XY homography and
+  a robot-space work plane for Z estimation.
+end note
+
+note bottom of PatternGroupManager
+  The manager owns mutation validation and emits
+  group/pattern change signals after successful edits.
+end note
+
+@enduml

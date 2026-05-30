@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QThread>
+#include <QEventLoop>
 #include "device/idevice.h"
 
 namespace vc::runtime {
@@ -11,8 +12,9 @@ namespace vc::runtime {
 //  IDeviceRunner
 //
 //  Abstract interface for per-device thread controllers.
-//  Concrete implementations (CameraRunner, McDeviceRunner) inherit from the
-//  DeviceRunner<T> template base which provides the boilerplate.
+//  Concrete implementations (CameraRunner, PlcRunner, VisionOutputRunner)
+//  inherit from the DeviceRunner<T> template base which provides the
+//  boilerplate.
 //
 //  Lifecycle
 //  ─────────
@@ -39,14 +41,26 @@ public:
     virtual void detach(QThread *dest = nullptr) = 0;
 
     // ── State ─────────────────────────────────────────────────────────────────
-    virtual QThread             *workerThread() const = 0;
-    virtual vc::device::IDevice *device()       const = 0;
+    virtual QThread             *workerThread()   const = 0;
+    virtual vc::device::IDevice *device()         const = 0;
 
     bool isAttached() const { return m_attached; }
     bool isRunning()  const { return workerThread() && workerThread()->isRunning(); }
 
+    void detachFromOutsideThread(QThread *dest = nullptr) {
+        QEventLoop loop;
+        connect(this, &IDeviceRunner::requestDetach,
+                device(), &device::IDevice::deviceDetachThread, Qt::SingleShotConnection);
+        connect(device(), &device::IDevice::deviceThreadDetached,
+                &loop, &QEventLoop::quit, Qt::SingleShotConnection);
+        emit requestDetach(dest);
+        loop.exec();
+    }
+
 signals:
     // Forwarded from the concrete device (cross-thread safe)
+    void requestDetach(QThread *dest);
+    // void detachFinished();
     void connectStatusChanged(vc::device::ConnectStatus status);
     void errorOccurred(const QString &msg);
 

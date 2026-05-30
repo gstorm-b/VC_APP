@@ -11,9 +11,6 @@ class IDeviceWidget : public QWidget {
 public:
     explicit IDeviceWidget(QWidget *parent = nullptr) {}
 
-    // virtual void setToPropertyBrowser(PropertyBrowserWidget *browser) {
-    //     Q_UNUSED(browser);
-    // }
     virtual PropertyBrowserWidget* getPropertyBrowser() const {
         return m_propBrowser;
     }

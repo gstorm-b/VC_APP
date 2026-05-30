@@ -1,0 +1,62 @@
+@startuml nachi_client_sequence_lost
+title Lost-connect recovery - Task 2 supervises Task 1
+
+skinparam shadowing false
+skinparam sequenceArrowThickness 1.2
+autonumber
+
+participant "TASK2\nHEARTBEAT"      as T2
+participant "Shared\nGlobals + IO"  as G
+participant "TASK1\nMAIN_CHANNEL"   as T1
+participant "VisionOutputDevice\n(server)" as S
+
+== Steady state ==
+T1 -> S  : (in middle of RECEIVE_RESULT,\n  waiting for ';')
+S  -> T2 : "connection_check."
+T2 -> S  : "ack,{count}."
+
+== Failure: server stops replying / sends garbage ==
+note over S #FEE
+network glitch /\nserver hangs /\nbad payload
+end note
+
+alt timeout
+    T2 -> S  : TCP_RECV(SK_HB, ..., HB_RECV_TIMEOUT)
+    S  --> T2 : (no data within timeout)
+    T2 -> T2 : ret < 0 -> reason = "recv_timeout"
+else invalid format
+    S  -> T2 : "garbage."
+    T2 -> T2 : VALIDATE_PROBE fail\nreason = "invalid_probe"
+end
+
+== Declare lost (Task 2) ==
+T2 -> G : DECLARE_LOST(reason)\nGB_SERVER_ALIVE = 0\nGB_TASK1_RESET_REQ = 1\nO_VISION_LINK_OK = 0\nO_VISION_LINK_ERR = 1\nPRINT reason
+T2 -> S : TCP_CLOSE(SK_HB)
+
+== Task 1 observes reset request ==
+note right of T1
+RECEIVE_RESULT poll loop kiểm tra
+GB_TASK1_RESET_REQ ngay cả khi đang
+chờ ';' -> không bị treo.
+end note
+T1 -> G : read GB_TASK1_RESET_REQ = 1
+T1 -> T1 : ret = 3 (reset_by_task2)
+T1 -> S  : TCP_CLOSE(SK_MAIN)
+T1 -> G  : GB_TASK1_CONNECTED = 0\nO_TASK1_BUSY = 0
+T1 -> G  : CLEAR_RESULT
+T1 -> T1 : DELAY RECONNECT_DELAY
+T1 -> G  : WAIT_FOR_PERMISSION (block again)
+
+== Task 2 reconnects ==
+T2 -> T2 : DELAY RECONNECT_DELAY
+T2 -> S  : TCP_OPEN + TCP_CONNECT(SK_HB)
+S  --> T2 : connected
+T2 -> G  : GRANT_TASK1\n(O_VISION_LINK_OK = 1, O_VISION_LINK_ERR = 0)
+
+== Task 1 resumes ==
+G  -> T1 : permission OK
+T1 -> S  : TCP_OPEN + TCP_CONNECT(SK_MAIN)
+S  --> T1 : connected
+T1 -> T1 : back to WORK_LOOP
+
+@enduml

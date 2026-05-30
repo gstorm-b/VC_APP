@@ -39,16 +39,22 @@ ITask* TaskFactory::create(const TaskType& type, const QJsonObject& obj, QObject
 
 ITask* TaskFactory::createTaskLocalization(const QJsonObject& obj, QObject* parent) {
     const QString taskId = obj["id"].toString();
-    QString taskName = obj["name"].toString();
+    QString taskName     = obj["name"].toString();
     if (taskId.isEmpty()) {
         return nullptr;
     }
 
     TaskLocalization* task = new TaskLocalization(taskName, taskId, parent);
-    if (obj.contains("taskConfig") && obj["taskConfig"].isObject()) {
-        TaskLocalizeConfig config;
-        config.fromJson(obj["taskConfig"].toObject());
-        task->setTaskLocalizeConfig(config);
+
+    // Delegate the full restore — TaskLocalization::fromJson restores the
+    // embedded TaskLocalizeConfig (via the base class), device IDs, and the
+    // entire pattern library from m_patternManager.  Pattern training images
+    // are injected later by ProjectRepository::loadImages → loadTaskImageMap.
+    if (!task->fromJson(obj)) {
+        LOG_DEV_INFO << "TaskFactory::createTaskLocalization – fromJson failed for"
+                     << taskId;
+        // Keep the task anyway so the user can see/repair it in the UI; the
+        // alternative is silently dropping the row.
     }
     return task;
 }

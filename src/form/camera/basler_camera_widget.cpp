@@ -6,6 +6,10 @@
 
 #include "windows_helper.h"
 
+#include "calibration/calibration_board_factory.h"
+#include "widgets/calibration/calibration_board_dialog.h"
+#include "widgets/calibration/calibration_points_table.h"
+
 inline QPixmap cvMatToQPixmap(const cv::Mat& mat) {
     QImage qimg;
     if (mat.type() == CV_8UC1) {
@@ -148,11 +152,9 @@ void BaslerCameraWidget::populateBrowser_BaslerConfig(vc::device::BaslerGigeCfg 
         }
 
         if (variantProp->propertyName() == "paramsExposureTime") {
-            qDebug() << "exposure limit" << gadget->m_paramsExposureMin << gadget->m_paramsExposureMax;
             variantProp->setAttribute("minimum", gadget->m_paramsExposureMin);
             variantProp->setAttribute("maximum",  gadget->m_paramsExposureMax);
         } else if (variantProp->propertyName() == "paramsGain") {
-            qDebug() << "gain limit" << gadget->m_paramsGainMin << gadget->m_paramsGainMax;
             variantProp->setAttribute("minimum", gadget->m_paramsGainMin);
             variantProp->setAttribute("maximum",  gadget->m_paramsGainMax);
         } else if (variantProp->propertyName() == "autoBacklightLine") {
@@ -215,6 +217,15 @@ void BaslerCameraWidget::initCameraWiget() {
             this, &BaslerCameraWidget::btn_connect_clicked);
     connect(ui->btn_trigger, &QPushButton::clicked,
             this, &BaslerCameraWidget::btn_trigger_clicked);
+
+    connect(ui->btn_setup_board, &QPushButton::clicked,
+            this, &BaslerCameraWidget::btn_setup_board_clicked);
+    connect(ui->btn_calib_detect, &QPushButton::clicked,
+            this, &BaslerCameraWidget::btn_calib_detect_clicked);
+    connect(ui->btn_calib_apply, &QPushButton::clicked,
+            this, &BaslerCameraWidget::btn_calib_apply_clicked);
+    connect(ui->table_calibration_points, &CalibrationPointsTable::pointsEdited,
+            this, &BaslerCameraWidget::onCalibPointsEdited);
     // connect(ui->btn_auto_shot, &QPushButton::clicked,
     //         this, &BaslerCameraWidget::btn_auto_shot_clicked);
 
@@ -230,6 +241,8 @@ void BaslerCameraWidget::initCameraWiget() {
         loadConfigToWidget();
         connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
                 this, &BaslerCameraWidget::onPropertyValueChanged);
+
+        initCalibrationUi();
     }
 
     ui->splitter_main->setStretchFactor(0, 7);
@@ -313,11 +326,29 @@ void BaslerCameraWidget::onPropertyValueChanged(QtProperty *property, const QVar
 }
 
 void BaslerCameraWidget::onCameraConnectStatusChanged(vc::device::ConnectStatus status) {
-    if (status == vc::device::ConnectStatus::Connected) {
+    switch (status) {
+    case vc::device::ConnectStatus::Connected:
         onCameraConnected();
-    } else {
+        break;
+    case vc::device::ConnectStatus::Disconnected:
         onCameraDisconnected();
+        break;
+    case vc::device::ConnectStatus::ConnectFailed:
+        QMessageBox::warning(this,
+                             tr("Connect error"),
+                             m_camera->lastMsg());
+        break;
+    default:
+        break;
     }
+
+    // error on connect failed, check on runner/
+
+    // if (status == vc::device::ConnectStatus::Connected) {
+    //     onCameraConnected();
+    // } else {
+    //     onCameraDisconnected();
+    // }
 }
 
 void BaslerCameraWidget::cameraSelectionFinished(bool isAccept,
@@ -386,6 +417,35 @@ void BaslerCameraWidget::onCameraGrabFinished(vc::device::GrabResult result) {
         QPixmap new_frame = cvMatToQPixmap(result.frame);
         ui->image_view->loadImage(new_frame);
     }
+
+    // Detect request initiated by btn_calib_detect: run board detection on the
+    // freshly-grabbed frame and push the 4 corner points into the table.
+    if (m_pendingCalibDetect) {
+        m_pendingCalibDetect = false;
+
+        if (!result.isGrabSuccess) {
+            ui->label_calib_status->setText(tr("Calibration status: grab failed"));
+            return;
+        }
+        if (!m_board) {
+            ui->label_calib_status->setText(tr("Calibration status: no board set"));
+            return;
+        }
+
+        std::vector<cv::Point2f> allPts;
+        std::vector<cv::Point2f> cornerPts;
+        bool ok = m_board->detect(result.frame, allPts, &cornerPts, nullptr);
+        if (!ok || cornerPts.empty()) {
+            ui->label_calib_status->setText(
+                tr("Calibration status: board detect failed"));
+            return;
+        }
+
+        ui->table_calibration_points->setImagePoints(cornerPts);
+        ui->btn_calib_apply->setEnabled(true);
+        ui->label_calib_status->setText(
+            tr("Calibration status: detected (point changed)"));
+    }
 }
 
 void BaslerCameraWidget::populateBrowser() {
@@ -398,5 +458,159 @@ void BaslerCameraWidget::populateBrowser() {
 
     m_variantEditor->blockSignals(false);
     m_populating_browser = false    ;
+}
+
+// =============================================================================
+//  Calibration
+// =============================================================================
+
+void BaslerCameraWidget::initCalibrationUi() {
+    setCalibBoardPreset(m_params.calibBoardPreset());
+    refreshCalibrationStatusLabels();
+    ui->btn_calib_apply->setEnabled(false);
+}
+
+void BaslerCameraWidget::setCalibBoardPreset(const QString &preset) {
+    m_board = calib::CalibrationBoardFactory::createFromPreset(preset.toStdString());
+    if (!m_board) {
+        LOG_DEV_ERR << "Calibration board preset unknown:" << preset;
+        ui->table_calibration_points->setRowCount(0);
+        refreshBoardInfoLabel();
+        return;
+    }
+
+    m_params.setCalibBoardPreset(preset);
+
+    // Default world XY for the 4 corner points comes straight from the board
+    // (board-frame mm, z=0). The user edits these to map board frame -> robot
+    // frame before pressing Apply.
+    const auto corners = m_board->cornerObjectPointsXY();
+    ui->table_calibration_points->setRowCount(static_cast<int>(corners.size()));
+    ui->table_calibration_points->setWorldPointsXY(corners);
+    refreshBoardInfoLabel();
+}
+
+void BaslerCameraWidget::refreshBoardInfoLabel() {
+    if (!m_board) {
+        ui->lb_board_info->setText(tr("Board: (none)"));
+        return;
+    }
+    ui->lb_board_info->setText(
+        tr("Board: %1 (%2 dots)")
+            .arg(m_params.calibBoardPreset())
+            .arg(m_board->totalDots()));
+}
+
+void BaslerCameraWidget::refreshCalibrationStatusLabels(const QString &extraSuffix) {
+    const calib::Calibrator &c = m_params.calibrator();
+    QString status = c.isCalibrated() ? tr("calibrated") : tr("not calibrated");
+    if (!extraSuffix.isEmpty()) {
+        status += QStringLiteral(" %1").arg(extraSuffix);
+    }
+    ui->label_calib_status->setText(tr("Calibration status: %1").arg(status));
+
+    if (c.isCalibrated()) {
+        ui->label_calib_error_mm->setText(
+            tr("Reproject error (mm): %1").arg(c.reprojectionErrorMm(), 0, 'f', 4));
+        ui->label_calib_error_pixel->setText(
+            tr("Reproject error (pixel): %1").arg(c.reprojectionErrorPx(), 0, 'f', 4));
+        double rotDeg = c.rotateImageToRobot(0.0);
+        ui->label_calib_rotate_image2world->setText(
+            tr("Z axis rotate (Image to World): %1 deg").arg(rotDeg, 0, 'f', 4));
+    } else {
+        ui->label_calib_error_mm->setText(tr("Reproject error (mm):"));
+        ui->label_calib_error_pixel->setText(tr("Reproject error (pixel):"));
+        ui->label_calib_rotate_image2world->setText(
+            tr("Z axis rotate (Image to World):"));
+    }
+}
+
+void BaslerCameraWidget::btn_setup_board_clicked() {
+    CalibrationBoardDialog dlg(m_params.calibBoardPreset(), this);
+    if (dlg.exec() != QDialog::Accepted) {
+        return;
+    }
+    const QString preset = dlg.selectedPreset();
+    if (preset.isEmpty() || preset == m_params.calibBoardPreset()) {
+        return;
+    }
+    // Per requirement: keep existing table data (user already entered world
+    // coords against the previous board); only refresh board info and mark the
+    // calibration as needing re-apply.
+    m_board = calib::CalibrationBoardFactory::createFromPreset(preset.toStdString());
+    if (!m_board) {
+        QMessageBox::warning(this, tr("Calibration board"),
+                             tr("Unknown preset: %1").arg(preset));
+        return;
+    }
+    m_params.setCalibBoardPreset(preset);
+    m_camera->setBaslerGigeConfig(m_params);
+    refreshBoardInfoLabel();
+    ui->btn_calib_apply->setEnabled(true);
+    refreshCalibrationStatusLabels(tr("(point changed)"));
+}
+
+void BaslerCameraWidget::btn_calib_detect_clicked() {
+    if (!m_runner || !m_camera || !m_camera->isDeviceConnected()) {
+        QMessageBox::warning(this, tr("Calibration"),
+                             tr("Camera is not connected."));
+        return;
+    }
+    if (!m_board) {
+        QMessageBox::warning(this, tr("Calibration"),
+                             tr("No calibration board configured."));
+        return;
+    }
+    m_pendingCalibDetect = true;
+    m_runner->requestSingleShot();
+}
+
+void BaslerCameraWidget::btn_calib_apply_clicked() {
+    if (!m_board) {
+        QMessageBox::warning(this, tr("Calibration"),
+                             tr("No calibration board configured."));
+        return;
+    }
+
+    const auto imgPts   = ui->table_calibration_points->imagePoints();
+    const auto worldPts = ui->table_calibration_points->worldPoints();
+
+    if (imgPts.size() < 4 || imgPts.size() != worldPts.size()) {
+        QMessageBox::warning(
+            this, tr("Calibration"),
+            tr("Need at least 4 valid image/world point pairs. "
+               "Run Detect and fill in the world coordinates first."));
+        return;
+    }
+
+    // Basic sanity: reject the all-zero image-points case that happens before
+    // a detect has populated the table.
+    bool anyImgNonZero = false;
+    for (const auto &p : imgPts) {
+        if (p.x != 0.f || p.y != 0.f) { anyImgNonZero = true; break; }
+    }
+    if (!anyImgNonZero) {
+        QMessageBox::warning(this, tr("Calibration"),
+                             tr("Image points are empty — run Detect first."));
+        return;
+    }
+
+    calib::Calibrator calib;
+    calib.addCorrespondences(imgPts, worldPts);
+    if (!calib.calibrate()) {
+        ui->label_calib_status->setText(tr("Calibration status: calibrate failed"));
+        return;
+    }
+
+    m_params.setCalibrator(calib);
+    m_camera->setBaslerGigeConfig(m_params);
+
+    refreshCalibrationStatusLabels();
+    ui->btn_calib_apply->setEnabled(false);
+}
+
+void BaslerCameraWidget::onCalibPointsEdited() {
+    ui->btn_calib_apply->setEnabled(true);
+    refreshCalibrationStatusLabels(tr("(point changed)"));
 }
 

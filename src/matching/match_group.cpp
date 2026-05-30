@@ -27,6 +27,10 @@ MatchGroup::~MatchGroup() {
 
 }
 
+void MatchGroup::cloneConfigTo(MatchGroup &group) {
+    group.m_config = this->m_config;
+}
+
 MatchGroup::MatchGroup(const MatchGroupConfig &config,
                            PatternGroupManager *parent)
     :  m_manager(parent), m_config(config) {
@@ -188,18 +192,10 @@ ManagerResult MatchGroup::setPatternImage(const std::wstring &patternName,
 // ── Private (called only by PatternGroupManager) ──────────────────────────────
 
 ManagerResult MatchGroup::setConfig(const MatchGroupConfig &cfg) {
-    // const bool nameChanged   = (m_config.m_groupName   != cfg.m_groupName);
-    // const bool numberChanged = (m_config.m_groupIndex != cfg.m_groupIndex);
-
+    // MatchGroup is not a QObject — change notification happens at the
+    // manager level (PatternGroupManager emits groupChanged after this
+    // succeeds).
     m_config = cfg;
-
-    // QString field;
-    // if (nameChanged && numberChanged) field = QStringLiteral("*");
-    // else if (nameChanged)             field = QStringLiteral("name");
-    // else if (numberChanged)           field = QStringLiteral("number");
-    // else                              field = QStringLiteral("*");
-
-    // emit configChanged(m_config, field);
     return ManagerResult::success();
 }
 

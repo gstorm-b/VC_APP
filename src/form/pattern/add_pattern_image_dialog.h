@@ -24,7 +24,7 @@ public slots:
     void setMainViewImage(QPixmap image);
 
 signals:
-    void requestImage();
+    void requestImage(QString id);
 
 protected:
     void keyPressEvent(QKeyEvent *event);

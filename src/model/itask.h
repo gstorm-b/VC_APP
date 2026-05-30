@@ -15,6 +15,7 @@
 #include "itask_config.h"
 #include "logger/app_logger.h"
 #include "runtime/task_runner.h"
+#include "device/idevice.h"
 
 namespace vc::model {
 
@@ -25,10 +26,6 @@ class ITask : public QObject {
 
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
     Q_CLASSINFO("name_name", "Task name")
-
-    // Q_PROPERTY(QString id READ id CONSTANT)
-    // Q_CLASSINFO("task_name", "Task ID")
-    // Q_PROPERTY(bool owned READ isOwned NOTIFY cameraSourceTypeChanged)
 
 public:
     explicit ITask(QString init_id = "", QObject* parent = nullptr)
@@ -107,6 +104,17 @@ public:
     QStringList assignedDeviceIds() const {
         return m_assignedDeviceIds;
     }
+
+    std::shared_ptr<vc::device::IDevice> getTaskDevice(const QString &deviceId) const;
+
+    // Resolves m_assignedDeviceIds against the project's DeviceManager and
+    // returns only the devices matching `t`.  Skips ids whose device isn't
+    // currently registered.  Returns an empty list if the task has no
+    // project set yet.
+    QList<std::shared_ptr<vc::device::IDevice>>
+        assignedDevicesOfType(vc::device::DeviceType t) const;
+
+    virtual bool isReachLimitOfDeviceType(vc::device::DeviceType t) const = 0;
 
     virtual void setTaskConfig(ITaskConfig *cfg) {
         m_abstract_cfg = cfg;
@@ -219,6 +227,8 @@ signals:
     void patternsChanged();
     void devicesChanged();
 
+    void signalChanged(QString name, QVariant value);
+
     void commissionStarted();
     void commissionStopped();
     void runtimeStarted();
@@ -230,6 +240,9 @@ protected:
     // Implemented in itask.cpp (needs full Project definition).
     void syncRunnersWithDevices();
 
+protected:
+    Project *m_proj{nullptr};
+
 private:
     QString m_id;
     QString m_name;
@@ -237,7 +250,6 @@ private:
     QString m_ownedCameraId;
     QStringList m_assignedDeviceIds;
     ITaskConfig *m_abstract_cfg{nullptr};
-    Project *m_proj{nullptr};
 
     // Owned thread/runner manager — created once, lives with the task.
     vc::runtime::TaskRunner *m_taskRunner{new vc::runtime::TaskRunner(this)};

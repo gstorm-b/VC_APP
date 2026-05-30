@@ -1,0 +1,95 @@
+/* ═════════════════════════════════════════════════════════════════
+   Camera Mapping Widget - Dark theme
+   Tokens aligned with add_device_wizard_dark.qss.
+   ═════════════════════════════════════════════════════════════════ */
+
+QListWidget#cmwList {
+    background-color: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    color: #cccccc;
+}
+QListWidget#cmwList::item {
+    border: none;
+    padding: 0px;
+}
+QListWidget#cmwList::item:selected {
+    background: transparent;
+}
+
+QWidget#cmwRow {
+    background-color: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 5px;
+}
+QLabel#cmwRowFieldLabel {
+    color: #9a9a9a;
+    font-size: 9pt;
+    background: transparent;
+}
+
+QLabel#cmwEditableLabel {
+    color: #cccccc;
+    background-color: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+QLabel#cmwEditableLabel:hover {
+    border-color: #2b8ce8;
+    background-color: #2a2a2a;
+}
+
+QComboBox#cmwEditableCombo,
+QComboBox#cmwAddSelectCombo {
+    background-color: #252526;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #cccccc;
+}
+QComboBox#cmwEditableCombo:focus,
+QComboBox#cmwAddSelectCombo:focus {
+    border-color: #2b8ce8;
+}
+
+QPushButton#cmwDeleteBtn {
+    background-color: transparent;
+    color: #cccccc;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+QPushButton#cmwDeleteBtn:hover {
+    border-color: #d9534f;
+    color: #ff7a72;
+}
+
+QPushButton#cmwAddRowBtn {
+    background-color: transparent;
+    color: #2b8ce8;
+    border: 1px dashed #2b8ce8;
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-weight: 600;
+}
+QPushButton#cmwAddRowBtn:hover {
+    background-color: rgba(43, 140, 232, 28);
+}
+QPushButton#cmwAddRowBtn:disabled {
+    color: #7a7a7a;
+    border-color: #454545;
+    background-color: transparent;
+}
+
+QPushButton#cmwCancelBtn {
+    background-color: transparent;
+    color: #9a9a9a;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+QPushButton#cmwCancelBtn:hover {
+    color: #cccccc;
+    border-color: #5a5a5a;
+}

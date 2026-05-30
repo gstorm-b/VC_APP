@@ -3,6 +3,8 @@
 
 #include "device/camera/camera_device.h"
 #include "device/plc/mc_protocol_device.h"
+#include "device/output_device/vision_output_device.h"
+#include "device/robot/robot_device.h"
 
 #include <QThread>
 
@@ -10,6 +12,7 @@
 #define PLC_NUM_LIMIT            2
 #define MC_PTC_NUM_LIMIT         4
 #define TCPIP_DV_NUM_LIMIT       4
+#define VISION_OUTPUT_NUM_LIMIT  8
 #define ROBOT_NUM_LIMIT          1
 
 namespace vc::device {
@@ -24,14 +27,17 @@ DeviceManager::DeviceManager(vc::model::Project* proj, QObject* parent)
     maxLimits[DeviceType::Camera] = CAMERA_NUM_LIMIT;
     currentCounts[DeviceType::Camera] = 0;
 
-    maxLimits[DeviceType::McDevice] = MC_PTC_NUM_LIMIT;
-    currentCounts[DeviceType::McDevice] = 0;
+    maxLimits[DeviceType::PLC] = MC_PTC_NUM_LIMIT;
+    currentCounts[DeviceType::PLC] = 0;
+
+    maxLimits[DeviceType::VisionOutput] = VISION_OUTPUT_NUM_LIMIT;
+    currentCounts[DeviceType::VisionOutput] = 0;
 
     // maxLimits[DeviceType::TCPIP_DEVICE] = TCPIP_DV_NUM_LIMIT;
     // currentCounts[DeviceType::TCPIP_DEVICE] = 0;
 
-    // currentCounts[DeviceType::Robot] = 0;
-    // maxLimits[DeviceType::Robot] = ROBOT_NUM_LIMIT;
+    maxLimits[DeviceType::Robot] = ROBOT_NUM_LIMIT;
+    currentCounts[DeviceType::Robot] = 0;
 
     QStringList camera_type_strlist;
     // camera_type_strlist.append(CameraTypeToString(CameraType::Realsense));
@@ -42,8 +48,21 @@ DeviceManager::DeviceManager(vc::model::Project* proj, QObject* parent)
     // mc_type_strlist.append(McFrameTypeToString(McFrameType::Frame_1E));
     mc_type_strlist.append(McFrameTypeToString(McFrameType::Frame_3E));
 
-    subDeviceTypeLists.insert(DeviceType::Camera, camera_type_strlist);
-    subDeviceTypeLists.insert(DeviceType::McDevice, mc_type_strlist);
+    QStringList robot_type_strlist;
+    robot_type_strlist.append(RobotTypeToString(RobotType::Kawasaki));
+    robot_type_strlist.append(RobotTypeToString(RobotType::Nachi));
+
+    QStringList vision_output_type_strlist;
+    vision_output_type_strlist.append(VisionOutputTypeToString(VisionOutputType::VisionTCPIP));
+
+    subDeviceTypeLists.insert(DeviceType::Camera,       camera_type_strlist);
+    // NOTE: Under PLC we still store the Mitsubishi MC frame-type list rather
+    // than the PlcType list (which would just be ["MitsubishiMc"]). When a
+    // second vendor lands the wizard will need a separate per-vendor
+    // protocol-options source (see later_todo_list.md).
+    subDeviceTypeLists.insert(DeviceType::PLC,          mc_type_strlist);
+    subDeviceTypeLists.insert(DeviceType::Robot,        robot_type_strlist);
+    subDeviceTypeLists.insert(DeviceType::VisionOutput, vision_output_type_strlist);
 
     QMap<DeviceType, int>::const_iterator cnt_it = currentCounts.constBegin();
     while (cnt_it != currentCounts.cend()) {
@@ -293,7 +312,7 @@ QMap<QString, QString> DeviceManager::commDevices() {
 
     QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device = deviceInstances.cbegin();
     while (it_device != deviceInstances.cend()) {
-        if (it_device.value()->deviceType() == DeviceType::McDevice) {
+        if (it_device.value()->deviceType() == DeviceType::PLC) {
             devices_map.insert(it_device.value()->id(), it_device.value()->name());
         }
         it_device++;
@@ -307,7 +326,7 @@ QMap<QString, QString> DeviceManager::outputDevices() {
 
     QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device = deviceInstances.cbegin();
     while (it_device != deviceInstances.cend()) {
-        if (it_device.value()->deviceType() == DeviceType::TCPIP_DEVICE) {
+        if (it_device.value()->deviceType() == DeviceType::VisionOutput) {
             devices_map.insert(it_device.value()->id(), it_device.value()->name());
         }
         it_device++;
@@ -335,7 +354,7 @@ QStringList DeviceManager::commDevicesNameList() {
     QStringList devices_name;
     QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device = deviceInstances.cbegin();
     while (it_device != deviceInstances.cend()) {
-        if (it_device.value()->deviceType() == DeviceType::McDevice) {
+        if (it_device.value()->deviceType() == DeviceType::PLC) {
             devices_name << QString("%1").arg(it_device.value()->name(), it_device.value()->id());
         }
         it_device++;
@@ -347,7 +366,7 @@ QStringList DeviceManager::outputDevicesNameList() {
     QStringList devices_name;
     QMap<QString, std::shared_ptr<vc::device::IDevice>>::const_iterator it_device = deviceInstances.cbegin();
     while (it_device != deviceInstances.cend()) {
-        if (it_device.value()->deviceType() == DeviceType::TCPIP_DEVICE) {
+        if (it_device.value()->deviceType() == DeviceType::VisionOutput) {
             devices_name << QString("%1").arg(it_device.value()->name(), it_device.value()->id());
         }
         it_device++;

@@ -1,0 +1,262 @@
+#include "localization_setting_widget.h"
+#include "ui_localization_setting_widget.h"
+
+#include "widgets/signals_map_widget.h"
+#include "widgets/camera_mapping_widget.h"
+
+#include "logger/app_logger.h"
+#include "model/project.h"
+#include "device/device_manager.h"
+
+#include <QComboBox>
+#include <QSignalBlocker>
+
+using vc::model::TaskLocalization;
+using vc::model::TaskLocalizeConfig;
+using vc::device::IDevice;
+using vc::device::DeviceType;
+
+namespace {
+
+// Static schema of signal-tag rows, derived from TaskLocalizeConfigPrivate.
+// Order = visual order in the SignalsMapWidget. Keeping it as a table here
+// (rather than scraping the meta object) means a missed/renamed field becomes
+// a visible diff in code review, per the project's "table-driven UI" rule.
+struct SignalRowSpec {
+    const char *internalName;   // matches the P_PROPERTY_STRING_READWRITE name
+    SignalsMapWidget::Type type;
+};
+
+constexpr SignalRowSpec kSignalRows[] = {
+    // Number signals
+    { "nActiveCamera",      SignalsMapWidget::Type::Number },
+    { "nActivePattern",     SignalsMapWidget::Type::Number },
+    { "nDetectedNumber",    SignalsMapWidget::Type::Number },
+    // Bool signals
+    { "bCameraValid",       SignalsMapWidget::Type::Bool },
+    { "bPatternValid",      SignalsMapWidget::Type::Bool },
+    { "bTaskReady",         SignalsMapWidget::Type::Bool },
+    { "bExecuteTrigger",    SignalsMapWidget::Type::Bool },
+    { "bMatchingFinished",  SignalsMapWidget::Type::Bool },
+    { "bMatchingBusy",      SignalsMapWidget::Type::Bool },
+    { "bMatchingDetected",  SignalsMapWidget::Type::Bool },
+    { "bMatchingLowArea",   SignalsMapWidget::Type::Bool },
+};
+
+// Resolve the display name registered via Q_CLASSINFO("<name>_name", "…") on
+// the TaskLocalizeConfig meta object. Falls back to the internal name when
+// no class-info entry is present.
+QString displayNameOf(const char *internalName) {
+    const QMetaObject &meta = TaskLocalizeConfig::staticMetaObject;
+    QByteArray key = QByteArray(internalName) + "_name";
+    int idx = meta.indexOfClassInfo(key.constData());
+    if (idx >= 0) {
+        QString v = QString::fromUtf8(meta.classInfo(idx).value());
+        if (!v.isEmpty()) return v;
+    }
+    return QString::fromUtf8(internalName);
+}
+
+// Setter dispatch — writes `value` into the matching field of the config's
+// private data via the Q_PROPERTY system. Returns true on success.
+bool writeConfigField(TaskLocalizeConfig &cfg, const QString &internalName,
+                      const QString &value) {
+    const QMetaObject &meta = TaskLocalizeConfig::staticMetaObject;
+    int idx = meta.indexOfProperty(internalName.toUtf8().constData());
+    if (idx < 0) {
+        LOG_DEV_ERR << "writeConfigField: unknown field" << internalName;
+        return false;
+    }
+    QMetaProperty p = meta.property(idx);
+    return p.writeOnGadget(&cfg, value);
+}
+
+QString readConfigField(const TaskLocalizeConfig &cfg, const QString &internalName) {
+    const QMetaObject &meta = TaskLocalizeConfig::staticMetaObject;
+    int idx = meta.indexOfProperty(internalName.toUtf8().constData());
+    if (idx < 0) return {};
+    return meta.property(idx).readOnGadget(&cfg).toString();
+}
+
+} // namespace
+
+LocalizationSettingWidget::LocalizationSettingWidget(
+        std::shared_ptr<vc::model::ITask> task,
+        ads::CDockWidget *dock, QWidget *parent)
+    : ITaskWidget(task, dock, parent),
+    ui(new Ui::LocalizationSettingWidget) {
+
+    ui->setupUi(this);
+    initWidget();
+}
+
+LocalizationSettingWidget::~LocalizationSettingWidget()
+{
+    delete ui;
+}
+
+void LocalizationSettingWidget::initWidget() {
+    m_localizeTask = dynamic_cast<TaskLocalization *>(m_task.get());
+    if (!m_localizeTask) {
+        LOG_DEV_ERR << "LocalizationSettingWidget: task is not TaskLocalization";
+        return;
+    }
+
+    m_config = m_localizeTask->taskLocalizeConfig();
+
+    // ── Signals table: append fixed schema ───────────────────────────────
+    for (const auto &spec : kSignalRows) {
+        ui->listView_signals_map->appendRow(
+            QString::fromUtf8(spec.internalName),
+            displayNameOf(spec.internalName),
+            spec.type);
+    }
+
+    // ── Wire combobox change → write config + push to task ──────────────
+    connect(ui->cbb_vision_output_device,
+            qOverload<int>(&QComboBox::currentIndexChanged),
+            this, [this](int) {
+        const QString id = ui->cbb_vision_output_device->currentData().toString();
+        m_config.d->m_sOutputDeviceId = id;
+        pushConfigToTask();
+    });
+
+    connect(ui->cbb_comm_device,
+            qOverload<int>(&QComboBox::currentIndexChanged),
+            this, [this](int) {
+        const QString id = ui->cbb_comm_device->currentData().toString();
+        m_config.d->m_sCommDeviceId = id;
+        pushConfigToTask();
+        // Refresh the SignalsMapWidget tag lists from the new comm device.
+        refreshCommTags(id);
+    });
+
+    // ── Camera map ──────────────────────────────────────────────────────
+    connect(ui->listView_cameras_map, &CameraMappingWidget::mappingChanged,
+            this, [this](const QMap<int, QString> &m) {
+        m_config.d->m_sCameraNumberMap = m;
+        pushConfigToTask();
+    });
+
+    // ── Signals map ─────────────────────────────────────────────────────
+    connect(ui->listView_signals_map, &SignalsMapWidget::signalMappingChanged,
+            this, [this](const QString &internalName, const QString &tag) {
+        writeConfigField(m_config, internalName, tag);
+        pushConfigToTask();
+    });
+
+    // ── React to assignment changes from the task ───────────────────────
+    connect(m_localizeTask, &vc::model::ITask::devicesChanged,
+            this, [this] {
+        rebuildDeviceCombos();
+        rebuildCameraList();
+        // m_sCommDeviceId may now point to a stale device — refresh tags.
+        refreshCommTags(ui->cbb_comm_device->currentData().toString());
+    });
+
+    loadConfigToWidget();
+}
+
+void LocalizationSettingWidget::rebuildDeviceCombos() {
+    if (!m_localizeTask) return;
+
+    const QString currentOutput = ui->cbb_vision_output_device->currentData().toString();
+    const QString currentComm   = ui->cbb_comm_device->currentData().toString();
+
+    auto fill = [](QComboBox *cb,
+                   const QList<std::shared_ptr<IDevice>> &devs,
+                   const QString &keepId) {
+        QSignalBlocker block(cb);
+        cb->clear();
+        cb->addItem(QString(), QString());          // empty
+        for (const auto &d : devs) {
+            cb->addItem(d->name(), d->id());
+        }
+        int idx = cb->findData(keepId);
+        cb->setCurrentIndex(idx < 0 ? 0 : idx);
+    };
+
+    fill(ui->cbb_vision_output_device,
+         m_localizeTask->assignedDevicesOfType(DeviceType::VisionOutput),
+         currentOutput);
+
+    // Communication device = any assigned PLC. Vendor sub-type (Mitsubishi MC,
+    // future Omron FINS, …) is left for callers that need it via plcType().
+    const auto commDevs = m_localizeTask->assignedDevicesOfType(DeviceType::PLC);
+    fill(ui->cbb_comm_device, commDevs, currentComm);
+}
+
+void LocalizationSettingWidget::rebuildCameraList() {
+    if (!m_localizeTask) return;
+    const auto cams = m_localizeTask->assignedDevicesOfType(DeviceType::Camera);
+    QMap<QString, QString> idToName;
+    for (const auto &d : cams) {
+        if (d) idToName.insert(d->id(), d->name());
+    }
+
+    QSignalBlocker block(ui->listView_cameras_map);
+    ui->listView_cameras_map->setCameraOptions(idToName);
+}
+
+void LocalizationSettingWidget::refreshCommTags(const QString &deviceId) {
+    if (!m_localizeTask || deviceId.isEmpty()) {
+        ui->listView_signals_map->setBoolTags({});
+        ui->listView_signals_map->setNumberTags({});
+        return;
+    }
+    auto proj = m_localizeTask->project();
+    if (!proj) return;
+    auto dm = proj->deviceManager();
+    if (!dm) return;
+    auto dev = dm->deviceById(deviceId);
+    if (!dev) {
+        ui->listView_signals_map->setBoolTags({});
+        ui->listView_signals_map->setNumberTags({});
+        return;
+    }
+    ui->listView_signals_map->setBoolTags(dev->getAvailableBits());
+    ui->listView_signals_map->setNumberTags(dev->getAvailableWords());
+}
+
+void LocalizationSettingWidget::loadConfigToWidget() {
+    if (!m_localizeTask) return;
+    m_config = m_localizeTask->taskLocalizeConfig();
+
+    rebuildDeviceCombos();
+    rebuildCameraList();
+
+    // Select stored device ids
+    {
+        QSignalBlocker b(ui->cbb_vision_output_device);
+        int idx = ui->cbb_vision_output_device->findData(m_config.d->m_sOutputDeviceId);
+        ui->cbb_vision_output_device->setCurrentIndex(idx < 0 ? 0 : idx);
+    }
+    {
+        QSignalBlocker b(ui->cbb_comm_device);
+        int idx = ui->cbb_comm_device->findData(m_config.d->m_sCommDeviceId);
+        ui->cbb_comm_device->setCurrentIndex(idx < 0 ? 0 : idx);
+    }
+
+    refreshCommTags(m_config.d->m_sCommDeviceId);
+
+    // Camera map
+    {
+        QSignalBlocker b(ui->listView_cameras_map);
+        ui->listView_cameras_map->setCurrentMapping(m_config.d->m_sCameraNumberMap);
+    }
+
+    // Signal map values
+    for (const auto &spec : kSignalRows) {
+        const QString name = QString::fromUtf8(spec.internalName);
+        ui->listView_signals_map->setRowValue(name, readConfigField(m_config, name));
+    }
+}
+
+void LocalizationSettingWidget::loadConfigToTask() {
+    pushConfigToTask();
+}
+
+void LocalizationSettingWidget::pushConfigToTask() {
+    if (!m_localizeTask) return;
+    m_localizeTask->setTaskLocalizeConfig(m_config);
+}

@@ -94,6 +94,10 @@ void AddPatternWizard::buildUi() {
     root->addWidget(m_stack, 1);
 
     root->addWidget(buildFooter());
+
+    m_keepOriginal = true;
+    if (m_cropCanvas)
+        m_cropCanvas->setMode(AddPatternImageCanvas::None);
 }
 
 QWidget *AddPatternWizard::buildHeader() {
@@ -333,7 +337,7 @@ QWidget *AddPatternWizard::buildStepCrop() {
             this, &AddPatternWizard::onKeepOriginalToggled);
     right->addWidget(m_chkKeepOriginal);
 
-    right->addWidget(makeFieldLabel(tr("Crop Region (display px)")));
+    right->addWidget(makeFieldLabel(tr("Crop Region (image px)")));
 
     auto *grid = new QGridLayout;
     grid->setSpacing(6);
@@ -397,7 +401,10 @@ QWidget *AddPatternWizard::buildStepPick() {
         sb = new QSpinBox; sb->setRange(0, max);
         sb->setStyleSheet(ptn::inputStyle());
         connect(sb, QOverload<int>::of(&QSpinBox::valueChanged),
-                this, [this](int){ onPickChanged({m_pickXSpin->value(), m_pickYSpin->value()}); });
+                this, [this](int){
+            QPoint temp;
+            onPickChanged(temp, {m_pickXSpin->value(), m_pickYSpin->value()});
+        });
         grid->addWidget(l, row, 0); grid->addWidget(sb, row, 1);
     };
     addAxis("X", m_pickXSpin, CW, 0);
@@ -436,6 +443,22 @@ QWidget *AddPatternWizard::buildStepBox() {
     m_boxCanvas = new AddPatternImageCanvas;
     m_boxCanvas->setMode(AddPatternImageCanvas::Box);
     m_boxCanvas->setMinimumSize(CW, CH);
+    // Canvas-driven box edits (drag corner / body / rotation handle) push
+    // values back into the spin boxes; the existing onBoxChanged() slot
+    // then echoes them into m_box* state.
+    connect(m_boxCanvas, &AddPatternImageCanvas::boxChanged,
+            this, [this](double w, double h, double d, double a) {
+                if (m_boxWSpin) {
+                    QSignalBlocker b1(m_boxWSpin), b2(m_boxHSpin),
+                                   b3(m_boxDistSpin), b4(m_boxAngleSpin);
+                    m_boxWSpin->setValue(w);
+                    m_boxHSpin->setValue(h);
+                    m_boxDistSpin->setValue(d);
+                    m_boxAngleSpin->setValue(a);
+                }
+                m_boxW = w; m_boxH = h; m_boxDist = d; m_boxAngle = a;
+                updateFooterStatus();
+            });
     lay->addWidget(m_boxCanvas, 1);
 
     auto *col = new QWidget; col->setFixedWidth(280);
@@ -559,15 +582,23 @@ void AddPatternWizard::goToStep(int step) {
     }
     if (step == 2 && m_pickCanvas) {
         m_pickCanvas->setImage(m_capturedMat);
+        // Show the crop region as a read-only overlay on the Pick canvas so
+        // the user knows the active crop area.  Empty rect = no overlay.
+        m_pickCanvas->setCrop(m_keepOriginal ? QRect() : m_crop);
         m_pickCanvas->setPick(m_pick);
     }
     if (step == 3 && m_boxCanvas) {
+        // if (m_keepOriginal) {
+        //     m_boxCanvas->setImage(m_capturedMat);
+        // } else {
+
+        // }
         m_boxCanvas->setImage(m_capturedMat);
-        m_boxCanvas->setPick(m_pick);
+        m_boxCanvas->setPick(m_keepOriginal ? m_pick : (m_pick + m_crop.topLeft()));
         m_boxCanvas->setBoxConfig(m_boxW, m_boxH, m_boxDist, m_boxAngle);
     }
     if (step == 4 && m_finishCanvas) {
-        m_finishCanvas->setImage(m_capturedMat);
+        m_finishCanvas->setImage(patternImage());
         m_finishCanvas->setPick(m_pick);
         m_finishCanvas->setBoxConfig(m_boxW, m_boxH, m_boxDist, m_boxAngle);
         refreshFinishSummary();
@@ -649,10 +680,14 @@ void AddPatternWizard::updateFooterStatus() {
             : QString("✓ ") + tr("Cropped to %1×%2 px")
                                   .arg(m_crop.width()).arg(m_crop.height());
         break;
-    case 2:
+    case 2: {
+        // Display crop-relative coords if the user cropped — matches the
+        // semantics returned by pickX() / pickY() and the canvas PICK label.
+        const QPoint p = m_keepOriginal ? m_pick : (m_pick - m_crop.topLeft());
         s = QString("✓ ") + tr("Pick point at (%1, %2)")
-                                .arg(m_pick.x()).arg(m_pick.y());
+                                .arg(p.x()).arg(p.y());
         break;
+    }
     case 3:
         s = QString("✓ ") + tr("Symmetric pair · %1×%2 · d=%3 · ±%4°")
                                 .arg(m_boxW).arg(m_boxH).arg(m_boxDist).arg(m_boxAngle);
@@ -689,7 +724,10 @@ void AddPatternWizard::refreshFinishSummary() {
                     ? tr("Original (no crop)")
                     : QString("%1×%2 @ (%3,%4)").arg(m_crop.width()).arg(m_crop.height())
                                                   .arg(m_crop.x()).arg(m_crop.y()));
-    html += row(tr("PICK POINT"), QString("(%1, %2) px").arg(m_pick.x()).arg(m_pick.y()));
+    {
+        const QPoint p = m_keepOriginal ? m_pick : (m_pick - m_crop.topLeft());
+        html += row(tr("PICK POINT"), QString("(%1, %2) px").arg(p.x()).arg(p.y()));
+    }
     html += row(tr("BOX SIZE"),   QString("%1 × %2 px").arg(m_boxW).arg(m_boxH));
     html += row(tr("OFFSET"),     QString("d=%1 · %2° / %3°")
                                      .arg(m_boxDist).arg(m_boxAngle).arg(m_boxAngle + 180));
@@ -755,6 +793,12 @@ void AddPatternWizard::setCameraImage(const cv::Mat &image) {
     m_btnDiscardImage->show();
     m_lblImageStatus->setText(QString("● %1 · %2×%3")
                                   .arg(tr("CAPTURED")).arg(image.cols).arg(image.rows));
+
+    // Image dimensions drive the geometry spin-box ranges and the default
+    // crop / pick positions.  All canvas-side values are in image pixels, so
+    // the spin boxes need to span the full image to mirror canvas edits.
+    onImageSizeChanged(image.cols, image.rows);
+
     updateFooterStatus();
 }
 
@@ -764,6 +808,64 @@ void AddPatternWizard::setLoadedImage(const cv::Mat &image, const QString &filen
     m_imageFilename = filename;
     m_lblImageStatus->setText(QString("● %1 · %2")
                                   .arg(tr("LOADED")).arg(filename));
+}
+
+void AddPatternWizard::onImageSizeChanged(int imageW, int imageH) {
+    if (imageW <= 0 || imageH <= 0) return;
+
+    // ── Spin box ranges ─────────────────────────────────────────────────
+    // Block per-spin signals while we widen — setRange() can clip the
+    // current value, which would otherwise re-fire onCropChanged / etc.
+    auto setR = [](QSpinBox *sb, int lo, int hi) {
+        if (!sb) return;
+        QSignalBlocker b(sb);
+        sb->setRange(lo, hi);
+    };
+    auto setRD = [](QDoubleSpinBox *sb, double lo, double hi) {
+        if (!sb) return;
+        QSignalBlocker b(sb);
+        sb->setRange(lo, hi);
+    };
+
+    setR(m_cropX, 0, imageW);
+    setR(m_cropY, 0, imageH);
+    setR(m_cropW, 1, imageW);
+    setR(m_cropH, 1, imageH);
+
+    setR(m_pickXSpin, 0, imageW - 1);
+    setR(m_pickYSpin, 0, imageH - 1);
+
+    // Pick-box sizes can in principle exceed the image (the canvas now lets
+    // jaws spill off-frame), so give a generous cap based on the image.
+    const double sizeCap = qMax(double(qMax(imageW, imageH)), 5000.0);
+    const double distCap = qMax(std::hypot(double(imageW), double(imageH)), 1000.0);
+    setRD(m_boxWSpin,    1.0, sizeCap);
+    setRD(m_boxHSpin,    1.0, sizeCap);
+    setRD(m_boxDistSpin, 0.0, distCap);
+    // Angle range stays as configured (-180..180).
+
+    // ── Clamp / re-centre defaults to fit the new image ─────────────────
+    QRect imgR(0, 0, imageW, imageH);
+    if (!imgR.contains(m_crop) || m_crop.isEmpty()) {
+        const int cw = qBound(20, m_crop.width(),  imageW);
+        const int ch = qBound(20, m_crop.height(), imageH);
+        m_crop = QRect((imageW - cw) / 2, (imageH - ch) / 2, cw, ch);
+    }
+    if (m_pick.x() < 0 || m_pick.x() >= imageW ||
+        m_pick.y() < 0 || m_pick.y() >= imageH) {
+        m_pick = QPoint(imageW / 2, imageH / 2);
+    }
+
+    // Push the clamped values back into the spin boxes (still blocked above
+    // for the range set; values need their own block).
+    auto setV = [](QSpinBox *sb, int v) {
+        if (!sb) return;
+        QSignalBlocker b(sb);
+        sb->setValue(v);
+    };
+    setV(m_cropX, m_crop.x());      setV(m_cropY, m_crop.y());
+    setV(m_cropW, m_crop.width());  setV(m_cropH, m_crop.height());
+    setV(m_pickXSpin, m_pick.x());  setV(m_pickYSpin, m_pick.y());
 }
 
 void AddPatternWizard::onNameChanged(const QString &v) {
@@ -790,9 +892,15 @@ void AddPatternWizard::onNumberChanged(int v) {
 
 void AddPatternWizard::onKeepOriginalToggled(bool on) {
     m_keepOriginal = on;
-    if (m_cropCanvas)
+    if (m_cropCanvas) {
         m_cropCanvas->setMode(on ? AddPatternImageCanvas::None
                                   : AddPatternImageCanvas::Crop);
+        if (m_keepOriginal) {
+            m_boxCanvas->setCrop(QRect(0, 0, m_capturedMat.cols, m_capturedMat.rows));
+        } else {
+            // m_boxCanvas->setCrop(m_crop);
+        }
+    }
     updateFooterStatus();
 }
 
@@ -808,26 +916,50 @@ void AddPatternWizard::onCropChanged(const QRect &r) {
 }
 
 void AddPatternWizard::onResetCrop() {
-    onCropChanged(QRect(80, 60, CW - 160, CH - 120));
+    // Use the loaded image's dimensions — crop geometry is in image pixels.
+    const int iw = m_capturedMat.empty() ? CW : m_capturedMat.cols;
+    const int ih = m_capturedMat.empty() ? CH : m_capturedMat.rows;
+    const int marginX = qMax(20, iw / 8);
+    const int marginY = qMax(20, ih / 8);
+    onCropChanged(QRect(marginX, marginY,
+                        qMax(20, iw - 2 * marginX),
+                        qMax(20, ih - 2 * marginY)));
 }
 
 void AddPatternWizard::onCenter1to1Crop() {
-    const int s = qMin(CW - 40, CH - 40);
-    onCropChanged(QRect((CW - s) / 2, (CH - s) / 2, s, s));
+    const int iw = m_capturedMat.empty() ? CW : m_capturedMat.cols;
+    const int ih = m_capturedMat.empty() ? CH : m_capturedMat.rows;
+    const int s = qMax(20, qMin(iw, ih) - 40);
+    onCropChanged(QRect((iw - s) / 2, (ih - s) / 2, s, s));
 }
 
-void AddPatternWizard::onPickChanged(const QPoint &p) {
-    m_pick = p;
+void AddPatternWizard::onPickChanged(const QPoint &p, const QPoint &imgp) {
+    if (m_keepOriginal) {
+        m_pick = p;
+    } else {
+        m_pick = imgp;
+    }
     if (m_pickXSpin) {
         QSignalBlocker b1(m_pickXSpin), b2(m_pickYSpin);
-        m_pickXSpin->setValue(p.x()); m_pickYSpin->setValue(p.y());
+        m_pickXSpin->setValue(m_pick.x()); m_pickYSpin->setValue(m_pick.y());
     }
-    if (m_pickCanvas) m_pickCanvas->setPick(p);
+    if (m_pickCanvas) m_pickCanvas->setPick(m_pick);
     updateFooterStatus();
 }
 
 void AddPatternWizard::onPickCenter() {
-    onPickChanged({CW / 2, CH / 2});
+    QPoint temp;
+    if (!m_keepOriginal) {
+        if (!m_crop.isNull() && !m_crop.isEmpty() && !m_keepOriginal) {
+            const int iw = (m_crop.width() / 2);
+            const int ih = (m_crop.height() / 2);
+            onPickChanged(temp, {iw, ih});
+        }
+    } else {
+        const int iw = m_capturedMat.empty() ? CW : m_capturedMat.cols;
+        const int ih = m_capturedMat.empty() ? CH : m_capturedMat.rows;
+        onPickChanged({iw / 2, ih / 2}, temp);
+    }
 }
 
 void AddPatternWizard::onBoxChanged() {

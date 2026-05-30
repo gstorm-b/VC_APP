@@ -71,9 +71,6 @@ private:
     void closeAllDockTabs();
 
     // Widget factories
-    // QWidget    *createDeviceWidget(std::shared_ptr<vc::device::IDevice> device, ads::CDockWidget *dock);
-    // QWidget    *createCameraWidget(std::shared_ptr<vc::device::IDevice> device, ads::CDockWidget *dock);
-    // QWidget    *createMcProtocolWidget(std::shared_ptr<vc::device::IDevice> device, ads::CDockWidget *dock);
     UITaskEntry createTaskEntry(std::shared_ptr<vc::model::ITask> task, ads::CDockWidget *anchorDock);
     UITaskEntry createLocalizationEntry(std::shared_ptr<vc::model::ITask> task, ads::CDockWidget *anchorDock);
 

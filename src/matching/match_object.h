@@ -147,7 +147,7 @@ public:
         return m_has_collision;
     }
 
-    bool hasCollision() {
+    bool hasCollision() const {
         return m_has_collision;
     }
 

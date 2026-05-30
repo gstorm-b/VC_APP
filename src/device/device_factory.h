@@ -29,8 +29,22 @@ public:
     static IDevice* createBaslerGigeCamera(const QJsonObject& obj,
                                  QObject* parent = nullptr);
 
+    static IDevice* createPlcDevice(const QJsonObject& obj,
+                              QObject* parent = nullptr);
     static IDevice* createMcProtocolDevice(const QJsonObject& obj,
                               QObject* parent = nullptr);
+
+    static IDevice* createVisionOutputDevice(const QJsonObject& obj,
+                              QObject* parent = nullptr);
+    static IDevice* createVisionTcpipDevice(const QJsonObject& obj,
+                              QObject* parent = nullptr);
+
+    static IDevice* createRobotDevice(const QJsonObject& obj,
+                                      QObject* parent = nullptr);
+    static IDevice* createKawasakiRobot(const QJsonObject& obj,
+                                        QObject* parent = nullptr);
+    static IDevice* createNachiRobot(const QJsonObject& obj,
+                                     QObject* parent = nullptr);
 };
 
 } // namespace vc::device

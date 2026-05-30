@@ -12,13 +12,19 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     src/app_settings/app_settings.cpp \
+    src/calibration/calibration_board.cpp \
+    src/calibration/calibration_board_factory.cpp \
+    src/calibration/calibrator.cpp \
+    src/calibration/fanuc_irvision_board.cpp \
     src/device/camera/camera_basler_gige.cpp \
     src/device/device_factory.cpp \
     src/device/device_manager.cpp \
     src/device/plc/mc_device_map.cpp \
     src/device/plc/mc_fame_3e.cpp \
     src/device/plc/mc_protocol_device.cpp \
-    src/device/plc/mitsubishi_ethernet_tcp_plc.cpp \
+    src/device/output_device/vision_tcpip_device.cpp \
+    src/device/robot/kawasaki_robot_device.cpp \
+    src/device/robot/nachi_robot_device.cpp \
     src/form/add_device_wizard.cpp \
     src/form/camera/basler_cam_select_dialog.cpp \
     src/form/camera/basler_camera_widget.cpp \
@@ -33,11 +39,12 @@ SOURCES += \
     src/form/plc/mc_protocol_device_widget.cpp \
     src/form/plc/plc_mitsu_device_wizard.cpp \
     src/form/project_infor_setting.cpp \
-    src/form/task/localization_calibration_widget.cpp \
     src/form/task/localization_dashboard_widget.cpp \
     src/form/task/localization_patterns_widget.cpp \
+    src/form/task/localization_setting_widget.cpp \
     src/form/task/localization_task_widget.cpp \
     src/form/task_form.cpp \
+    src/form/vision_output/vision_output_device_widget.cpp \
     src/libwg/group_frame.cpp \
     src/logger/app_logger.cpp \
     src/matching/image_matcher.cpp \
@@ -81,12 +88,20 @@ SOURCES += \
     src/widgets/qtpropertybrowser/qtvariantproperty.cpp \
     src/widgets/property_browser/custom_property_managers.cpp \
     src/widgets/property_browser/property_browser_widget.cpp \
+    src/widgets/calibration/calibration_board_dialog.cpp \
+    src/widgets/calibration/calibration_points_table.cpp \
+    src/widgets/signals_map_widget.cpp \
+    src/widgets/signals_monitor_widget.cpp \
     src/utils/theme_manager.cpp
 
 
 HEADERS += \
     mainwindow.h \
     src/app_settings/app_settings.h \
+    src/calibration/calibration_board.h \
+    src/calibration/calibration_board_factory.h \
+    src/calibration/calibrator.h \
+    src/calibration/fanuc_irvision_board.h \
     src/device/camera/basler_define.h \
     src/device/camera/camera_basler_gige.h \
     src/device/camera/camera_device.h \
@@ -108,11 +123,21 @@ HEADERS += \
     src/device/plc/mc_msg_tcp_client.h \
     src/device/plc/mc_protocol_config.h \
     src/device/plc/mc_protocol_device.h \
+    src/device/plc/plc_device.h \
     src/device/plc/mc_request.h \
     src/device/plc/memory_utils.h \
-    src/device/plc/mitsubishi_ethernet_tcp_plc.h \
     src/device/plc/plc_request.h \
     src/device/plc/plc_value.h \
+    src/device/output_device/vision_output_config.h \
+    src/device/output_device/vision_output_device.h \
+    src/device/output_device/vision_output_request.h \
+    src/device/output_device/vision_tcpip_config.h \
+    src/device/output_device/vision_tcpip_device.h \
+    src/device/robot/robot_device.h \
+    src/device/robot/kawasaki_robot_config.h \
+    src/device/robot/kawasaki_robot_device.h \
+    src/device/robot/nachi_robot_config.h \
+    src/device/robot/nachi_robot_device.h \
     src/form/add_device_wizard.h \
     src/form/camera/basler_cam_select_dialog.h \
     src/form/camera/basler_camera_widget.h \
@@ -130,12 +155,13 @@ HEADERS += \
     src/form/plc/mc_protocol_device_widget.h \
     src/form/plc/plc_mitsu_device_wizard.h \
     src/form/project_infor_setting.h \
-    src/form/task/localization_calibration_widget.h \
     src/form/task/localization_dashboard_widget.h \
     src/form/task/localization_patterns_widget.h \
+    src/form/task/localization_setting_widget.h \
     src/form/task/localization_task_widget.h \
     src/form/task_form.h \
     src/form/task_widget.h \
+    src/form/vision_output/vision_output_device_widget.h \
     src/libwg/group_frame.h \
     src/libwg/validating_line_edit.h \
     src/logger/app_logger.h \
@@ -162,7 +188,7 @@ HEADERS += \
     src/runtime/idevice_runner.h \
     src/runtime/device_runner.h \
     src/runtime/camera_runner.h \
-    src/runtime/mc_device_runner.h \
+    src/runtime/plc_runner.h \
     src/runtime/task_runner.h \
     src/model/pick_and_place_task.h \
     src/model/project.h \
@@ -172,6 +198,7 @@ HEADERS += \
     src/model/task_localization.h \
     src/model/task_localization_config.h \
     src/qgadget_marco.h \
+    src/runtime/vision_output_runner.h \
     src/setting_keys.h \
     src/system_log_form.h \
     src/utils/meta_utils.h \
@@ -254,11 +281,15 @@ HEADERS += \
     src/widgets/property_browser/prop_spec.h \
     src/widgets/property_browser/custom_property_managers.h \
     src/widgets/property_browser/property_browser_widget.h \
+    src/widgets/calibration/calibration_board_dialog.h \
+    src/widgets/calibration/calibration_points_table.h \
+    src/widgets/signals_map_widget.h \
+    src/widgets/signals_monitor_widget.h \
     windows_helper.h
-
 
 FORMS += \
     mainwindow.ui \
+    src/form/add_device_wizard.ui \
     src/form/camera/basler_cam_select_dialog.ui \
     src/form/camera/basler_camera_widget.ui \
     src/form/navigate_form.ui \
@@ -270,11 +301,12 @@ FORMS += \
     src/form/plc/mc_serial_port_widget.ui \
     src/form/plc/plc_mitsu_device_wizard.ui \
     src/form/project_infor_setting.ui \
-    src/form/task/localization_calibration_widget.ui \
     src/form/task/localization_dashboard_widget.ui \
     src/form/task/localization_patterns_widget.ui \
+    src/form/task/localization_setting_widget.ui \
     src/form/task/localization_task_widget.ui \
     src/form/task_form.ui \
+    src/form/vision_output/vision_output_device_widget.ui \
     src/system_log_form.ui
 
 TRANSLATIONS += \

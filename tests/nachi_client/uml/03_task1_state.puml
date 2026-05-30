@@ -1,0 +1,55 @@
+@startuml nachi_client_task1_state
+title TASK1_MAIN_CHANNEL - State Machine
+
+skinparam shadowing false
+skinparam state {
+    BackgroundColor #F8FAFC
+    BorderColor #475569
+    FontColor #0F172A
+    ArrowColor #1E40AF
+}
+
+[*] --> Clear
+
+state Clear : CLEAR_RESULT\n- GI_DETECTED_COUNT = 0\n- GR_POS_*          = 0.0\n- O_TASK1_BUSY      = 0
+Clear --> WaitPermission
+
+state WaitPermission : WAIT_FOR_PERMISSION\n(loop) check:\n  GB_SERVER_ALIVE = 1\n  AND GB_TASK1_RESET_REQ = 0
+WaitPermission --> Connecting : permission OK
+
+state Connecting : CONNECT_MAIN\nTCP_OPEN + TCP_CONNECT(SK_MAIN)
+Connecting --> Working      : ret = 0\n(GB_TASK1_CONNECTED = 1)
+Connecting --> Disconnect   : ret != 0\n(reason = "connect_failed")
+
+state Working {
+    [*] --> CheckReset
+
+    state CheckReset : Check GB_TASK1_RESET_REQ\nat top of WORK_LOOP
+    CheckReset --> Trigger     : reset = 0
+    CheckReset --> AbortReset  : reset = 1
+
+    state Trigger : SEND_TRIGGER\n- O_TASK1_BUSY = 1\n- TCP_SEND(SK_MAIN, "trigger,1;")
+    Trigger --> Receiving      : ret = 0
+    Trigger --> AbortSend      : ret != 0
+
+    state Receiving : RECEIVE_RESULT\nloop:\n  TCP_RECV chunk\n  packet += chunk\n  until INSTR(';') > 0\n  or timeout / reset / error
+    Receiving --> Parsing      : got terminator ';'
+    Receiving --> AbortRecv    : ret != 0
+
+    state Parsing : PARSE_RESULT\n- POP_FIELD count\n- POP_FIELD x,y,z,r * N\n- write GI_DETECTED_COUNT\n- write GR_POS_X/Y/Z/R
+    Parsing --> Idle
+
+    state Idle : DELAY MAIN_RECV_POLL\n(O_TASK1_BUSY = 0)
+    Idle --> CheckReset
+
+    state AbortReset : reason = "reset_by_task2"
+    state AbortSend  : reason = "send_failed"
+    state AbortRecv  : reason = "recv_failed"
+}
+
+Working --> Disconnect : AbortReset / AbortSend / AbortRecv
+
+state Disconnect : HANDLE_DISCONNECT(reason)\n- PRINT reason\n- CLOSE_MAIN  (GB_TASK1_CONNECTED = 0)\n- CLEAR_RESULT\n- DELAY RECONNECT_DELAY
+Disconnect --> Clear
+
+@enduml

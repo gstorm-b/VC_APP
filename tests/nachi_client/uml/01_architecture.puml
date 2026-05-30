@@ -1,0 +1,97 @@
+@startuml nachi_client_architecture
+title Nachi CFDs Client - Architecture Overview
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 8
+
+' ===========================================================
+'  External system (PC side)
+' ===========================================================
+node "PC (Vision Host)" as PC {
+    component "VisionOutputDevice\n(TCP Server)" as Server {
+        port "Port 1\n(Main / Matching)" as P1
+        port "Port 2\n(Heartbeat)" as P2
+    }
+}
+
+' ===========================================================
+'  Nachi CFDs Controller
+' ===========================================================
+node "Nachi CFDs Controller" as Ctrl {
+
+    package "User Tasks (auto-start)" as Tasks {
+        component "TASK1_MAIN_CHANNEL\n(.prg)" as T1 {
+            [WAIT_FOR_PERMISSION]
+            [CONNECT_MAIN]
+            [SEND_TRIGGER]
+            [RECEIVE_RESULT]
+            [PARSE_RESULT / POP_FIELD]
+            [HANDLE_DISCONNECT]
+        }
+
+        component "TASK2_HEARTBEAT\n(.prg)" as T2 {
+            [INIT_STATE]
+            [CONNECT_HB]
+            [RECV_PROBE]
+            [VALIDATE_PROBE]
+            [SEND_ACK]
+            [INC_MSG_COUNT]
+            [GRANT_TASK1]
+            [DECLARE_LOST]
+        }
+    }
+
+    package "Shared Globals" as G {
+        [GB_SERVER_ALIVE       (GB[10])] as GA
+        [GB_TASK1_RESET_REQ    (GB[11])] as GR_
+        [GB_TASK1_CONNECTED    (GB[12])] as GC
+        [GI_HB_MSG_COUNT       (GI[10])] as GH
+        [GI_DETECTED_COUNT     (GI[20])] as GD
+        [GR_POS_X/Y/Z/R[0..7]  (GR[30..61])] as GP
+    }
+
+    package "Controller IO" as IO {
+        [O_VISION_LINK_OK  (O[1])] as O1
+        [O_VISION_LINK_ERR (O[2])] as O2
+        [O_TASK1_BUSY      (O[3])] as O3
+    }
+
+    package "TCP Sockets" as SK {
+        [SK_MAIN = handle 1] as SK1
+        [SK_HB   = handle 2] as SK2
+    }
+}
+
+' ===========================================================
+'  Relations
+' ===========================================================
+T2 --> SK2 : open / connect / recv / send / close
+T1 --> SK1 : open / connect / send / recv / close
+
+SK1 ..> P1 : "TCP\n trigger,1;\n N,x,y,z,r,...;"
+SK2 ..> P2 : "TCP\n connection_check.\n ack,{count}."
+
+T2 --> GA  : set 1/0
+T2 --> GR_ : set 1/0 (supervise T1)
+T2 --> GH  : write counter
+T2 --> O1  : set 1 when link OK
+T2 --> O2  : set 1 on lost connect
+
+T1 --> GC  : set 1/0
+T1 --> GD  : write detected count
+T1 --> GP  : write positions
+T1 --> O3  : set 1 while busy
+T1 <-- GA  : read (gate)
+T1 <-- GR_ : read (reset signal)
+
+' Hint to other motion programs
+package "Other Motion Programs" as Other {
+    [Pick & Place Job]
+}
+Other ..> GD : read
+Other ..> GP : read
+Other ..> O1 : check link
+Other ..> O2 : check error
+
+@enduml

@@ -11,7 +11,7 @@
 
 // Runtime runners (for typed access inside executeLocalization)
 #include "runtime/camera_runner.h"
-#include "runtime/mc_device_runner.h"
+#include "runtime/plc_runner.h"
 
 namespace vc::model {
 
@@ -29,6 +29,8 @@ public:
         return m_isValid;
     }
 
+    bool isReachLimitOfDeviceType(vc::device::DeviceType t) const override;
+
     void setTaskLocalizeConfig(TaskLocalizeConfig &cfg) {
         m_config = cfg;
         this->setTaskConfig(&m_config);
@@ -38,79 +40,78 @@ public:
         return m_config;
     }
 
+    void startCommissionMatching(
+        std::shared_ptr<mtc::MatchGroup> group, cv::Mat &image) {
+
+        emit startCommissionMatchingRequest(group, image.clone());
+    }
+
     mtc::PatternGroupManager* patternManager() const {
         return m_patternManager;
     }
 
-    virtual QMap<QString, cv::Mat> getTaskImageMap() override {
-        QMap<QString, cv::Mat> map;
+    // Image BLOB I/O — paired with the JSON written in toJson(). Each entry
+    // in the returned map uses the key "g{groupNumber}_p{patternNumber}".
+    // ProjectRepository stores these blobs in the project_images table and
+    // re-injects them on load via loadTaskImageMap().
+    QMap<QString, cv::Mat> getTaskImageMap() override;
+    bool                   loadTaskImageMap(QMap<QString, cv::Mat> &mapping) override;
 
-        // here to save image into database
+    QJsonObject toJson() const override;
+    bool fromJson(const QJsonObject& obj) override;
 
-        // cv::Mat  mat_test_1 = cv::imread("C:/DGB/Project/ncr_picking/build/test_1.png");
-        // cv::Mat  mat_test_2 = cv::imread("C:/DGB/Project/ncr_picking/build/test_2.bmp");
-        // cv::Mat  mat_test_3 = cv::imread("C:/DGB/Project/ncr_picking/build/test_3.bmp");
+    // Family-level typed access to the assigned PLC device via the runner.
+    // Vendor-specific access (e.g. Mitsubishi frame type) is reached by
+    // qobject_cast<McProtocolDevice *>(plcDevice()) at the call site.
+    vc::device::PlcDevice *plcDevice() const;
 
-        // map.insert("Test_1", mat_test_1);
-        // map.insert("Test_2", mat_test_2);
-        // map.insert("Test_3", mat_test_3);
-
-        // qDebug() << "Test save to blob";
-        // qDebug() << map.keys();
-
-        return map;
-    }
-
-    virtual bool loadTaskImageMap(QMap<QString, cv::Mat> &mapping) override  {
-
-        // here to load image into database
-
-        // qDebug() << "Test load from blob";
-        // qDebug() << mapping.keys();
-
-        // auto map_it = mapping.cbegin();
-        // while (map_it != mapping.cend()) {
-        //     cv::Mat test_mat = map_it.value();
-
-        //     QString file_name = QString("%1.bmp").arg(map_it.key());
-
-        //     cv::imwrite(file_name.toStdString(), test_mat);
-
-        //     map_it++;
-        // }
-
-        return false;
-    }
-
-
-    // Convenience: typed access to device config from runner
-    vc::device::CameraDevice       *camera()   const;
-    vc::device::McProtocolDevice   *mcDevice() const;
-
-    void setCameraDeviceId(const QString &id)   { m_cameraDeviceId = id; }
-    void setMcDeviceId(const QString &id)        { m_mcDeviceId     = id; }
-    QString cameraDeviceId()  const              { return m_cameraDeviceId; }
-    QString mcDeviceId()      const              { return m_mcDeviceId;     }
+    void setPlcDeviceId(const QString &id)       { m_plcDeviceId    = id; }
+    QString plcDeviceId()     const              { return m_plcDeviceId;    }
 
 public slots:
     void setupTask();
     void executeLocalization();
+    void setCameraNumber(int number);
+    void setPatternNumber(int number);
+
+private slots:
+    // ── Signals value change method ───────────────────────────────────────
+    void onCommDeviceValueChanged(QMap<QString, QVariant> values);
+    void onSignalChangeCameraNumber(QVariant value);
+    void onSignalChangePatternNumber(QVariant value);
+
+    void waitReconnectCameraHandle(device::ConnectStatus status);
+    void selectedCameraConnectStatusChanged(device::ConnectStatus status);
 
 private:
-    void onCameraNumberChanged();
-    void onPatternNumberChanged();
+    void wireMatchingCommissionSignals();
 
 signals:
     void startPLCRequest();
     void startCameraRequest();
+    void commissionMatchingFinished(mtc::MatchResult result);
+    void cameraChanged(QString name);
+    void patternChanged(QString name);
+
+private:
+    signals:
+        void startCommissionMatchingRequest(std::shared_ptr<mtc::MatchGroup> group, cv::Mat image);
 
 private:
     // ── Helpers for typed runner access ───────────────────────────────────────
     // Returns nullptr if the device isn't registered or is wrong type.
-    vc::runtime::CameraRunner   *cameraRunner(const QString &deviceId) const;
-    vc::runtime::McDeviceRunner *mcRunner(const QString &deviceId)     const;
+    vc::runtime::CameraRunner *cameraRunner(const QString &deviceId) const;
+    vc::runtime::PlcRunner    *plcRunner(const QString &deviceId)    const;
+    QThread *matchingRunner{nullptr};
+
+public:
+    const int limit_comm_device = 1;
+    const int limit_vision_output_device = 1;
+    const int limit_num_camera = 16;
 
 private:
+    QMap<device::DeviceType, int> m_limitDeviceMap;
+
     bool m_isValid{false};
 
     TaskLocalizeConfig m_config;
@@ -118,8 +119,18 @@ private:
     // Device objects are retrieved from DeviceManager via taskRunner().
     // Typed cached pointers below are populated in setupTask() after
     // commission has confirmed which deviceId plays each role.
-    QString m_cameraDeviceId;
-    QString m_mcDeviceId;
+    QString m_plcDeviceId;
+
+    int m_currentCamNumber;
+    int m_curentPatternNumber;
+    std::shared_ptr<device::CameraDevice> m_selectedCamera;
+    std::shared_ptr<device::CameraDevice> m_nextConnectCamera;
+
+    // <Signal tag, Signal name>
+    QMap<QString, QString> m_currentSignalsMap;
+
+    mtc::MatchResult m_lastMatchResult;
+    QString m_lastVisionOutput;
 
     mtc::ImageMatcher m_matcher;
     mtc::PatternGroupManager *m_patternManager;

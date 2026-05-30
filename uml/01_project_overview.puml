@@ -1,0 +1,142 @@
+@startuml project_overview
+title ncr_picking - Project Overview
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam PackageBorderColor #888888
+skinparam PackageBackgroundColor #F6F8FA
+
+package "Application Shell" as app {
+  component "main.cpp" as main
+  component "MainWindow" as mainwindow
+  component "NavigateForm" as navigate
+  component "TaskForm" as taskform
+}
+
+package "vc::model" as model {
+  component "Project" as project
+  component "ProjectRepository" as repository
+  component "ITask" as itask
+  component "TaskLocalization" as localization_task
+  component "TaskFactory" as task_factory
+  component "TaskLocalizeConfig" as localization_config
+}
+
+package "vc::device" as device {
+  component "DeviceManager" as device_manager
+  component "DeviceFactory" as device_factory
+  component "IDevice / IDeviceCfg" as idevice
+  component "Camera family" as camera
+  component "PLC family" as plc
+  component "VisionOutput family" as vision_output
+  component "Robot family" as robot
+}
+
+package "vc::runtime" as runtime {
+  component "TaskRunner" as task_runner
+  component "IDeviceRunner" as idevice_runner
+  component "CameraRunner" as camera_runner
+  component "PlcRunner" as plc_runner
+  component "VisionOutputRunner" as vision_output_runner
+}
+
+package "UI forms" as forms {
+  component "AddDeviceWizard" as add_device_wizard
+  component "LocalizationTaskWidget" as localization_widget
+  component "LocalizationDashboardWidget" as dashboard_widget
+  component "LocalizationPatternsWidget" as patterns_widget
+  component "LocalizationSettingWidget" as setting_widget
+  component "Device config widgets" as device_widgets
+}
+
+package "Reusable widgets" as widgets {
+  component "PropertyBrowserWidget" as property_browser
+  component "CameraMappingWidget" as camera_mapping
+  component "SignalsMapWidget" as signals_map
+  component "SignalsMonitorWidget" as signals_monitor
+  component "Calibration widgets" as calibration_widgets
+}
+
+package "mtc matching" as matching {
+  component "PatternGroupManager" as pattern_manager
+  component "MatchGroup / MatchPattern" as pattern_model
+  component "ImageMatcher" as image_matcher
+  component "MatchConfigPropertyAdapter" as match_property_adapter
+}
+
+package "calib calibration" as calibration {
+  component "Calibrator" as calibrator
+  component "CalibrationBoard" as calibration_board
+  component "FanucIRvisionBoard" as fanuc_board
+  component "CalibrationBoardFactory" as calibration_board_factory
+}
+
+package "resources" as resources {
+  component "resrc.qrc" as qrc
+  component "resrc/styles/*.qss" as qss
+  component "resrc/icon/*.svg" as icons
+}
+
+main --> mainwindow
+mainwindow --> navigate
+mainwindow --> taskform
+taskform --> localization_widget
+
+project *-- itask
+project *-- device_manager
+project ..> repository : save/load
+repository ..> task_factory
+repository ..> device_factory
+
+itask <|-- localization_task
+localization_task *-- localization_config
+localization_task *-- pattern_manager
+localization_task *-- image_matcher
+localization_task *-- task_runner
+
+device_manager *-- idevice
+device_factory ..> idevice : creates
+idevice <|-- camera
+idevice <|-- plc
+idevice <|-- vision_output
+idevice <|-- robot
+
+task_runner *-- idevice_runner
+idevice_runner <|-- camera_runner
+idevice_runner <|-- plc_runner
+idevice_runner <|-- vision_output_runner
+task_runner ..> device_manager : resolves assigned devices
+
+forms --> model
+forms --> device
+forms --> runtime
+forms --> widgets
+forms --> resources
+
+patterns_widget --> pattern_manager
+patterns_widget --> match_property_adapter
+setting_widget --> camera_mapping
+setting_widget --> signals_map
+device_widgets --> property_browser
+
+pattern_manager *-- pattern_model
+image_matcher --> pattern_model
+calibrator --> calibration_board
+calibration_board <|-- fanuc_board
+calibration_board_factory ..> calibration_board : creates
+camera --> calibrator : stores calibration
+calibration_widgets --> calibration
+
+qrc --> qss
+qrc --> icons
+
+note bottom of robot
+  Robot devices are declared as a family,
+  but runtime runner support is not wired yet.
+end note
+
+@enduml
+

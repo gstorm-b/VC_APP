@@ -50,7 +50,7 @@ public:
 signals:
     /// Emitted when the user clicks "Trigger Camera".  Host should capture
     /// an image from the active camera and feed it back via setCameraImage().
-    void requestCameraImage();
+    void requestCameraImage(QString id);
 
 public slots:
     /// External entry point for image input (camera, file, network …).
@@ -97,9 +97,8 @@ private slots:
     void onPatternConfigModified();
     void onPropertyValueChanged(QtProperty *property, const QVariant &value);
 
-    // ── PatternSettingPanel (under-tree inline editor) ──────────────────
-    void onSettingPanelPatternFieldChanged(const QString &key, const QVariant &value);
-    void onSettingPanelGroupFieldChanged  (const QString &key, const QVariant &value);
+    // ── Matching commission ─────────────────────────────────────────────
+    void onMatchingCommissionDone(mtc::MatchResult result);
 
 private:
     // ── Build / wire-up ─────────────────────────────────────────────────
@@ -120,10 +119,13 @@ private:
     void unbindPattern();
 
     // ── Selection state ─────────────────────────────────────────────────
-    void selectGroup  (int groupIndex);
+    void selectGroup(int groupIndex);
     void selectPattern(int groupIndex, int patternIndex);
     void clearSelection();
     void updatePatternThumb(mtc::MatchPattern *pattern);
+
+    // ── Camera combo ────────────────────────────────────────────────────
+    void rebuildCameraCombo();
 
     // ── Group combo ─────────────────────────────────────────────────────
     void rebuildGroupCombo();
@@ -161,10 +163,6 @@ private:
     // Lets setCameraImage() forward captures into the wizard preview.
     class AddPatternWizard           *m_activeAddWizard{nullptr};
 
-    // Pattern Setting panel — sits below the library tree (Pane 2 bottom).
-    // Mirrors `PatternSetting` from the design handoff.
-    class PatternSettingPanel        *m_settingPanel{nullptr};
-
     // Result table — sits below the KPI strip in Pane 1, inside a vertical
     // splitter so the user can resize image vs. table.  Populated after each
     // matching run from `mtc::MatchResult`.  Mirrors the Result Table from
@@ -177,17 +175,16 @@ private:
 
     // ── Working pattern config — adapter writes through this object,
     //    and we commit it back to the manager on edits. ─────────────────
+    mtc::MatchGroupConfig           m_workingGroupConfig;
+    mtc::MatchGroup                 *m_boundMatchGroup{nullptr};
     mtc::MatchPatternConfig          m_workingPatternCfg;
     mtc::MatchPattern               *m_boundPattern{nullptr};
 
     // ── Group-level properties on the same property browser ─────────────
-    QtVariantProperty *m_grpGroupProps   {nullptr};
-    QtVariantProperty *m_propGroupRatio  {nullptr};
-    QtVariantProperty *m_propPickBoxW    {nullptr};
-    QtVariantProperty *m_propPickBoxH    {nullptr};
-    QtVariantProperty *m_propPickBoxDist {nullptr};
-    QtVariantProperty *m_propPickBoxAngle{nullptr};
-    QSet<QtProperty*>  m_groupPropSet;
+    QtVariantProperty *m_groupVariant{nullptr};
+    QMap<QtProperty *, QString> m_groupPropKeys;
+    QMap<QString, QtVariantProperty *> m_groupProps;
+
 
     // ── Test image ──────────────────────────────────────────────────────
     cv::Mat m_currentImage;

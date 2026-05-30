@@ -5,8 +5,9 @@
 #include "form/pattern/pattern_theme.h"
 #include "form/pattern/add_pattern_wizard.h"
 #include "form/pattern/edit_pattern_wizard.h"
-#include "form/pattern/pattern_setting_panel.h"
 #include "widgets/qtpropertybrowser/qtvariantproperty.h"
+// #include "form/pattern/pattern_setting_panel.h"
+// #include "widgets/property_browser/prop_spec.h"
 
 #include <QTableWidget>
 #include <QHeaderView>
@@ -28,9 +29,11 @@
 #include <QSplitter>
 #include <QHash>
 #include <QPair>
+#include <QMetaType>
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/core/types.hpp>
 
 namespace {
 
@@ -77,6 +80,92 @@ QPixmap LocalizationPatternsWidget::matToPixmap(const cv::Mat &mat) {
     return QPixmap::fromImage(img);
 }
 
+static const QList<PropSpec<mtc::MatchGroupConfig>> kMatchGroupSpecs = {
+    { "groupName",       "Group name",           "Group defined name.",
+     QMetaType::QString, "",   "",   "",  -1, false,
+     [](const mtc::MatchGroupConfig &c){ return QVariant(QString::fromStdWString(c.m_groupName)); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){ c.m_groupName = v.toString().toStdWString(); } },
+
+    { "groupNumber",
+     "Group Number",
+     "Group defined number.",
+     QMetaType::Int, 1, 32, 1,  1, false,
+     [](const mtc::MatchGroupConfig &c){ return QVariant(c.m_groupIndex); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){ c.m_groupIndex = v.toInt(); } },
+
+    { "groupPickingBoxSizeWidth",
+     "Picking Box Size (Width)",
+     "Picking box condition.",
+     QMetaType::Double, 0.0, 100000.0, 1.0,  2, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingBoxSize.width); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingBoxSize.width = v.toDouble(); } },
+
+    { "groupPickingBoxSizeHeight",
+     "Picking Box Size (Height)",
+     "Picking box condition.",
+     QMetaType::Double, 0.0, 100000.0, 1.0,  2, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingBoxSize.height); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingBoxSize.height = v.toDouble(); } },
+
+    { "groupPickingBoxDistance",
+     "Picking Box Distance",
+     "Minimum distance between two picking boxes.",
+     QMetaType::Double, 0.0, 100000.0, 1.0,  2, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingBoxDistance); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingBoxDistance = v.toDouble(); } },
+
+    { "groupPickingBoxAngle",
+     "Picking Box Angle",
+     "Orientation of the picking box (degrees).",
+     QMetaType::Double, -360.0, 360.0, 0.1,  2, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingBoxAngle); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingBoxAngle = v.toDouble(); } },
+
+    { "groupPickingOffsetX",
+     "Picking Offset (X)",
+     "X-axis offset applied at picking time.",
+     QMetaType::Double, -100000.0, 100000.0, 0.1,  3, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingOffset.x); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingOffset.x = v.toFloat(); } },
+
+    { "groupPickingOffsetY",
+     "Picking Offset (Y)",
+     "Y-axis offset applied at picking time.",
+     QMetaType::Double, -100000.0, 100000.0, 0.1,  3, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingOffset.y); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingOffset.y = v.toFloat(); } },
+
+    { "groupPickingOffsetZ",
+     "Picking Offset (Z)",
+     "Z-axis offset applied at picking time.",
+     QMetaType::Double, -100000.0, 100000.0, 0.1,  3, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_pickingOffset.z); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_pickingOffset.z = v.toFloat(); } },
+
+    { "groupLowWorkpieceRatio",
+     "Low Workpiece Ratio",
+     "Edge-based match: ratio used to detect low / partially visible workpieces.",
+     QMetaType::Double, 0.0, 100.0, 0.1,  3, false,
+     [](const mtc::MatchGroupConfig &c){
+         return QVariant(c.m_lowWorkpieceRatio); },
+     [](mtc::MatchGroupConfig &c, const QVariant &v){
+         c.m_lowWorkpieceRatio = v.toDouble(); } },
+};
+
 // ── Construction ─────────────────────────────────────────────────────────────
 
 LocalizationPatternsWidget::LocalizationPatternsWidget(
@@ -99,9 +188,7 @@ void LocalizationPatternsWidget::loadConfigToWidget() {}
 // ── initWidget ───────────────────────────────────────────────────────────────
 
 void LocalizationPatternsWidget::initWidget() {
-    // ── Theme: apply dark palette tokens from design handoff ────────────────
-    // Tokens defined in `form/pattern/pattern_theme.h`, mirroring
-    // `ui_scratch/design_handoff_full_project/README.md`.
+    /// TODO: switch stylesheet to qss file
     setStyleSheet(QString(
         // ── Root ────────────────────────────────────────────────────────────
         "QWidget#LocalizationPatternsWidget { background: %1; color: %2; "
@@ -150,115 +237,30 @@ void LocalizationPatternsWidget::initWidget() {
            ptn::TXT2, /* %4 */ ptn::SURF,   /* %5 */ ptn::TXT3,  /* %6 */
            ptn::ACC,  /* %7 */ ptn::SURF2   /* %8 */));
 
-    // Construct the QtPropertyBrowser objects but do NOT embed them anywhere —
-    // PatternSettingPanel (see below) is now the canonical configuration UI on
-    // the right pane.  We still need m_variantManager / m_variantEditor alive
-    // because m_configAdapter is wired to them and rebuildPropertyBrowser()
-    // dereferences both.  Passing nullptr leaves the browser as a hidden
-    // orphan child of `this`; it costs nothing and keeps the legacy code path
-    // crash-free.
-    initPropertyBrowser(nullptr);
-
-    // splitter ratios: monitor | tree+thumb (library pane) | inspector
-    ui->splitter_main->setStretchFactor(0, 6);
-    ui->splitter_main->setStretchFactor(1, 3);   // wider — now holds thumb too
-    ui->splitter_main->setStretchFactor(2, 3);
-
-    // ── Restructure: thumbnail panel goes below the tree, full configuration
-    //                  panel goes into the right inspector pane ─────────────
-    //
-    // Pane 2 (library) layout — only thumbnail below the tree:
-    //   ┌─ PATTERN LIBRARY ────────────────┐
-    //   │ <PatternTreeWidget>              │  ← top half
-    //   ├─ separator ──────────────────────┤
-    //   │ <wg_thumb_container>             │  ← bottom: only thumbnail
-    //   │   - "SELECTED PATTERN" header    │
-    //   │   - QGraphicsView thumbnail      │
-    //   │   - 1-line caption               │
-    //   └──────────────────────────────────┘
-    //
-    // Pane 3 (inspector) layout — full PatternSettingPanel:
-    //   ┌─ PATTERN CONFIGURATION ──────────┐
-    //   │ <PatternSettingPanel>            │  ← title + LEARNED + buttons +
-    //   │   (inline thumbnail HIDDEN —     │     match/edge/group rows
-    //   │    we display it under tree)     │
-    //   └──────────────────────────────────┘
-    //
-    // The QtPropertyBrowser is no longer displayed — we keep the adapter
-    // wiring for backward compat but PatternSettingPanel is the sole UI.
-
-    // Step A — relocate wg_thumb_container (defined inside splitter_property
-    //          in the .ui) into the library pane, under the tree.
-    if (ui->wg_thumb_container) {
-        ui->wg_thumb_container->setParent(this);   // detach from inspector splitter
-        ui->wg_thumb_container->show();            // make sure it is visible now
-    }
-
-    auto *libraryVSplitter = new QSplitter(Qt::Vertical, ui->pane_library);
-    libraryVSplitter->setHandleWidth(2);
-    libraryVSplitter->setChildrenCollapsible(false);
-    libraryVSplitter->setStyleSheet(QString(
-        "QSplitter::handle { background: %1; }"
-    ).arg(ptn::BD));
-
-    if (auto *tree = ui->treeWidget_patternEditor) {
-        libraryVSplitter->addWidget(tree);
-    }
-    if (ui->wg_thumb_container) {
-        libraryVSplitter->addWidget(ui->wg_thumb_container);
-    }
-    libraryVSplitter->setStretchFactor(0, 60);     // tree dominates
-    libraryVSplitter->setStretchFactor(1, 40);     // thumb gets less
-
-    if (ui->libraryLayout) {
-        ui->libraryLayout->addWidget(libraryVSplitter, 1);
-    }
-
-    // Step B — install PatternSettingPanel inside ui->wg_property_browser
-    //          (the empty placeholder host inside the right inspector pane).
-    m_settingPanel = new PatternSettingPanel(this);
-    m_settingPanel->setShowInlineThumbnail(false);   // dedicated thumb is below tree
-
-    if (ui->wg_property_browser) {
-        // initPropertyBrowser(nullptr) means no layout was created on the
-        // placeholder — install one ourselves to host the panel.
-        auto *propLay = ui->wg_property_browser->layout();
-        if (!propLay) {
-            propLay = new QVBoxLayout(ui->wg_property_browser);
-            propLay->setContentsMargins(0, 0, 0, 0);
-            propLay->setSpacing(0);
-        }
-        propLay->addWidget(m_settingPanel);
-    }
-
-    // Refresh the right-pane section title so it matches what the panel shows.
-    if (ui->label_property_title) {
-        ui->label_property_title->setText(tr("  PATTERN CONFIGURATION"));
-    }
-
-    // Wire setting-panel signals to host actions.
-    connect(m_settingPanel, &PatternSettingPanel::learnRequested,
-            this, &LocalizationPatternsWidget::onTriggerCameraClicked);
-    connect(m_settingPanel, &PatternSettingPanel::openImageRequested,
-            this, &LocalizationPatternsWidget::onChooseImageClicked);
-    connect(m_settingPanel, &PatternSettingPanel::patternFieldChanged,
-            this, &LocalizationPatternsWidget::onSettingPanelPatternFieldChanged);
-    connect(m_settingPanel, &PatternSettingPanel::groupFieldChanged,
-            this, &LocalizationPatternsWidget::onSettingPanelGroupFieldChanged);
-
-    // splitter_property now hosts only the property container (thumb moved
-    // out).  Let the property pane fill the available space.
-    if (ui->splitter_property) {
-        ui->splitter_property->setStretchFactor(0, 0);
-        ui->splitter_property->setStretchFactor(1, 1);
-    }
-
-    // ── Pattern thumbnail scene — same QGraphicsView (now under the tree) ──
-    m_thumbScene  = new QGraphicsScene(this);
-    m_thumbPixmap = m_thumbScene->addPixmap(QPixmap{});
-    if (ui->imageView_PatternThumb) {
-        ui->imageView_PatternThumb->setScene(m_thumbScene);
-        ui->imageView_PatternThumb->setRenderHint(QPainter::SmoothPixmapTransform);
+    if (ui->frame_toolbar) {
+        ui->frame_toolbar->setObjectName("frame_toolbar");   // already set in .ui
+        ui->frame_toolbar->setStyleSheet(QString(
+                                             "QFrame#frame_toolbar { background: %1; border-bottom: 1px solid %2; }"
+                                             "QFrame#frame_toolbar QToolButton {"
+                                             "  color: %3; background: transparent;"
+                                             "  border: 1px solid transparent; padding: 4px 12px; border-radius: 4px;"
+                                             "  font: 600 10pt 'Segoe UI'; }"
+                                             "QFrame#frame_toolbar QToolButton:hover { background: %4; border: 1px solid %5; color: %6; }"
+                                             "QFrame#frame_toolbar QToolButton:pressed { background: %1; }"
+                                             "QFrame#frame_toolbar QToolButton#btn_run_match {"
+                                             "  background: %7; border: 1px solid %7; color: white; }"
+                                             "QFrame#frame_toolbar QToolButton#btn_run_match:hover {"
+                                             "  background: %8; }"
+                                             "QFrame#frame_toolbar QToolButton#btn_run_match:disabled {"
+                                             "  background: %4; color: %9; border-color: %2; }"
+                                             "QFrame#frame_toolbar QLabel { color: %3; font: 10pt 'Segoe UI'; }"
+                                             "QFrame#frame_toolbar QFrame[role=\"separator\"] { background: %2; max-width: 1px; min-width: 1px; }"
+                                             "QFrame#frame_toolbar QComboBox { background: %1; color: %6; "
+                                             "  border: 1px solid %5; border-radius: 4px; padding: 3px 8px; }"
+                                             "QFrame#frame_toolbar QCheckBox { color: %3; font: 10pt 'Segoe UI'; }"
+                                             ).arg(ptn::HD,    /* %1 */ ptn::BD,    /* %2 */ ptn::TXT2,  /* %3 */
+                                                  ptn::SURF2, /* %4 */ ptn::BD2,  /* %5 */ ptn::TXT,    /* %6 */
+                                                  ptn::OK,    /* %7 */ "#3ad88f", /* %8 */ ptn::TXT4    /* %9 */));
     }
 
     // Theme the section labels (PATTERN LIBRARY, SELECTED PATTERN, ...)
@@ -268,37 +270,37 @@ void LocalizationPatternsWidget::initWidget() {
     if (ui->label_property_title)   ui->label_property_title->setStyleSheet(sectionQss);
     if (ui->label_pattern_caption) {
         ui->label_pattern_caption->setStyleSheet(QString(
-            "color: %1; font: 9pt 'Segoe UI'; padding: 2px;"
-        ).arg(ptn::TXT3));
+                                                     "color: %1; font: 9pt 'Segoe UI'; padding: 2px;"
+                                                     ).arg(ptn::TXT3));
     }
 
-    // Override the toolbar's hard-coded blue palette with design tokens.
-    // The .ui file uses an older greyish-blue (#2b3340 etc.) — we replace
-    // it here without rewriting the XML so the design+code stay in sync.
-    if (ui->frame_toolbar) {
-        ui->frame_toolbar->setObjectName("frame_toolbar");   // already set in .ui
-        ui->frame_toolbar->setStyleSheet(QString(
-            "QFrame#frame_toolbar { background: %1; border-bottom: 1px solid %2; }"
-            "QFrame#frame_toolbar QToolButton {"
-            "  color: %3; background: transparent;"
-            "  border: 1px solid transparent; padding: 4px 12px; border-radius: 4px;"
-            "  font: 600 10pt 'Segoe UI'; }"
-            "QFrame#frame_toolbar QToolButton:hover { background: %4; border: 1px solid %5; color: %6; }"
-            "QFrame#frame_toolbar QToolButton:pressed { background: %1; }"
-            "QFrame#frame_toolbar QToolButton#btn_run_match {"
-            "  background: %7; border: 1px solid %7; color: white; }"
-            "QFrame#frame_toolbar QToolButton#btn_run_match:hover {"
-            "  background: %8; }"
-            "QFrame#frame_toolbar QToolButton#btn_run_match:disabled {"
-            "  background: %4; color: %9; border-color: %2; }"
-            "QFrame#frame_toolbar QLabel { color: %3; font: 10pt 'Segoe UI'; }"
-            "QFrame#frame_toolbar QFrame[role=\"separator\"] { background: %2; max-width: 1px; min-width: 1px; }"
-            "QFrame#frame_toolbar QComboBox { background: %1; color: %6; "
-            "  border: 1px solid %5; border-radius: 4px; padding: 3px 8px; }"
-            "QFrame#frame_toolbar QCheckBox { color: %3; font: 10pt 'Segoe UI'; }"
-        ).arg(ptn::HD,    /* %1 */ ptn::BD,    /* %2 */ ptn::TXT2,  /* %3 */
-               ptn::SURF2, /* %4 */ ptn::BD2,  /* %5 */ ptn::TXT,    /* %6 */
-               ptn::OK,    /* %7 */ "#3ad88f", /* %8 */ ptn::TXT4    /* %9 */));
+    // Refresh the right-pane section title so it matches what the panel shows.
+    if (ui->label_property_title) {
+        ui->label_property_title->setText(tr("  PATTERN CONFIGURATION"));
+    }
+
+    // splitter ratios: monitor | tree+thumb (library pane) | inspector
+    ui->splitter_main->setStretchFactor(0, 6);
+    ui->splitter_main->setStretchFactor(1, 3);
+    ui->splitter_main->setStretchFactor(2, 3);
+
+    // splitter ratios:  library tree | thumb widget
+    ui->splitter_thumb->setStretchFactor(0, 6);
+    ui->splitter_thumb->setStretchFactor(1, 4);
+
+    // ── Pattern thumbnail scene — same QGraphicsView (now under the tree) ──
+    m_thumbScene  = new QGraphicsScene(this);
+    m_thumbPixmap = m_thumbScene->addPixmap(QPixmap{});
+    if (ui->imageView_PatternThumb) {
+        ui->imageView_PatternThumb->setScene(m_thumbScene);
+        ui->imageView_PatternThumb->setRenderHint(QPainter::SmoothPixmapTransform);
+    }
+
+    // Bind to the task
+    if (m_task) {
+        m_localizeTask   = static_cast<vc::model::TaskLocalization*>(m_task.get());
+        m_config         = m_localizeTask->taskLocalizeConfig();
+        m_patternManager = m_localizeTask->patternManager();
     }
 
     // Camera-image dialog (legacy capture flow used by the new wizard)
@@ -306,11 +308,9 @@ void LocalizationPatternsWidget::initWidget() {
     connect(m_addPatternImageDialog, &AddPatternImageDialog::requestImage,
             this, &LocalizationPatternsWidget::requestCameraImage);
 
-    // Bind to the task
-    if (m_task) {
-        m_localizeTask   = static_cast<vc::model::TaskLocalization*>(m_task.get());
-        m_config         = m_localizeTask->taskLocalizeConfig();
-        m_patternManager = m_localizeTask->patternManager();
+    // init property widget
+    if (ui->wg_property_browser) {
+        initPropertyBrowser(ui->wg_property_browser);
     }
 
     // Property adapter for pattern-level config
@@ -335,6 +335,33 @@ void LocalizationPatternsWidget::initWidget() {
     updateGroupsCount();
     setState(State::Idle);
     setMonitorPage(0);
+
+    // install PatternSettingPanel inside ui->wg_property_browser
+    // (the empty placeholder host inside the right inspector pane).
+/*    m_settingPanel = new PatternSettingPanel(this);
+    m_settingPanel->setShowInlineThumbnail(false);   */// dedicated thumb is below tree
+
+    // if (ui->wg_property_browser) {
+    //     // initPropertyBrowser(nullptr) means no layout was created on the
+    //     // placeholder — install one ourselves to host the panel.
+    //     auto *propLay = ui->wg_property_browser->layout();
+    //     if (!propLay) {
+    //         propLay = new QVBoxLayout(ui->wg_property_browser);
+    //         propLay->setContentsMargins(0, 0, 0, 0);
+    //         propLay->setSpacing(0);
+    //     }
+    //     propLay->addWidget(m_settingPanel);
+    // }
+
+    // Wire setting-panel signals to host actions.
+    // connect(m_settingPanel, &PatternSettingPanel::learnRequested,
+    //         this, &LocalizationPatternsWidget::onTriggerCameraClicked);
+    // connect(m_settingPanel, &PatternSettingPanel::openImageRequested,
+    //         this, &LocalizationPatternsWidget::onChooseImageClicked);
+    // connect(m_settingPanel, &PatternSettingPanel::patternFieldChanged,
+    //         this, &LocalizationPatternsWidget::onSettingPanelPatternFieldChanged);
+    // connect(m_settingPanel, &PatternSettingPanel::groupFieldChanged,
+    //         this, &LocalizationPatternsWidget::onSettingPanelGroupFieldChanged);
 }
 
 // ── Wiring helpers ───────────────────────────────────────────────────────────
@@ -357,6 +384,16 @@ void LocalizationPatternsWidget::wireToolbar() {
     connect(ui->comboBox_pattern_group,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &LocalizationPatternsWidget::onActiveGroupChanged);
+
+    // Camera combo: rebuild whenever the task's assigned-device list changes,
+    // then seed it once with the current state.  The host is expected to
+    // listen for requestCameraImage(id) and feed an image back via
+    // setCameraImage(), so the widget itself does not touch the camera here.
+    if (m_localizeTask) {
+        connect(m_localizeTask, &vc::model::ITask::devicesChanged,
+                this, &LocalizationPatternsWidget::rebuildCameraCombo);
+    }
+    rebuildCameraCombo();
 
     ui->btn_run_match->setEnabled(false);
 }
@@ -401,7 +438,7 @@ void LocalizationPatternsWidget::wireManagerSignals() {
         MatchGroupConfig gr;
         gr.name    = QString::fromStdWString(group->name());
         gr.number  = group->number();
-        // Mirror pre-existing patterns so the tree shows complete state.
+        // // Mirror pre-existing patterns so the tree shows complete state.
         for (const auto &p : group->patterns()) {
             MatchPatternConfig pc;
             pc.name        = QString::fromStdWString(p->name());
@@ -429,17 +466,31 @@ void LocalizationPatternsWidget::wireManagerSignals() {
     });
 
     // ── Group changed (rename/renumber/picking-box edit) ───────────────────
+    // Fires for any successful PatternGroupManager group mutation.  The
+    // signal does not carry the *previous* identity of the group, so the
+    // safest refresh is a full tree rebuild (it preserves expansion state).
     connect(m_patternManager, &mtc::PatternGroupManager::groupChanged,
             this, [this] (std::shared_ptr<mtc::MatchGroup> group, const QString &) {
         if (!group) return;
-        // Refresh under-tree setting panel if this group is currently shown.
-        if (m_settingPanel && m_selectedGroupIndex == group->number()) {
-            mtc::MatchPattern *pat = nullptr;
-            if (m_selectedPatternIndex >= 0)
-                pat = group->findPatternByNumber(m_selectedPatternIndex);
-            m_settingPanel->setSelection(group.get(), pat);
-        }
+
+        // Keep our cached selection in sync if the currently-bound group
+        // was the one that changed.  The pointer is stable across edits
+        // (setConfig updates in place), so identity tracking via raw
+        // pointer is reliable here.
+        if (m_boundMatchGroup == group.get())
+            m_selectedGroupIndex = group->number();
+
+        rebuildTreeFromManager();
         rebuildGroupCombo();
+
+        // rebuildGroupCombo() restores selection by previous currentData()
+        // (the old group number), which won't match after a renumber.
+        // Re-select explicitly by the cached (possibly updated) number.
+        const int idx = ui->comboBox_pattern_group->findData(m_selectedGroupIndex);
+        if (idx >= 0) {
+            QSignalBlocker b(ui->comboBox_pattern_group);
+            ui->comboBox_pattern_group->setCurrentIndex(idx);
+        }
     });
 
     // ── Pattern added ──────────────────────────────────────────────────────
@@ -467,21 +518,26 @@ void LocalizationPatternsWidget::wireManagerSignals() {
             && m_selectedPatternIndex == removed.m_patternIndex) {
             // Fall back to group-only selection
             m_selectedPatternIndex = -1;
-            if (m_settingPanel) m_settingPanel->setSelection(group, nullptr);
+            // if (m_settingPanel) m_settingPanel->setSelection(group, nullptr);
         }
         updateGroupsCount();
     });
 
-    // ── Pattern changed (config edit / rename) ─────────────────────────────
+    // ── Pattern changed (config edit / rename / renumber / image) ──────────
+    // Fires for any successful PatternGroupManager pattern mutation.  Keep
+    // the cached selection identity in sync (number may have changed) and
+    // refresh the tree + thumbnail.
     connect(m_patternManager, &mtc::PatternGroupManager::patternChanged,
             this, [this] (mtc::MatchGroup *group, mtc::MatchPattern *pattern,
                           const QString &) {
         if (!group || !pattern) return;
-        if (m_settingPanel
-            && m_selectedGroupIndex   == group->number()
-            && m_selectedPatternIndex == pattern->number()) {
-            m_settingPanel->setSelection(group, pattern);
+
+        if (m_boundPattern == pattern) {
+            m_selectedPatternIndex = pattern->number();
+            updatePatternThumb(pattern);
         }
+
+        rebuildTreeFromManager();
     });
 }
 
@@ -522,85 +578,52 @@ void LocalizationPatternsWidget::wirePropertyBrowser() {
 // ── Property browser construction ────────────────────────────────────────────
 
 void LocalizationPatternsWidget::buildGroupProperties() {
-    m_grpGroupProps = m_variantManager->addProperty(
+    m_groupVariant = m_variantManager->addProperty(
         QtVariantPropertyManager::groupTypeId(), tr("Group Settings"));
 
-    auto add = [&](int type, const QString &label,
-                   const QVariant &min, const QVariant &max,
-                   const QVariant &step, const QVariant &value) -> QtVariantProperty* {
-        auto *p = m_variantManager->addProperty(type, label);
-        if (min.isValid())  m_variantManager->setAttribute(p, "minimum",    min);
-        if (max.isValid())  m_variantManager->setAttribute(p, "maximum",    max);
-        if (step.isValid()) m_variantManager->setAttribute(p, "singleStep", step);
-        if (type == QVariant::Double)
-            m_variantManager->setAttribute(p, "decimals", 3);
-        p->setValue(value);
-        m_grpGroupProps->addSubProperty(p);
-        m_groupPropSet.insert(p);
-        return p;
-    };
-
-    // Pull defaults from currently selected group, if any.
-    mtc::MatchGroupConfig cfg;
-    if (m_patternManager && m_selectedGroupIndex >= 0) {
-        if (auto g = m_patternManager->findGroupByNumber(m_selectedGroupIndex))
-            cfg = g->config();
-    }
-
-    m_propGroupRatio = add(QVariant::Double, tr("Low Workpiece Ratio"),
-                           0.0, 100.0, 0.1, cfg.m_lowWorkpieceRatio);
-    m_propPickBoxW   = add(QVariant::Double, tr("Picking Box Width"),
-                           0.0, 10000.0, 1.0, cfg.m_pickingBoxSize.width);
-    m_propPickBoxH   = add(QVariant::Double, tr("Picking Box Height"),
-                           0.0, 10000.0, 1.0, cfg.m_pickingBoxSize.height);
-    m_propPickBoxDist = add(QVariant::Double, tr("Picking Box Distance"),
-                            0.0, 10000.0, 1.0, cfg.m_pickingBoxDistance);
-    m_propPickBoxAngle = add(QVariant::Double, tr("Picking Box Angle (°)"),
-                             -360.0, 360.0, 1.0, cfg.m_pickingBoxAngle);
+    m_groupPropKeys.clear();
+    m_groupProps.clear();
+    auto sub = PropSpecHelper::buildGroup<mtc::MatchGroupConfig>(m_variantManager, m_groupVariant,
+                                          kMatchGroupSpecs, m_workingGroupConfig, m_groupPropKeys);
+    for (auto it = sub.cbegin(); it != sub.cend(); ++it)
+        m_groupProps[it.key()] = it.value();
 }
 
 void LocalizationPatternsWidget::rebuildPropertyBrowser() {
     if (!m_variantManager || !m_variantEditor || !m_configAdapter) return;
 
-    // ── Order matters here ────────────────────────────────────────────────
-    // 1. Clear the BROWSER first.  This drops every QtBrowserItem reference
-    //    while the underlying QtProperty objects are still alive — so the
-    //    browser releases its observer connections cleanly, no danglers.
-    //
-    // 2. Then tear down the adapter.  bind(nullptr) calls m_mgr->clear()
-    //    which destroys every QtProperty in the manager.  Because the
-    //    browser is already empty it has nothing to react to.
-    //
-    // 3. Reset our own pointer bookkeeping (the QtProperty objects they
-    //    pointed to were just destroyed by step 2).
-    //
-    // 4. Re-bind / rebuild and finally re-attach to the browser.
-    //
-    // Previously this method wrapped the whole sequence in a
-    // QSignalBlocker(m_variantManager).  That blocked the manager's
-    // `propertyDestroyed` signal as well — the browser never observed
-    // destruction, kept a stale QtProperty* in its internal map, and the
-    // very next `m_variantEditor->clear()` chased that dangling pointer
-    // → crash on the second selection change.
-
+    // 1. Detach everything currently shown in the browser.
     m_variantEditor->clear();
+
+    // 2. Tear down adapter-owned (pattern-level) properties.  After this the
+    //    adapter has released all QtProperty* it created in the shared
+    //    variant manager — but the manager itself is untouched.
     m_configAdapter->bind(nullptr);
 
-    m_groupPropSet.clear();
-    m_grpGroupProps    = nullptr;
-    m_propGroupRatio   = nullptr;
-    m_propPickBoxW     = nullptr;
-    m_propPickBoxH     = nullptr;
-    m_propPickBoxDist  = nullptr;
-    m_propPickBoxAngle = nullptr;
+    // 3. Tear down our own (group-level) properties.  We're the owner of
+    //    these; nobody else will delete them.  Skipping this step causes
+    //    the previous m_groupVariant + its sub-props to leak into the
+    //    shared manager on every rebuild.
+    qDeleteAll(m_groupProps);
+    m_groupProps.clear();
+    m_groupPropKeys.clear();
+    delete m_groupVariant;
+    m_groupVariant = nullptr;
 
-    if (m_boundPattern)
+    // 4. Rebuild group block.
+    if (m_boundMatchGroup) {
+        m_workingGroupConfig = m_boundMatchGroup->config();
+        buildGroupProperties();
+    }
+
+    // 5. Rebuild pattern block via the adapter.
+    if (m_boundPattern) {
         m_configAdapter->bind(&m_workingPatternCfg);
+    }
 
-    buildGroupProperties();
-
-    if (m_grpGroupProps)
-        m_variantEditor->addProperty(m_grpGroupProps);
+    // 6. Mount into the browser.
+    if (m_groupVariant)
+        m_variantEditor->addProperty(m_groupVariant);
     for (auto *p : m_configAdapter->rootProperties())
         m_variantEditor->addProperty(p);
 }
@@ -622,14 +645,18 @@ void LocalizationPatternsWidget::unbindPattern() {
 void LocalizationPatternsWidget::selectGroup(int groupIndex) {
     m_selectedGroupIndex   = groupIndex;
     m_selectedPatternIndex = -1;
-    unbindPattern();
+    m_boundPattern = nullptr;
+    m_boundMatchGroup = nullptr;
     updatePatternThumb(nullptr);
 
     // Push selection into the under-tree PatternSettingPanel
-    if (m_settingPanel && m_patternManager) {
+    if (m_patternManager) {
         auto group = m_patternManager->findGroupByNumber(groupIndex);
-        m_settingPanel->setSelection(group.get(), nullptr);
+        m_boundMatchGroup = group.get();
+        m_workingGroupConfig = m_boundMatchGroup->config();
     }
+
+    rebuildPropertyBrowser();
 }
 
 void LocalizationPatternsWidget::selectPattern(int groupIndex, int patternIndex) {
@@ -641,21 +668,24 @@ void LocalizationPatternsWidget::selectPattern(int groupIndex, int patternIndex)
     if (!group) return;
 
     auto *pattern = group->findPatternByNumber(patternIndex);
-    bindPatternToBrowser(pattern);
-    updatePatternThumb(pattern);
+    if (pattern) {
+        // build group
+        m_boundMatchGroup = group.get();
+        m_workingGroupConfig = m_boundMatchGroup->config();
 
-    // Push selection into the under-tree PatternSettingPanel
-    if (m_settingPanel) {
-        m_settingPanel->setSelection(group.get(), pattern);
+        // build pattern
+        bindPatternToBrowser(pattern);
+        updatePatternThumb(pattern);
     }
 }
 
 void LocalizationPatternsWidget::clearSelection() {
     m_selectedGroupIndex   = -1;
     m_selectedPatternIndex = -1;
+    m_boundMatchGroup = nullptr;
+    m_workingGroupConfig = mtc::MatchGroupConfig{};
     unbindPattern();
     updatePatternThumb(nullptr);
-    if (m_settingPanel) m_settingPanel->clearSelection();
 }
 
 void LocalizationPatternsWidget::updatePatternThumb(mtc::MatchPattern *pattern) {
@@ -682,7 +712,41 @@ void LocalizationPatternsWidget::updatePatternThumb(mtc::MatchPattern *pattern) 
     // Forward to the new under-tree PatternSettingPanel — its own thumbnail
     // QLabel is the user-visible one (the legacy QGraphicsView is hidden
     // inside wg_thumb_container after the design refactor).
-    if (m_settingPanel) m_settingPanel->setPatternThumbnail(pm);
+    // if (m_settingPanel) m_settingPanel->setPatternThumbnail(pm);
+}
+
+// ── Camera combo ────────────────────────────────────────────────────
+void LocalizationPatternsWidget::rebuildCameraCombo() {
+    if (!m_localizeTask || !ui->comboBox_camera) return;
+
+    QSignalBlocker blocker(ui->comboBox_camera);
+
+    // Remember current selection so we can restore it if still present.
+    const QString previousId = ui->comboBox_camera->currentData().toString();
+
+    ui->comboBox_camera->clear();
+
+    // Pull only camera-typed devices from the task's assigned list.
+    const auto cameras =
+        m_localizeTask->assignedDevicesOfType(vc::device::DeviceType::Camera);
+    for (const auto &dev : cameras) {
+        if (!dev) continue;
+        // Display: "<name>  ·  <id>" — id kept as itemData for the trigger.
+        ui->comboBox_camera->addItem(
+            tr("%1").arg(dev->name()),
+            dev->id());
+    }
+
+    // Restore previous selection if it still exists.
+    if (!previousId.isEmpty()) {
+        const int idx = ui->comboBox_camera->findData(previousId);
+        if (idx >= 0) ui->comboBox_camera->setCurrentIndex(idx);
+    }
+
+    // Trigger button is meaningful only when at least one camera is assigned.
+    const bool hasCamera = ui->comboBox_camera->count() > 0;
+    if (ui->btn_trigger_camera)
+        ui->btn_trigger_camera->setEnabled(hasCamera);
 }
 
 // ── Group combo ──────────────────────────────────────────────────────────────
@@ -809,9 +873,16 @@ void LocalizationPatternsWidget::onTreeAddPatternRequested(int groupIndex) {
     AddPatternWizard wiz(groupName, usedNames, usedNumbers, this);
     m_activeAddWizard = &wiz;
     // Forward camera-capture request from wizard → host (same plumbing as
-    // the legacy AddPatternImageDialog).
+    // the legacy AddPatternImageDialog).  The wizard's signal is parameterless;
+    // adapt to the host signal by injecting the currently-selected camera id
+    // from the toolbar combo.
     connect(&wiz, &AddPatternWizard::requestCameraImage,
-            this, &LocalizationPatternsWidget::requestCameraImage);
+            this, [this]() {
+        const QString cameraId = ui->comboBox_camera
+            ? ui->comboBox_camera->currentData().toString()
+            : QString();
+        emit requestCameraImage(cameraId);
+    });
 
     const int wizResult = wiz.exec();
     m_activeAddWizard = nullptr;
@@ -820,18 +891,18 @@ void LocalizationPatternsWidget::onTreeAddPatternRequested(int groupIndex) {
     cv::Mat patternImage = wiz.patternImage();
     if (patternImage.empty()) return;
 
-    // Apply crop if user did not check "use original frame"
-    if (!wiz.keepOriginal()) {
-        const QRect r = wiz.cropRect();
-        if (r.width() > 0 && r.height() > 0
-            && r.x() >= 0 && r.y() >= 0
-            && r.x() + r.width()  <= patternImage.cols
-            && r.y() + r.height() <= patternImage.rows)
-        {
-            patternImage = patternImage(cv::Rect(r.x(), r.y(),
-                                                 r.width(), r.height())).clone();
-        }
-    }
+    // // Apply crop if user did not check "use original frame"
+    // if (!wiz.keepOriginal()) {
+    //     const QRect r = wiz.cropRect();
+    //     if (r.width() > 0 && r.height() > 0
+    //         && r.x() >= 0 && r.y() >= 0
+    //         && r.x() + r.width()  <= patternImage.cols
+    //         && r.y() + r.height() <= patternImage.rows)
+    //     {
+    //         patternImage = patternImage(cv::Rect(r.x(), r.y(),
+    //                                              r.width(), r.height())).clone();
+    //     }
+    // }
 
     mtc::MatchPatternConfig cfg;
     cfg.m_patternName  = wiz.patternName().toStdWString();
@@ -1024,7 +1095,9 @@ void LocalizationPatternsWidget::onTreeDeletePatternRequested(int groupIndex,
 // tree's inline editors.  We mirror those into the manager.
 
 void LocalizationPatternsWidget::onTreeGroupsChanged(
-        const QList<MatchGroupConfig> &) {}
+        const QList<MatchGroupConfig> &) {
+
+}
 
 void LocalizationPatternsWidget::onTreeGroupChanged(int /*groupIndex*/,
                                                     const MatchGroupConfig &) {
@@ -1042,8 +1115,21 @@ void LocalizationPatternsWidget::onTreePatternChanged(int /*groupIndex*/,
 // ── Toolbar ─────────────────────────────────────────────────────────────────
 
 void LocalizationPatternsWidget::onTriggerCameraClicked() {
+    // Should not normally fire when no camera is assigned — the Trigger
+    // button is disabled via rebuildCameraCombo() in that case.  Guard
+    // anyway for the race where the assignment changes between the click
+    // hit-test and this slot running.
+    const QString cameraId = ui->comboBox_camera
+        ? ui->comboBox_camera->currentData().toString()
+        : QString();
+
+    if (cameraId.isEmpty()) {
+        setState(State::Warning, tr("No camera selected."));
+        return;
+    }
+
     setState(State::Busy, tr("Waiting for camera image…"));
-    emit requestCameraImage();
+    emit requestCameraImage(cameraId);
 }
 
 void LocalizationPatternsWidget::onChooseImageClicked() {
@@ -1099,23 +1185,6 @@ void LocalizationPatternsWidget::onRunMatchingClicked() {
         return;
     }
 
-    applyKpis(result);
-    populateResultTable(result);     // ← fill the new result-table widget
-    displayResultImage(result.Image);
-    setMonitorPage(1);
-
-    if (!result.isFoundMatchObject) {
-        setState(State::Warning, tr("No match found."));
-    } else if (result.isAreaLessThanLimits) {
-        setState(State::Warning,
-                 tr("Found %1 — material area below limit.")
-                     .arg(result.totalPossiblePicking));
-    } else {
-        setState(State::Success,
-                 tr("Found %1 object(s) in %2 ms")
-                     .arg(result.totalPossiblePicking)
-                     .arg(result.ExecutionTime, 0, 'f', 1));
-    }
 }
 
 // ── External image input ─────────────────────────────────────────────────────
@@ -1171,39 +1240,77 @@ void LocalizationPatternsWidget::onPatternConfigModified() {
     auto r = m_patternManager->setPatternConfig(
         groupName, patternKey, m_workingPatternCfg);
     if (!r) {
-        QMessageBox::warning(this, tr("Update failed"),
-                             resultMessage(r));
+        QMessageBox::warning(this, tr("Update failed"), resultMessage(r));
+
+        // Roll the working copy back to the live (unchanged) config and
+        // refresh the adapter so the browser stops showing the rejected
+        // edit.  The adapter blocks manager signals internally.
+        m_workingPatternCfg = m_boundPattern->config();
+        m_configAdapter->refresh();
         return;
     }
 
-    // Re-resolve in case the rename/renumber changed identity.
+    // Re-resolve in case the rename/renumber changed identity.  The tree
+    // row and pattern thumb are refreshed by the patternChanged listener.
     m_boundPattern = group->findPatternByName(
         m_workingPatternCfg.m_patternName);
-    updatePatternThumb(m_boundPattern);
 }
 
 void LocalizationPatternsWidget::onPropertyValueChanged(QtProperty *property,
-                                                        const QVariant &) {
-    if (!m_groupPropSet.contains(property)) return;     // adapter handles its own
-    if (!m_patternManager) return;
-    if (m_selectedGroupIndex < 0) return;
+                                                        const QVariant &value) {
+    // Only handle group-level edits here.  Pattern-level edits flow through
+    // MatchConfigPropertyAdapter, which emits configModified → handled by
+    // onPatternConfigModified().
+    if (!m_groupPropKeys.contains(property))         return;
+    if (!m_patternManager || !m_boundMatchGroup)     return;
 
-    auto group = m_patternManager->findGroupByNumber(m_selectedGroupIndex);
-    if (!group) return;
+    const QString key = m_groupPropKeys.value(property);
+    if (key.isEmpty()) return;
 
-    mtc::MatchGroupConfig cfg = group->config();
-    cfg.m_lowWorkpieceRatio   = m_propGroupRatio  ->value().toDouble();
-    cfg.m_pickingBoxSize      = cv::Size2f(
-                                   static_cast<float>(m_propPickBoxW->value().toDouble()),
-                                   static_cast<float>(m_propPickBoxH->value().toDouble()));
-    cfg.m_pickingBoxDistance  = m_propPickBoxDist ->value().toDouble();
-    cfg.m_pickingBoxAngle     = m_propPickBoxAngle->value().toDouble();
+    if (!PropSpecHelper::dispatch(kMatchGroupSpecs, key, value, m_workingGroupConfig))
+        return;
 
-    const QString groupName = QString::fromStdWString(group->name());
-    auto r = m_patternManager->setGroupConfig(groupName, cfg);
+    // Snapshot the current name — dispatch may have already written a new
+    // name into m_workingGroupConfig, but the live MatchGroup still carries
+    // the old name, which is the lookup key for setGroupConfig.
+    const QString oldName = QString::fromStdWString(m_boundMatchGroup->name());
+
+    auto r = m_patternManager->setGroupConfig(oldName, m_workingGroupConfig);
     if (!r) {
-        QMessageBox::warning(this, tr("Update failed"),
-                             resultMessage(r));
+        QMessageBox::warning(this, tr("Update failed"), resultMessage(r));
+
+        // Roll the working copy back to the live (unchanged) state and
+        // refresh the property browser so it stops showing the rejected
+        // edit.  PropSpecHelper::refresh blocks manager signals internally.
+        m_workingGroupConfig = m_boundMatchGroup->config();
+        PropSpecHelper::refresh(m_variantManager, kMatchGroupSpecs,
+                                m_workingGroupConfig, m_groupProps);
+        return;
+    }
+
+    // Success.  Tree row, combo, and m_selectedGroupIndex are refreshed by
+    // the PatternGroupManager::groupChanged listener (wireManagerSignals).
+}
+
+// ── Matching commission ─────────────────────────────────────────────
+
+void LocalizationPatternsWidget::onMatchingCommissionDone(mtc::MatchResult result) {
+    applyKpis(result);
+    populateResultTable(result);     // ← fill the new result-table widget
+    displayResultImage(result.Image);
+    setMonitorPage(1);
+
+    if (!result.isFoundMatchObject) {
+        setState(State::Warning, tr("No match found."));
+    } else if (result.isAreaLessThanLimits) {
+        setState(State::Warning,
+                 tr("Found %1 — material area below limit.")
+                     .arg(result.totalPossiblePicking));
+    } else {
+        setState(State::Success,
+                 tr("Found %1 object(s) in %2 ms")
+                     .arg(result.totalPossiblePicking)
+                     .arg(result.ExecutionTime, 0, 'f', 1));
     }
 }
 
@@ -1250,36 +1357,21 @@ void LocalizationPatternsWidget::updateGroupsCount() {
 }
 
 void LocalizationPatternsWidget::resetKpis() {
-    ui->label_match_result_num   ->setText("—");
+    ui->label_match_result_num->setText("—");
     ui->label_match_execution_time->setText("—");
-    ui->label_match_lessthanlimit ->setText("—");
-    ui->label_pickpos_x->setText("0.00");
-    ui->label_pickpos_y->setText("0.00");
-    ui->label_pickpos_z->setText("0.00");
-    ui->label_pickpos_r->setText("0.00");
+    ui->label_match_lessthanlimit->setText("—");
     clearResultTable();
 }
 
 void LocalizationPatternsWidget::applyKpis(const mtc::MatchResult &result) {
-    ui->label_match_result_num   ->setText(
+    ui->label_match_total_objects->setText(
+        QString::number(result.Objects.size()));
+    ui->label_match_result_num->setText(
         QString::number(result.totalPossiblePicking));
     ui->label_match_execution_time->setText(
         tr("%1 ms").arg(result.ExecutionTime, 0, 'f', 1));
     ui->label_match_lessthanlimit ->setText(
         result.isAreaLessThanLimits ? tr("YES") : tr("NO"));
-
-    if (!result.Objects.empty()) {
-        const auto &top = result.Objects.front();
-        ui->label_pickpos_x->setText(QString::number(top.point_Center.x, 'f', 2));
-        ui->label_pickpos_y->setText(QString::number(top.point_Center.y, 'f', 2));
-        ui->label_pickpos_z->setText("0.00");   // depth not estimated here
-        ui->label_pickpos_r->setText(QString::number(top.point_angle,    'f', 2));
-    } else {
-        ui->label_pickpos_x->setText("0.00");
-        ui->label_pickpos_y->setText("0.00");
-        ui->label_pickpos_z->setText("0.00");
-        ui->label_pickpos_r->setText("0.00");
-    }
 }
 
 // ── Image display ────────────────────────────────────────────────────────────
@@ -1314,121 +1406,11 @@ bool LocalizationPatternsWidget::runMatchingTest(mtc::MatchResult &outResult) {
         return false;
     }
 
-    // Build a fresh matcher and populate with copies of the group's patterns.
-    auto matcher = std::make_unique<mtc::ImageMatcher>();
-    auto *model  = matcher->getModel();
+    m_localizeTask->startCommissionMatching(group, m_currentImage);
+    connect(m_localizeTask, &vc::model::TaskLocalization::commissionMatchingFinished,
+            this, &LocalizationPatternsWidget::onMatchingCommissionDone, Qt::SingleShotConnection);
 
-    for (const auto &patternPtr : group->patterns()) {
-        if (!patternPtr) continue;
-
-        mtc::MatchPatternConfig cfg = patternPtr->config();
-        if (cfg.m_rawImage.empty()) continue;
-
-        auto r = model->addPattern(cfg);
-        if (!r) continue;
-
-        auto last = model->lastPatternAccess();
-        if (!last) continue;
-
-        cv::Mat trainImg = cfg.m_rawImage.clone();
-        if (!last->learnPattern(trainImg)) {
-            qWarning() << "[LocalizationPatternsWidget] learnPattern failed for"
-                       << QString::fromStdWString(cfg.m_patternName);
-        }
-    }
-
-    if (model->isEmpty()) return false;
-
-    matcher->setImageSource(m_currentImage.clone());
-    matcher->matching(false, -1, false);
-
-    outResult = matcher->match_result;
     return true;
-}
-
-// ── PatternSettingPanel field change handlers ──────────────────────────────
-//
-// The under-tree panel emits coarse "field changed" signals; we apply each
-// change to the live MatchPattern / MatchGroup so:
-//   - the property browser on the right stays in sync,
-//   - the matcher uses fresh values on the next run,
-//   - the manager fires its normal pattern/group change notifications.
-
-void LocalizationPatternsWidget::onSettingPanelPatternFieldChanged(
-        const QString &key, const QVariant &value) {
-    if (!m_patternManager
-        || m_selectedGroupIndex   < 0
-        || m_selectedPatternIndex < 0) return;
-
-    auto group = m_patternManager->findGroupByNumber(m_selectedGroupIndex);
-    if (!group) return;
-    auto *pat  = group->findPatternByNumber(m_selectedPatternIndex);
-    if (!pat) return;
-
-    mtc::MatchPatternConfig cfg = pat->config();
-    bool ok = true;
-
-    if      (key == "minScore")        cfg.m_minScore       = value.toDouble();
-    else if (key == "angle")           cfg.m_angle          = value.toDouble();
-    else if (key == "toleranceAngle")  cfg.m_toleranceAngle = value.toDouble();
-    else if (key == "maxOverlap")      cfg.m_maxOverlap     = value.toDouble();
-    else if (key == "pickX")           cfg.m_pickPosition.x = static_cast<float>(value.toInt());
-    else if (key == "pickY")           cfg.m_pickPosition.y = static_cast<float>(value.toInt());
-    else if (key.startsWith("edge.")) {
-        if (auto *e = cfg.edgeConfig()) {
-            const QString sub = key.mid(5);
-            if      (sub == "threshLower")     e->threshLower           = value.toDouble();
-            else if (sub == "threshUpper")     e->threshUpper           = value.toDouble();
-            else if (sub == "kernelSize")      e->kernelSize            = value.toInt();
-            else if (sub == "blurW")           e->blurWidth             = value.toInt();
-            else if (sub == "blurH")           e->blurHeight            = value.toInt();
-            else if (sub == "greediness")      e->greediness            = value.toDouble();
-            else if (sub == "minReduceLength") e->minReduceLength       = value.toInt();
-            else if (sub == "tSamples")        e->tSamples              = value.toInt();
-            else if (sub == "invertBinary")    e->invertBinaryThreshold = value.toBool();
-            else if (sub == "subPixel")        e->subPixelEstimation    = value.toBool();
-            else if (sub == "stopAtLayer1")    e->stopAtLayer1          = value.toBool();
-            else ok = false;
-        } else {
-            ok = false;
-        }
-    } else {
-        ok = false;
-    }
-
-    if (!ok) return;
-    pat->setConfig(cfg);
-
-    // Mirror into the right-side property browser (if it's currently bound
-    // to this pattern)
-    if (m_boundPattern == pat) {
-        m_workingPatternCfg = cfg;
-    }
-}
-
-void LocalizationPatternsWidget::onSettingPanelGroupFieldChanged(
-        const QString &key, const QVariant &value) {
-    if (!m_patternManager || m_selectedGroupIndex < 0) return;
-
-    auto group = m_patternManager->findGroupByNumber(m_selectedGroupIndex);
-    if (!group) return;
-
-    mtc::MatchGroupConfig cfg = group->config();
-    bool ok = true;
-
-    if      (key == "lowWorkpieceRatio") cfg.m_lowWorkpieceRatio  = value.toDouble();
-    else if (key == "pickBoxW")          cfg.m_pickingBoxSize.width  = static_cast<float>(value.toDouble());
-    else if (key == "pickBoxH")          cfg.m_pickingBoxSize.height = static_cast<float>(value.toDouble());
-    else if (key == "pickBoxDist")       cfg.m_pickingBoxDistance = value.toDouble();
-    else if (key == "pickBoxAngle")      cfg.m_pickingBoxAngle    = value.toDouble();
-    else                                  ok = false;
-
-    if (!ok) return;
-    // MatchGroup::setConfig is private (only PatternGroupManager can call it
-    // — it validates name / number uniqueness against siblings).  Route
-    // through the manager which exposes setGroupConfig publicly.
-    const QString groupName = QString::fromStdWString(group->name());
-    m_patternManager->setGroupConfig(groupName, cfg);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1440,6 +1422,9 @@ void LocalizationPatternsWidget::onSettingPanelGroupFieldChanged(
 //  Inserted into pane_monitor's vertical layout right after frame_kpi so it
 //  sits at the bottom of the monitor area.  Score is colour-coded:
 //      ≥ 0.85 → green   ≥ 0.70 → orange   else → red
+//
+// -> disasbled OK/NG Row
+// -> considering using OK/NG Row for dectected object under thresh score
 // ─────────────────────────────────────────────────────────────────────────────
 
 void LocalizationPatternsWidget::buildResultTable() {
@@ -1459,9 +1444,9 @@ void LocalizationPatternsWidget::buildResultTable() {
     layoutMon->addWidget(hd);
 
     // Table
-    m_resultTable = new QTableWidget(0, 8, ui->pane_monitor);
+    m_resultTable = new QTableWidget(0, 7, ui->pane_monitor);
     QStringList headers = {tr("#"), tr("Pat #"), tr("Pattern Name"),
-                            tr("Score"), tr("X"), tr("Y"), tr("Angle"), tr("OK")};
+                            tr("Score"), tr("X"), tr("Y"), tr("Angle") /*, tr("OK")*/ };
     m_resultTable->setHorizontalHeaderLabels(headers);
     m_resultTable->verticalHeader()->setVisible(false);
     m_resultTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -1475,8 +1460,8 @@ void LocalizationPatternsWidget::buildResultTable() {
     m_resultTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
 
     // Reasonable default column widths
-    const int widths[8] = { 36, 48, 0 /* stretch */, 70, 70, 70, 60, 50 };
-    for (int i = 0; i < 8; ++i)
+    const int widths[8] = { 36, 48, 0 /* stretch */, 70, 70, 70, 60 /*, 50*/ };
+    for (int i = 0; i < 7; ++i)
         if (widths[i] > 0) m_resultTable->setColumnWidth(i, widths[i]);
 
     m_resultTable->setStyleSheet(QString(
@@ -1524,10 +1509,12 @@ void LocalizationPatternsWidget::populateResultTable(const mtc::MatchResult &res
         m_resultTable->insertRow(row);
 
         const double score   = obj.matched_Score;
-        const QString scoreClr = score >= 0.85 ? QString(ptn::OK)
-                                : score >= 0.70 ? QString(ptn::WARN)
-                                :                 QString(ptn::ERR);
-        const bool ok = score >= 0.70;   // simple OK/NG threshold
+        // const QString scoreClr = score >= 0.85 ? QString(ptn::OK)
+        //                         : score >= 0.70 ? QString(ptn::WARN)
+        //                         :                 QString(ptn::ERR);
+        const QString scoreClr = obj.hasCollision() ? QString(ptn::WARN) : QString(ptn::OK);
+
+        // const bool ok = score >= 0.70;   // simple OK/NG threshold
 
         m_resultTable->setItem(row, 0, cell(QString::number(row + 1)));
         m_resultTable->setItem(row, 1, colored(QString("#%1").arg(obj.pattern_index),
@@ -1538,8 +1525,8 @@ void LocalizationPatternsWidget::populateResultTable(const mtc::MatchResult &res
         m_resultTable->setItem(row, 4, cell(QString::number(obj.point_Center.x, 'f', 1)));
         m_resultTable->setItem(row, 5, cell(QString::number(obj.point_Center.y, 'f', 1)));
         m_resultTable->setItem(row, 6, cell(QString::number(obj.matched_Angle, 'f', 1) + "°"));
-        m_resultTable->setItem(row, 7, colored(ok ? "OK" : "NG",
-                                                 ok ? ptn::OK : ptn::ERR, true));
+        // m_resultTable->setItem(row, 7, colored(ok ? "OK" : "NG",
+        //                                          ok ? ptn::OK : ptn::ERR, true));
         ++row;
     }
 }

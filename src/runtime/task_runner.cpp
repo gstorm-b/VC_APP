@@ -1,10 +1,13 @@
 #include "task_runner.h"
 
 #include "runtime/camera_runner.h"
-#include "runtime/mc_device_runner.h"
+#include "runtime/plc_runner.h"
+#include "runtime/vision_output_runner.h"
 #include "device/camera/camera_device.h"
-#include "device/plc/mc_protocol_device.h"
+#include "device/plc/plc_device.h"
 #include "logger/app_logger.h"
+
+#include <QEventLoop>
 
 namespace vc::runtime {
 
@@ -21,6 +24,10 @@ TaskRunner::~TaskRunner()
 {
     // enterIdle() moves devices back to main thread and stops all runners
     enterIdle();
+
+    for (IDeviceRunner *runner : m_runners) {
+        runner->deleteLater();
+    }
 
     // m_runtimeThread is parented → deleted automatically, but stop first
     if (m_runtimeThread->isRunning()) {
@@ -144,8 +151,13 @@ void TaskRunner::enterIdle()
     if (m_phase == Phase::Idle) return;
 
     for (IDeviceRunner *runner : m_runners) {
-        if (runner->isAttached()) runner->detach(nullptr);
-        if (runner->isRunning())  runner->stop();
+        if (runner->isAttached()) {
+            runner->detach(nullptr);
+        }
+
+        if (runner->isRunning())  {
+            runner->stop();
+        }
     }
 
     if (m_runtimeThread->isRunning()) {
@@ -170,9 +182,14 @@ IDeviceRunner *TaskRunner::createRunner(std::shared_ptr<vc::device::IDevice> dev
             return new CameraRunner(cam, this);
         break;
 
-    case DeviceType::McDevice:
-        if (auto *plc = qobject_cast<McProtocolDevice *>(device.get()))
-            return new McDeviceRunner(plc, this);
+    case DeviceType::PLC:
+        if (auto *plc = qobject_cast<PlcDevice *>(device.get()))
+            return new PlcRunner(plc, this);
+        break;
+
+    case DeviceType::VisionOutput:
+        if (auto *vision_output = qobject_cast<VisionOutputDevice *>(device.get()))
+            return new VisionOutputRunner(vision_output, this);
         break;
 
     default:

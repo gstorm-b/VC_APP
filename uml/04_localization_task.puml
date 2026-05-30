@@ -1,0 +1,145 @@
+@startuml localization_task
+title vc::model - Localization Task
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam ClassBackgroundColor #EEF5FF
+
+package "vc::model" {
+  enum TaskType {
+    UndefineTask
+    LocalizationTask
+    PickPlaceTask
+    InspectTask
+  }
+
+  enum CameraSourceType {
+    Source_Owned
+    Source_Shared
+  }
+
+  abstract class ITaskConfig {
+    +taskType() : TaskType
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+    +copy() : ITaskConfig*
+  }
+
+  abstract class ITask <<QObject>> {
+    +taskType() : TaskType
+    +isValid() : bool
+    +assignDevice(deviceId)
+    +unassignDevice(deviceId)
+    +assignedDevicesOfType(type)
+    +setTaskConfig(cfg)
+    +taskConfig() : ITaskConfig*
+    +getTaskImageMap() : QMap<QString, cv::Mat>
+    +loadTaskImageMap(mapping) : bool
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  class TaskLocalizeConfig <<Q_GADGET>> {
+    +nActiveCamera : QString
+    +nActivePattern : QString
+    +nDetectedNumber : QString
+    +bCameraValid : QString
+    +bPatternValid : QString
+    +bTaskReady : QString
+    +bExecuteTrigger : QString
+    +bMatchingFinished : QString
+    +bMatchingBusy : QString
+    +bMatchingDetected : QString
+    +bMatchingLowArea : QString
+    +sCameraNumberMap : QMap<int, QString>
+    +sCommDeviceId : QString
+    +sOutputDeviceId : QString
+  }
+
+  class TaskLocalization <<QObject>> {
+    +taskType() : LocalizationTask
+    +isReachLimitOfDeviceType(type) : bool
+    +setTaskLocalizeConfig(cfg)
+    +taskLocalizeConfig() : TaskLocalizeConfig
+    +patternManager() : PatternGroupManager*
+    +getTaskImageMap() : QMap<QString, cv::Mat>
+    +loadTaskImageMap(mapping) : bool
+    +setupTask()
+    +executeLocalization()
+    +setCameraNumber(number)
+    +setPatternNumber(number)
+  }
+
+  class CameraMapEntry <<Q_GADGET>>
+}
+
+package "vc::device" {
+  abstract class IDevice
+  abstract class CameraDevice
+  abstract class PlcDevice
+  abstract class VisionOutputDevice
+  class VisionOutputRequest
+}
+
+package "vc::runtime" {
+  class TaskRunner
+  class CameraRunner
+  class PlcRunner
+  class VisionOutputRunner
+}
+
+package "mtc" {
+  class PatternGroupManager <<QObject>>
+  class MatchGroup
+  class MatchPattern
+  class ImageMatcher
+  struct MatchResult
+}
+
+ITaskConfig <|-- TaskLocalizeConfig
+ITask <|-- TaskLocalization
+
+ITask *-- TaskRunner
+ITask --> IDevice : assignedDeviceIds resolve via Project/DeviceManager
+ITask --> CameraSourceType
+ITask --> TaskType
+
+TaskLocalization *-- TaskLocalizeConfig : m_config
+TaskLocalization *-- PatternGroupManager : m_patternManager
+TaskLocalization *-- ImageMatcher : m_matcher
+TaskLocalization --> MatchResult : m_lastMatchResult
+TaskLocalization --> CameraDevice : selected/next camera
+TaskLocalization --> PlcDevice : plcDevice()
+TaskLocalization ..> CameraRunner : typed runner access
+TaskLocalization ..> PlcRunner : typed runner access
+TaskLocalization ..> VisionOutputRunner : via task runner
+TaskLocalization ..> VisionOutputRequest : send match result
+
+PatternGroupManager o-- "0..*" MatchGroup
+MatchGroup o-- "0..*" MatchPattern
+ImageMatcher ..> MatchGroup
+ImageMatcher ..> MatchPattern
+
+TaskLocalizeConfig --> CameraMapEntry : logical camera number to device id
+TaskLocalizeConfig --> PlcDevice : sCommDeviceId
+TaskLocalizeConfig --> VisionOutputDevice : sOutputDeviceId
+
+note right of TaskLocalization
+  Signal map direction:
+  PLC tag -> logical task signal name.
+
+  onCommDeviceValueChanged() translates device values
+  and emits signalChanged(name, value).
+end note
+
+note bottom of TaskLocalization
+  Binary pattern images are not embedded directly in JSON.
+  getTaskImageMap() exposes keys like g{groupNumber}_p{patternNumber};
+  ProjectRepository stores those cv::Mat images in project_images.
+end note
+
+@enduml
+

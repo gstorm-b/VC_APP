@@ -1,0 +1,308 @@
+@startuml device_families
+title vc::device - Current Device Families
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam ClassBorderColor #2B4C7E
+skinparam ClassBackgroundColor #EEF5FF
+
+package "vc::device core" {
+  enum DeviceType {
+    UserType
+    Camera
+    PLC
+    VisionOutput
+    Robot
+  }
+
+  enum ConnectStatus {
+    NoConnection
+    Disconnected
+    Connected
+    LostConnected
+    ConnectFailed
+  }
+
+  enum RequestType {
+    Request_MC
+    Request_PLC
+    Request_VisionOutput
+  }
+
+  abstract class IDeviceCfg {
+    +deviceType() : DeviceType
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+    +getMetaObject() : QMetaObject
+    +clone() : IDeviceCfg*
+  }
+
+  abstract class IRequest {
+    +type() : RequestType
+    +clone() : shared_ptr<IRequest>
+  }
+
+  abstract class IDevice <<QObject>> {
+    +deviceConnect() : bool
+    +deviceDisconnect() : bool
+    +isDeviceConnected() : bool
+    +deviceType() : DeviceType
+    +pushRequest(request) : bool
+    +getAvailableBits() : QStringList
+    +getAvailableWords() : QStringList
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+    +setDeviceConfig(cfg) : void
+    +deviceConfig() : IDeviceCfg*
+  }
+
+  class DeviceFactory <<static>> {
+    +fromJson(obj, parent) : IDevice*
+    +create(type, obj, parent) : IDevice*
+    +createCamera(obj, parent) : IDevice*
+    +createPlcDevice(obj, parent) : IDevice*
+    +createVisionOutputDevice(obj, parent) : IDevice*
+    +createRobotDevice(obj, parent) : IDevice*
+  }
+
+  class DeviceManager <<QObject>> {
+    +reserveDevice(id, name, device) : bool
+    +commitDevice(id, name, device) : bool
+    +releaseDevice(id) : void
+    +deviceById(id) : shared_ptr<IDevice>
+    +getDeviceTypeList() : QStringList&
+    +getSubDeviceTypeList(type) : QStringList&
+  }
+}
+
+package "Camera" {
+  enum CameraType {
+    CamType
+    Realsense
+    BaslerGigE
+    BaslerUSB
+  }
+
+  abstract class CameraCfg {
+    +cameraType() : CameraType
+    +calibrator() : calib::Calibrator
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  abstract class CameraDevice <<QObject>> {
+    +cameraType() : CameraType
+    +hasIOPort() : bool
+    +isRgbCamera() : bool
+    +grabSingleShot() : GrabResult
+    +softwareTriggerShot() : GrabResult
+    +startContinuousShot() : bool
+    +stopContinuousShot() : void
+  }
+
+  class BaslerGigeCfg <<Q_GADGET>> {
+    +cameraType() : BaslerGigE
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+    +clone() : IDeviceCfg*
+  }
+
+  class BaslerGigECamera <<QObject>> {
+    +cameraType() : BaslerGigE
+    +deviceConnect() : bool
+    +deviceDisconnect() : bool
+    +setDeviceConfig(cfg) : void
+    +grabSingleShot() : GrabResult
+    +softwareTriggerShot() : GrabResult
+  }
+}
+
+package "PLC" {
+  enum PlcType {
+    PlcTypeNone
+    MitsubishiMc
+  }
+
+  abstract class PlcCfg {
+    +plcType() : PlcType
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  abstract class PlcDevice <<QObject>> {
+    +plcType() : PlcType
+    +toJson() : QJsonObject
+    -- signals --
+    +pollingUpdate(map)
+    +valueChanged(values)
+  }
+
+  class McProtocolConfig <<Q_GADGET>> {
+    +plcType() : MitsubishiMc
+    +currentFrameType() : McFrameType
+    +context() : McContext*
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+    +clone() : IDeviceCfg*
+  }
+
+  class McProtocolDevice <<QObject>> {
+    +plcType() : MitsubishiMc
+    +deviceConnect() : bool
+    +deviceDisconnect() : bool
+    +pushRequest(request) : bool
+    +getAvailableBits() : QStringList
+    +getAvailableWords() : QStringList
+  }
+
+  abstract class McContext {
+    +frameType() : McFrameType
+    +msgIntefaceType() : McMsgItfType
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+    +clone() : McContext*
+  }
+
+  class Context_Mc3E
+  abstract class McMsgInterface
+  class McEthernetTcpPort
+  abstract class MCFrameAbstract
+  class Frame3E
+  class McDeviceMap
+  class MCRequest
+}
+
+package "VisionOutput" {
+  enum VisionOutputType {
+    VisionOutputTypeNone
+    VisionTCPIP
+    VisionSerial
+  }
+
+  abstract class VisionOutputDeviceCfg {
+    +visionOutputType() : VisionOutputType
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  abstract class VisionOutputDevice <<QObject>> {
+    +visionOutputType() : VisionOutputType
+    +toJson() : QJsonObject
+  }
+
+  class VisionTcpipDeviceCfg <<Q_GADGET>> {
+    +visionOutputType() : VisionTCPIP
+    +listenAddress : QString
+    +mainPort : int
+    +heartbeatPort : int
+    +heartbeatIntervalMs : int
+    +heartbeatTimeoutMs : int
+  }
+
+  class VisionTcpipDevice <<QObject>> {
+    +visionOutputType() : VisionTCPIP
+    +deviceConnect() : bool
+    +deviceDisconnect() : bool
+    +pushRequest(request) : bool
+    +isMainClientConnected() : bool
+    +isHeartbeatClientConnected() : bool
+  }
+
+  class VisionOutputRequest {
+    +type() : Request_VisionOutput
+    +clone() : shared_ptr<IRequest>
+  }
+}
+
+package "Robot" {
+  enum RobotType {
+    RobotTypeNone
+    Kawasaki
+    Nachi
+    Huayan
+  }
+
+  abstract class RobotCfg {
+    +robotType() : RobotType
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  abstract class RobotDevice <<QObject>> {
+    +robotType() : RobotType
+    +toJson() : QJsonObject
+  }
+
+  class KawasakiRobotCfg <<Q_GADGET>>
+  class KawasakiRobotDevice <<QObject>>
+  class NachiRobotCfg <<Q_GADGET>>
+  class NachiRobotDevice <<QObject>>
+}
+
+IDeviceCfg <|-- CameraCfg
+IDeviceCfg <|-- PlcCfg
+IDeviceCfg <|-- VisionOutputDeviceCfg
+IDeviceCfg <|-- RobotCfg
+
+IDevice <|-- CameraDevice
+IDevice <|-- PlcDevice
+IDevice <|-- VisionOutputDevice
+IDevice <|-- RobotDevice
+
+CameraCfg <|-- BaslerGigeCfg
+CameraDevice <|-- BaslerGigECamera
+
+PlcCfg <|-- McProtocolConfig
+PlcDevice <|-- McProtocolDevice
+McContext <|-- Context_Mc3E
+McMsgInterface <|-- McEthernetTcpPort
+MCFrameAbstract <|-- Frame3E
+IRequest <|-- MCRequest
+McProtocolDevice *-- McProtocolConfig
+McProtocolDevice *-- McMsgInterface
+McProtocolDevice *-- MCFrameAbstract
+McProtocolDevice *-- McDeviceMap
+
+VisionOutputDeviceCfg <|-- VisionTcpipDeviceCfg
+VisionOutputDevice <|-- VisionTcpipDevice
+IRequest <|-- VisionOutputRequest
+VisionTcpipDevice *-- VisionTcpipDeviceCfg
+
+RobotCfg <|-- KawasakiRobotCfg
+RobotCfg <|-- NachiRobotCfg
+RobotDevice <|-- KawasakiRobotDevice
+RobotDevice <|-- NachiRobotDevice
+
+IDevice --> DeviceType
+IDevice --> ConnectStatus
+IDevice o-- IDeviceCfg
+DeviceManager o-- IDevice : shared_ptr by id
+DeviceFactory ..> IDevice : creates
+DeviceFactory ..> CameraType
+DeviceFactory ..> PlcType
+DeviceFactory ..> VisionOutputType
+DeviceFactory ..> RobotType
+
+CameraCfg *-- "calib::Calibrator" : persisted calibration
+BaslerGigECamera *-- BaslerGigeCfg
+
+note right of DeviceFactory
+  Current concrete creation:
+  - BaslerGigE camera
+  - Mitsubishi MC PLC
+  - VisionTCPIP output
+  - Kawasaki and Nachi robot stubs
+
+  Returns nullptr for Realsense, BaslerUSB,
+  VisionSerial, Huayan, and unknown types.
+end note
+
+note bottom of RobotDevice
+  Robot family exists, but vendor devices are
+  minimum stubs and no RobotRunner is wired.
+end note
+
+@enduml

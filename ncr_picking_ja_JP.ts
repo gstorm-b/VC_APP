@@ -743,124 +743,124 @@ Would you want to save the project?</source>
     </message>
 </context>
 <context>
-    <name>McProtocolDeviceWidget</name>
+    <name>MitsubishiMcDeviceWidget</name>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="14"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="14"/>
         <source>Form</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="56"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="56"/>
         <source>Frame format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="79"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="79"/>
         <source>Ethernet TCP/IP</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="86"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="86"/>
         <source>Interface</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="93"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="93"/>
         <source>3E</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="100"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="100"/>
         <source>Frame type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="107"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="107"/>
         <source>...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="119"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="119"/>
         <source>Connect setting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="159"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="159"/>
         <source>Check</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="166"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="166"/>
         <source>Connect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="178"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="178"/>
         <source>Device map setting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="198"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="198"/>
         <source>M Devices start address</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="212"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="212"/>
         <source>M Device number</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="226"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="226"/>
         <source>D Devices start address</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="240"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="240"/>
         <source>D Device number</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="254"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="254"/>
         <source>Connection active</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="281"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="281"/>
         <source>Change</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="299"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="299"/>
         <source>Modify value</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="316"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="316"/>
         <source>Bit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="331"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="331"/>
         <source>ON</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="338"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="338"/>
         <source>OFF</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="345"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="345"/>
         <source>Toggle</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="371"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="371"/>
         <source>Word</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="src/form/plc/mc_protocol_device_widget.ui" line="399"/>
+        <location filename="src/form/plc/mitsubishi_mc_device_widget.ui" line="399"/>
         <source>Modify</source>
         <translation type="unfinished"></translation>
     </message>

@@ -2,6 +2,7 @@
 #define VISION_OUTPUT_DEVICE_H
 
 #include "device/idevice.h"
+#include "device/device_capabilities.h"
 #include "device/output_device/vision_output_config.h"
 #include "device/output_device/vision_output_request.h"
 
@@ -45,7 +46,7 @@ namespace vc::device {
 // surface (TCP servers / serial port / heartbeat) lives entirely on the
 // concrete subclass.
 //
-class VisionOutputDevice : public IDevice {
+class VisionOutputDevice : public IDevice, public IResultOutputDevice {
     Q_OBJECT
 
 public:

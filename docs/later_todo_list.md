@@ -48,6 +48,22 @@ build-time concat step, or just a documented palette file).
 so renames stay tractable until we have enough widgets to justify a
 generator).
 
+**Update (2026-05-30).** The canonical token table is now **fully finalized**
+in [ui_design_rules.md](ui_design_rules.md) §5, covering all six groups:
+
+- §5.1 Background (bg.*) — 5 tokens
+- §5.2 Border (border.*) — 4 tokens
+- §5.3 Text (text.*) — 5 tokens
+- §5.4 Accent + Selection (accent.*, selection.*) — 6 tokens
+- §5.5 State + State surface (state.*) — 8 tokens  ← **confirmed, no longer proposed**
+- §5.6 Panel accent (panel.accent.*) — 4 tokens
+
+Active theme: **Hybrid — Graphite Vision background + Navy Ops Orange accent**.
+
+What remains deferred: (a) the build-time mechanism (generator / `@`-include /
+concat step) so `.qss` files stop carrying literal hex, and (b) the mechanical
+migration sweep of existing `.qss` files — both tracked in #23.
+
 ---
 
 ## 3. `CalibrationBoardDialog` — preset-only selection
@@ -195,22 +211,12 @@ register `VisionTypeToString(VisionSerial)` in
 
 ## 10. `VisionOutputDeviceWidget` is TCP-only
 
-**What.** `src/form/vision_output/vision_output_device_widget.{h,cpp}`
-holds `VisionTcpipDevice*` and `VisionTcpipDeviceCfg` directly. The
-name `VisionOutputDeviceWidget` (and folder `form/vision_output/`)
-suggests family-level scope, but the implementation is hard-bound to
-the TCP sub-type and would not display a VisionSerial config.
+**Status.** Completed in Phase 1. The TCP-specific widget is now
+`VisionTcpipDeviceWidget`, and `DeviceWidgetFactory` owns subtype dispatch.
 
-**Why deferred.** Only one sub-type exists today; introducing a widget
-dispatcher / abstract base before there is a second concrete widget
-would be premature abstraction.
-
-**How to pick up.** When `VisionSerialDevice` lands:
-1. Rename the current widget to `VisionTcpipDeviceWidget` (file + class).
-2. Create `VisionSerialDeviceWidget` analogous to it.
-3. Decide where the dispatch lives — likely at the caller in
-   `localization_task_widget.cpp:785` (`new VisionOutputDeviceWidget(...)`)
-   needs to switch on the concrete sub-type from the device.
+**Remaining future work.** When `VisionSerialDevice` lands, create
+`VisionSerialDeviceWidget` and add a `VisionSerial` branch to
+`DeviceWidgetFactory`.
 
 ---
 
@@ -234,7 +240,7 @@ templatised. Until then, leave alone.
 ## 13. Widget `static_cast` to concrete device is unsafe
 
 **What.** Both `BaslerCameraWidget::initCameraWiget` and
-`VisionOutputDeviceWidget::initWidget` use `static_cast` to downcast
+`VisionTcpipDeviceWidget::initWidget` use `static_cast` to downcast
 from `IDevice*` to the concrete device type
 (`BaslerGigECamera*` / `VisionTcpipDevice*`). If a future caller passes
 in a device of a different sub-type (e.g. a Realsense camera reaches
@@ -250,7 +256,7 @@ site, just not at the widget boundary.
 nullptr check that logs `LOG_DEV_ERR` and disables the widget surface
 (no crash, just no-op). Touchpoints:
 - `src/form/camera/basler_camera_widget.cpp` ~ line 225.
-- `src/form/vision_output/vision_output_device_widget.cpp` ~ line 139.
+- `src/form/vision_output/vision_tcpip_device_widget.cpp` ~ line 139.
 
 ---
 
@@ -300,69 +306,6 @@ own protocol-level options (different frame types, different addressing).
 
 ---
 
-## 18. `McProtocolDeviceWidget` is Mitsubishi-only
-
-**What.** Mirror of #10 (`VisionOutputDeviceWidget` TCP-only). The
-widget at `src/form/plc/mc_protocol_device_widget.{h,cpp}` holds a
-`McProtocolDevice *` and `McProtocolConfig` directly, and its UI shows
-Mitsubishi MC-specific fields (frame type, data code). When a second
-vendor lands the family-level scope vs the concrete impl drift the
-same way as VisionOutputDeviceWidget.
-
-**Why deferred.** Single sub-type — no dispatcher needed yet.
-
-**How to pick up.** When vendor #2 ships:
-1. Rename `mc_protocol_device_widget.*` → e.g.
-   `mitsubishi_mc_widget.*` (file + class).
-2. Create `OmronFinsWidget` (or whichever vendor lands).
-3. Dispatch at the call site in `localization_task_widget.cpp:778`
-   on `plcType()`.
-
----
-
-## 19. `TaskLocalization::onCommDeviceValueChanged` not yet wired
-
-**What.** `TaskLocalization::onCommDeviceValueChanged(QMap<QString,QVariant>)`
-is defined ([task_localization.cpp:279](../src/model/task_localization.cpp))
-to translate PLC tag → logical signal name via `m_currentSignalsMap` and
-re-emit as `signalChanged(name, value)`. The slot has no caller — no
-`setupTask()` (or any other site) connects `plcRunner()->valueChanged`
-to it. End-to-end signal path (`McProtocolDevice::valueChanged` →
-`PlcRunner::valueChanged` → `TaskLocalization::onCommDeviceValueChanged`
-→ `signalChanged`) is broken at the last hop.
-
-**Where.** `src/model/task_localization.cpp::setupTask()` — should
-register the connection once a PLC role is assigned. Also depends on
-`m_currentSignalsMap` being populated from `TaskLocalizeConfig` (current
-population path not yet traced — likely in `setTaskLocalizeConfig` or a
-helper called from there).
-
-**Why deferred.** This is the consumer end of the abstract PLC signal
-path. The consumer that drives concrete shape decisions is the future
-signal-monitor widget (see [docs/signal_map/](signal_map/)). Wiring
-`onCommDeviceValueChanged` independently is functional but unverified
-until that widget exercises it.
-
-**How to pick up.** In `setupTask()`, once
-`taskRunner()->hasRunner(m_plcDeviceId)` is confirmed, add:
-```cpp
-auto *plcRun = plcRunner(m_plcDeviceId);
-connect(plcRun, &vc::runtime::PlcRunner::valueChanged,
-        this,   &TaskLocalization::onCommDeviceValueChanged,
-        Qt::UniqueConnection);
-```
-Then trace where `m_currentSignalsMap` is supposed to be filled from
-`TaskLocalizeConfig` and add that path (it is logically the inverse of
-the `SignalsMapWidget` schema → config write performed by
-`LocalizationSettingWidget`).
-
-**Status.** Signal *emission* and *runner forwarding* are now complete
-(McProtocolDevice emits `pollingUpdate`/`valueChanged` via the
-inherited `PlcDevice` signals; `PlcRunner` forwards both). Only the
-task-side connect remains.
-
----
-
 ## 20. AddDeviceWizard stack page still named `pgMc`
 
 **What.** The PLC card was renamed (`adwCard_mc → adwCard_plc`,
@@ -388,3 +331,291 @@ into a 2-level (PlcType → protocol options) flow.
 inner controls become conditional on a `cbxPlcType` selection, give
 them the per-vendor names at the same time
 (`pgMitsubishi`, `cbxMitsubishiFrameType`, …).
+
+---
+
+## 21. `TaskLocalization::matchingRunner` has no explicit teardown
+
+**What.** `TaskLocalization` creates `matchingRunner = new QThread()` in its
+constructor and starts it immediately, but the class does not declare a
+destructor that quits, waits for, and deletes the thread.
+
+**Where.** `src/model/task_localization.cpp` constructor and
+`src/model/task_localization.h` member `QThread *matchingRunner`.
+
+**Why deferred.** It was noticed while adding Phase 0 architecture contract
+tests. Fixing runtime thread ownership is production behavior and should be a
+focused lifecycle change, not mixed into test scaffolding.
+
+**How to pick up.** Add a `TaskLocalization` destructor that stops matching
+commission work safely, calls `matchingRunner->quit()`, waits with a bounded
+timeout, and deletes the thread. Verify task factory tests and any commission
+matching path still shut down cleanly.
+
+---
+
+## 22. Code review findings — qt-cpp-review (2026-05-30)
+
+Batch of findings from a structured `qt-cpp-review` over the outstanding
+device-binding / vision-widget / task-localization changes. Logged here per
+Rule 11.2 (flag, don't silently fix). Items already tracked elsewhere are NOT
+repeated; for example, the `matchingRunner` teardown is #21.
+
+**Tech-lead note.** 22.1–22.2 are correctness bugs, not genuine "defer to
+keep the PR focused" items — they are parked here only because the owner asked
+to flag-not-fix this round. Items fixed by Phase 2 have been removed from this
+batch. The remaining items should be scheduled before the next
+commission run, ahead of the cleanup items lower down.
+
+### Critical — schedule before next commission run
+
+**22.1 — `std::shared_ptr::reset(raw)` creates a second owning control block.**
+- Where. [task_localization.cpp:261](../src/model/task_localization.cpp) (and
+  :266, :267, :320). `m_nextConnectCamera.reset(camera)` / `m_selectedCamera.reset(camera)`
+  receive a raw `CameraDevice*` from `qobject_cast<CameraDevice*>(device.get())`,
+  where `device` is a `std::shared_ptr<IDevice>` owned by `DeviceManager`.
+- Why it matters. `reset(raw)` builds a brand-new control block over an object
+  already owned elsewhere → double-free / dangling when either owner drops.
+- How to fix. Keep the original `shared_ptr<IDevice>` and use
+  `std::static_pointer_cast`/`dynamic_pointer_cast`, assigning with `=` so all
+  owners share one control block. Never `reset()` with a raw pointer pulled from
+  another `shared_ptr`.
+
+**22.2 — Cross-thread queued matching signals carry unregistered metatypes.**
+- Where. [task_localization.h:89,95](../src/model/task_localization.h) +
+  [task_localization.cpp:381-418](../src/model/task_localization.cpp).
+  `startCommissionMatchingRequest(std::shared_ptr<mtc::MatchGroup>, cv::Mat)` and
+  `commissionMatchingFinished(mtc::MatchResult)` cross thread boundaries (worker
+  on `matchingRunner`) → `Qt::QueuedConnection`.
+- Why it matters. Queued connections marshal each argument through the metatype
+  system. `mtc::MatchResult`, `cv::Mat`, and `std::shared_ptr<mtc::MatchGroup>`
+  are not registered, so Qt logs "Cannot queue arguments of type 'cv::Mat'" and
+  silently drops the call — commission matching never runs.
+- How to fix. `Q_DECLARE_METATYPE` for the non-Qt types and `qRegisterMetaType`
+  once at startup for all three.
+
+### High — real bugs, scoped fixes
+
+**22.3 — `removeWidget()` during forward index iteration skips pages.**
+- Where. [localization_task_widget.cpp:470](../src/form/task/localization_task_widget.cpp),
+  `onTaskDevicesChanged()`. Loop iterates `content_stack` by ascending index and
+  removes inside the loop; `removeWidget` shifts later indices down while `idx`
+  still increments, so a page right after a removed one is never visited. Two
+  consecutive removed device pages leave a stale `IDeviceWidget` behind.
+- How to fix. Collect widgets to remove in one pass, delete in a second; or
+  iterate `idx = count()-1 .. 0`.
+
+**22.4 — `m_devicePages` cache evicted for still-assigned devices.**
+- Where. [localization_task_widget.cpp:479](../src/form/task/localization_task_widget.cpp).
+  `removePropertyBrowserWidget(...)` and `m_devicePages.remove(deviceId)` sit
+  outside the `if (!deviceIds.contains(deviceId))` guard, so they run for every
+  page found — including live ones. Cache and stack desync; a later
+  `showDeviceConfigPage` misses the cache and builds a duplicate page, orphaning
+  the original.
+- How to fix. Move both calls inside the `if (!deviceIds.contains(deviceId))`
+  block.
+
+**22.5 — `IDeviceWidget` constructor drops its `parent` argument.**
+- Where. [device_widget.h:12](../src/form/device_widget.h). `IDeviceWidget(QWidget *parent = nullptr) {}`
+  has an empty init list, so `QWidget` is default-constructed and `parent` is
+  discarded. Subclasses forward `parent` expecting parent-child ownership.
+- Note. Base class is outside the reviewed changeset but every device widget
+  depends on it.
+- How to fix. `IDeviceWidget(QWidget *parent = nullptr) : QWidget(parent) {}`.
+
+**22.6 — Shared `MatchGroup` read on worker thread while GUI can mutate it.**
+- Where. [task_localization.cpp:382-404](../src/model/task_localization.cpp). The
+  worker lambda iterates `group->patterns()` / reads `config()` on the matching
+  thread, holding the same `shared_ptr<MatchGroup>` that `PatternGroupManager`
+  (GUI thread) keeps mutating (`addPattern`/`removePattern`/`setPatternImage`).
+  `MatchGroup` is non-QObject with no locking (design_rules §4.2) — the container
+  read races the GUI-thread append/erase.
+- How to fix. Snapshot a deep copy of the needed config + cloned train images on
+  the GUI thread before emitting, and hand only the copy to the worker; or
+  serialize all `MatchGroup` access with a mutex; or block pattern editing while a
+  commission match is in flight.
+
+### Medium — hardening / robustness
+
+**22.8 — `fromJson` performs no schema/version validation.**
+- Where. [task_localization_config.h:89](../src/model/task_localization_config.h),
+  [task_localization.cpp:116](../src/model/task_localization.cpp). Only gate is
+  `obj.empty()`; fields read with defaults, so a future/foreign document is
+  silently accepted with partial-default state. `toJson()` writes no version key.
+- How to fix. Add a `version` int to `toJson()` and validate/migrate it in
+  `fromJson()`; treat missing as the legacy baseline.
+
+**22.9 — No range validation on imported binding data.**
+- Where. [task_device_binding.h:65](../src/model/task_device_binding.h).
+  `cameraNumber = obj["cameraNumber"].toInt(0)` accepts any int including
+  negatives, while the task enforces 1..16 elsewhere (`limit_num_camera`). A
+  malformed/hostile file can inject out-of-range numbers.
+- How to fix. Validate `cameraNumber` against the legal range (and cap device-id
+  string length) in `fromJson`; drop/clamp invalid entries via the existing
+  `bool`-return convention.
+
+**22.10 — `IDeviceWidget` polymorphic base lacks virtual dtor / `Q_DISABLE_COPY_MOVE`.**
+- Where. [device_widget.h:8](../src/form/device_widget.h). Declares pure virtuals
+  but no explicit virtual destructor and no `Q_DISABLE_COPY_MOVE`.
+- How to fix. Add `Q_DISABLE_COPY_MOVE(IDeviceWidget)` and
+  `~IDeviceWidget() override = default;`. (Base class — coordinate with 22.5.)
+
+**22.11 — `m_output_device` may be dereferenced uninitialized.**
+- Where. [vision_tcpip_device_widget.h:54](../src/form/vision_output/vision_tcpip_device_widget.h).
+  No in-class initializer; assigned only inside `if (m_device)` in `initWidget()`,
+  but `saveConfig()` derefs unconditionally. The factory currently guards device
+  null, so the bad path is not reachable today — but the invariant is implicit.
+- How to fix. Initialize `m_output_device{nullptr}` and null-check before deref,
+  or assert the device invariant at construction. Related to #13 (unsafe casts in
+  the same widget).
+
+**22.12 — `taskRunner()` dereferenced without null check in runner helpers.**
+- Where. [task_localization.cpp:85-95](../src/model/task_localization.cpp).
+  `cameraRunner()` / `plcRunner()` call `taskRunner()->runnerFor(...)` with no
+  guard, while the task widget treats `taskRunner()` as possibly null
+  ([localization_task_widget.cpp:781](../src/form/task/localization_task_widget.cpp)).
+- How to fix. Add a null guard returning nullptr for consistency.
+
+**22.13 — Reconnect `SingleShotConnection` re-arms against the wrong camera.**
+- Where. [task_localization.cpp:325](../src/model/task_localization.cpp).
+  `waitReconnectCameraHandle` re-connects to `m_selectedCamera` for non-terminal
+  statuses, but the device being awaited is `m_nextConnectCamera`. Combined with
+  22.1, it can wire the wait onto a soon-to-dangle sender.
+- How to fix. Confirm which device the wait targets, disconnect prior connections
+  before re-arming, and avoid re-arming on a sender whose `shared_ptr` may reset.
+
+### Low — cleanup / quality
+
+**22.14 — Dead member variables.**
+- Where. [task_localization.h:121-132](../src/model/task_localization.h).
+  `m_currentCamNumber`, `m_curentPatternNumber` (also a typo), `m_lastMatchResult`,
+  and `m_lastVisionOutput` have no read/write sites.
+- How to fix. Remove them, or gate behind the feature when it lands; fix the typo
+  if kept.
+
+**22.16 — `switch` over `ConnectStatus` uses `default:`, hiding new cases.**
+- Where. [task_localization.cpp:347](../src/model/task_localization.cpp),
+  [vision_tcpip_device_widget.cpp:224](../src/form/vision_output/vision_tcpip_device_widget.cpp).
+- How to fix. Enumerate every `ConnectStatus` value explicitly (no-ops with
+  `break;`) and drop `default:` so `-Wswitch` flags additions.
+
+**22.17 — Duplicated meta-property lookup/dispatch logic.**
+- Where. [localization_setting_widget.cpp:62](../src/form/task/localization_setting_widget.cpp)
+  (`readConfigField`/`writeConfigField`) and
+  [vision_tcpip_device_widget.cpp:166](../src/form/vision_output/vision_tcpip_device_widget.cpp)
+  re-implement the "indexOfProperty → write/readOnGadget" pattern and class-info
+  `_name` resolution independently.
+- How to fix. Extract a shared `gadget_meta` helper and call from both.
+
+**22.18 — Public `const` data members used as limits.**
+- Where. [task_localization.h:105-107](../src/model/task_localization.h).
+  `limit_comm_device`, `limit_vision_output_device`, `limit_num_camera` are
+  public non-static snake_case const members.
+- How to fix. Make them `static constexpr int` with a consistent name scheme
+  (e.g. `kLimitNumCamera`).
+
+**22.19 — Fixed page-index constants assume a click order that isn't enforced.**
+- Where. [localization_task_widget.cpp:616](../src/form/task/localization_task_widget.cpp).
+  `kDashboardPage/kSettingsPage/kPatternsPage` are used both as `insertWidget`
+  positions and `setCurrentIndex` targets, but pages are created lazily in user
+  order, mixed with `setCurrentWidget(...)` navigation elsewhere.
+- How to fix. Navigate by widget pointer consistently
+  (`setCurrentWidget(m_settingPage)`), or build all fixed pages once up front.
+
+**22.20 — `cameraNumberMap()` rebuilds a `QMap` by linear scan on a hot path.**
+- Where. [task_device_binding.h:103](../src/model/task_device_binding.h).
+  `cameraDeviceId()` is called from `setCameraNumber()` on every camera-switch
+  signal; each call scans the `QList` and allocates a fresh map. Fine at ≤16
+  cameras; revisit only if binding counts grow.
+- How to fix. Cache a `QHash<int,QString>` invalidated on `setCameraNumberMap()`
+  if profiling shows it matters.
+
+**22.21 — `saveConfig()` ignores the persistence outcome.**
+- Where. [vision_tcpip_device_widget.cpp:208](../src/form/vision_output/vision_tcpip_device_widget.cpp).
+  `setVisionTcpipConfig(m_config)` result is discarded; called after every edit
+  with no success/failure feedback.
+- How to fix. If the setter can fail or persists to disk, return a status and
+  surface failures (log + visual), matching the `changeDeviceName` pattern.
+
+**22.22 — Rename failure is reverted but not surfaced to the user.**
+- Where. [vision_tcpip_device_widget.cpp:190](../src/form/vision_output/vision_tcpip_device_widget.cpp).
+  When `changeDeviceName` returns false the field is reset with no user-visible
+  reason. Same silent idiom as the basler / mc_protocol widgets — uniform but
+  uniformly silent on a user-facing failure.
+- How to fix. On false, add a user-level log/toast explaining the rejection in
+  addition to reverting the field (applies to the sibling widgets too).
+
+---
+
+## 23. UI conformance migration to ui_design_rules.md
+
+**Status (2026-05-30): Partially complete — theme-reload contract fully
+implemented; hex-token migration still pending.**
+
+**Completed in this pass:**
+- `IDeviceWidget` and `ITaskWidget` now both provide `virtual reloadStyleSheet()`
+  and `setupThemeReload(darkPath, lightPath)`. Subclasses call `setupThemeReload`
+  once from their constructor; the base handles the initial load and the
+  `ThemeManager::themeChanged` subscription.
+- Fixed `IDeviceWidget` constructor bug: `parent` was not forwarded to `QWidget`.
+- All four subclasses that had per-form QSS now use `setupThemeReload` instead of
+  duplicating the reload/connect boilerplate:
+  `MitsubishiMcDeviceWidget`, `LocalizationTaskWidget`, `LocalizationPatternsWidget`,
+  `VisionTcpipDeviceWidget`.
+- Created missing QSS pairs that were referenced in code but absent or not
+  registered: `localization_patterns_widget_{dark,light}.qss` (new files),
+  `localization_task_widget_{dark,light}.qss` (existed on disk, now registered).
+- Fixed `VisionTcpipDeviceWidget::updateConnectionVisual()`: removed three
+  inline `setStyleSheet()` calls; connection state now driven by
+  `setProperty("connectionState", ...)` + repolish, styled in the new
+  per-form QSS pair via attribute selectors (ui_design_rules §3.6, §4.5).
+- Removed unused `#include "form/pattern/pattern_theme.h"` from
+  `vision_tcpip_device_widget.cpp`.
+- All six new/fixed QSS pairs registered in `resrc.qrc`.
+
+**Still open (what remains of the original #23):**
+- **Hardcoded hex to tokens.** Per-form sheets
+  (`add_device_wizard_{dark,light}.qss`, `camera_mapping_widget_{dark,light}.qss`,
+  `signals_monitor_widget_{dark,light}.qss`) and the global
+  `dark.qss`/`light.qss` still carry literal hex values. Reconcile them onto
+  the §5 token table (this is the migration half of #2). Blocked on deciding
+  the build-time token mechanism (concat / `@`-include / generator).
+- **Accent-tinted panels.** Any remaining blue-tinted literals (`#2a3a52`,
+  `#1a2540`, `#111f30`) in old QSS files must be replaced with the orange-warm
+  `panel.accent.*` family defined in ui_design_rules.md §5.6.
+
+**How to pick up remaining work.** Decide the token mechanism (#2), then sweep
+each `.qss` replacing literal hex with §5 canonical values. Run the §9 review
+checklist against each migrated file in both dark and light.
+
+---
+
+## 24. `svgIcon()` is not theme-aware — Rule 4.4 violation (project-wide)
+
+**What.** Every icon in the project is set via `svgIcon()` (defined in
+`windows_helper.h:85`), a thin wrapper that loads a single SVG path without
+consulting `ThemeManager`. `ThemeManager::themedIcon()` was declared in
+`src/utils/theme_manager.h:43` and implemented in `theme_manager.cpp:75` but
+is **never called anywhere** in the codebase.
+
+Affected call sites (representative, not exhaustive):
+- `mainwindow.cpp` lines 117–139 — toolbar action icons
+- `src/form/task/localization_task_widget.cpp` lines 208–448 — nav/breadcrumb icons
+- `src/widgets/project_tree_widget.cpp` lines 132–341 — tree item icons
+- `src/form/camera/basler_camera_widget.cpp` lines 211–412 — connect/trigger icons
+- `src/form/add_device_wizard.cpp` line 74 — device card icons
+
+**Why deferred.** The current SVG assets appear to be monochrome/outline style
+that renders acceptably in both themes. Fixing Rule 4.4 requires either:
+(a) auditing whether any icon actually needs a dark/light variant, or
+(b) deciding to drop `themedIcon()` if all icons are theme-neutral (and updating
+Rule 4.4 accordingly).
+
+**How to pick up.**
+1. Audit all icon assets under `resrc/` — identify which ones need per-theme
+   variants (light-on-dark vs dark-on-light).
+2. For icons that need variants: create `_dark.svg` siblings and replace
+   `svgIcon(path)` calls with `ThemeManager::instance()->themedIcon(basePath)`.
+3. For icons that are theme-neutral: document the exemption and consider
+   removing `themedIcon()` if it is never needed, or keeping it for future use.
+4. Update Rule 4.4 in `ui_design_rules.md` to reflect the actual convention.

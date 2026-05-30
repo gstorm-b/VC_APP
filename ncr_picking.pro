@@ -19,6 +19,7 @@ SOURCES += \
     src/device/camera/camera_basler_gige.cpp \
     src/device/device_factory.cpp \
     src/device/device_manager.cpp \
+    src/device/device_registry.cpp \
     src/device/plc/mc_device_map.cpp \
     src/device/plc/mc_fame_3e.cpp \
     src/device/plc/mc_protocol_device.cpp \
@@ -28,7 +29,7 @@ SOURCES += \
     src/form/add_device_wizard.cpp \
     src/form/camera/basler_cam_select_dialog.cpp \
     src/form/camera/basler_camera_widget.cpp \
-    src/form/navigate_form.cpp \
+    src/form/device_widget_factory.cpp \
     src/form/new_project_dialog.cpp \
     src/form/new_task_dialog.cpp \
     src/form/pattern/add_pattern_image_dialog.cpp \
@@ -36,15 +37,14 @@ SOURCES += \
     src/form/pattern/add_pattern_wizard.cpp \
     src/form/pattern/edit_pattern_wizard.cpp \
     src/form/pattern/pattern_setting_panel.cpp \
-    src/form/plc/mc_protocol_device_widget.cpp \
+    src/form/plc/mitsubishi_mc_device_widget.cpp \
     src/form/plc/plc_mitsu_device_wizard.cpp \
     src/form/project_infor_setting.cpp \
     src/form/task/localization_dashboard_widget.cpp \
     src/form/task/localization_patterns_widget.cpp \
     src/form/task/localization_setting_widget.cpp \
     src/form/task/localization_task_widget.cpp \
-    src/form/task_form.cpp \
-    src/form/vision_output/vision_output_device_widget.cpp \
+    src/form/vision_output/vision_tcpip_device_widget.cpp \
     src/libwg/group_frame.cpp \
     src/logger/app_logger.cpp \
     src/matching/image_matcher.cpp \
@@ -58,6 +58,9 @@ SOURCES += \
     src/matching/utils_block_max.cpp \
     src/matching/vision_utils.cpp \
     src/model/itask.cpp \
+    src/model/localization_pipeline.cpp \
+    src/model/localization_runtime_controller.cpp \
+    src/model/localization_signal_mapper.cpp \
     src/model/project.cpp \
     src/model/project_repository.cpp \
     src/model/task_factory.cpp \
@@ -104,11 +107,13 @@ HEADERS += \
     src/calibration/fanuc_irvision_board.h \
     src/device/camera/basler_define.h \
     src/device/camera/camera_basler_gige.h \
+    src/device/device_capabilities.h \
     src/device/camera/camera_device.h \
     src/device/communication_device.h \
     src/device/device_factory.h \
     src/device/device_io_interface.h \
     src/device/device_manager.h \
+    src/device/device_registry.h \
     src/device/idevice.h \
     src/device/idevice_config.h \
     src/device/irequest.h \
@@ -142,7 +147,7 @@ HEADERS += \
     src/form/camera/basler_cam_select_dialog.h \
     src/form/camera/basler_camera_widget.h \
     src/form/device_widget.h \
-    src/form/navigate_form.h \
+    src/form/device_widget_factory.h \
     src/form/new_project_dialog.h \
     src/form/new_task_dialog.h \
     src/form/pattern/add_pattern_image_dialog.h \
@@ -152,16 +157,15 @@ HEADERS += \
     src/form/pattern/add_pattern_wizard.h \
     src/form/pattern/edit_pattern_wizard.h \
     src/form/pattern/pattern_setting_panel.h \
-    src/form/plc/mc_protocol_device_widget.h \
+    src/form/plc/mitsubishi_mc_device_widget.h \
     src/form/plc/plc_mitsu_device_wizard.h \
     src/form/project_infor_setting.h \
     src/form/task/localization_dashboard_widget.h \
     src/form/task/localization_patterns_widget.h \
     src/form/task/localization_setting_widget.h \
     src/form/task/localization_task_widget.h \
-    src/form/task_form.h \
     src/form/task_widget.h \
-    src/form/vision_output/vision_output_device_widget.h \
+    src/form/vision_output/vision_tcpip_device_widget.h \
     src/libwg/group_frame.h \
     src/libwg/validating_line_edit.h \
     src/logger/app_logger.h \
@@ -185,6 +189,13 @@ HEADERS += \
     src/model/isignal_group.h \
     src/model/itask.h \
     src/model/itask_config.h \
+    src/model/localization_pipeline.h \
+    src/model/localization_recovery_policy.h \
+    src/model/localization_runtime_controller.h \
+    src/model/localization_signal_mapper.h \
+    src/model/task_state_machine.h \
+    src/runtime/device_command.h \
+    src/runtime/device_command_queue.h \
     src/runtime/idevice_runner.h \
     src/runtime/device_runner.h \
     src/runtime/camera_runner.h \
@@ -193,6 +204,7 @@ HEADERS += \
     src/model/pick_and_place_task.h \
     src/model/project.h \
     src/model/project_repository.h \
+    src/model/task_device_binding.h \
     src/model/task_define.h \
     src/model/task_factory.h \
     src/model/task_localization.h \
@@ -292,21 +304,17 @@ FORMS += \
     src/form/add_device_wizard.ui \
     src/form/camera/basler_cam_select_dialog.ui \
     src/form/camera/basler_camera_widget.ui \
-    src/form/navigate_form.ui \
     src/form/new_project_dialog.ui \
     src/form/new_task_dialog.ui \
     src/form/pattern/add_pattern_image_dialog.ui \
-    src/form/plc/mc_ethernet_tcpip_widget.ui \
-    src/form/plc/mc_protocol_device_widget.ui \
-    src/form/plc/mc_serial_port_widget.ui \
+    src/form/plc/mitsubishi_mc_device_widget.ui \
     src/form/plc/plc_mitsu_device_wizard.ui \
     src/form/project_infor_setting.ui \
     src/form/task/localization_dashboard_widget.ui \
     src/form/task/localization_patterns_widget.ui \
     src/form/task/localization_setting_widget.ui \
     src/form/task/localization_task_widget.ui \
-    src/form/task_form.ui \
-    src/form/vision_output/vision_output_device_widget.ui \
+    src/form/vision_output/vision_tcpip_device_widget.ui \
     src/system_log_form.ui
 
 TRANSLATIONS += \

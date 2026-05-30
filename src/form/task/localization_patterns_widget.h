@@ -103,6 +103,7 @@ private slots:
 private:
     // ── Build / wire-up ─────────────────────────────────────────────────
     void initWidget();
+
     void wireToolbar();
     void wireTree();
     void wireManagerSignals();
@@ -111,6 +112,7 @@ private:
     void buildResultTable();         // build & insert result-table widget
     void populateResultTable(const mtc::MatchResult &result);
     void clearResultTable();
+    void clearPropertyBrowserState();
 
     // ── Property browser construction ───────────────────────────────────
     void buildGroupProperties();      // group-level (picking box etc.)

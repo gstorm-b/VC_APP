@@ -63,12 +63,12 @@ private:
     void showDeviceConfigPage(const QString &deviceId);
     void setNavButtonActive(QPushButton *btn);
     void refreshNavItemStyles();
-    void updateBreadcrumb(const QString &label, const QColor &color = QColor(0x5b, 0xa3, 0xf0));
+    void updateBreadcrumb(const QString &label, const QString &role = QStringLiteral("accent"));
     void updateStatusLamps();
+    void updateTaskStateUi();
 
     // ── Helpers ───────────────────────────────────────────────────────────
     QWidget *getOrCreateDeviceConfigPage(const QString &deviceId);
-    QColor   colorForDeviceId(const QString &deviceId) const;
 
     // ── Old config helpers (settings page) ────────────────────────────────
     void populateBrowser(const QString &id);

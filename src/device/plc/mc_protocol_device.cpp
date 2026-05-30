@@ -94,11 +94,11 @@ McProtocolConfig McProtocolDevice::mcProtocolConfig() const {
     return m_config;
 }
 
-QStringList McProtocolDevice::getAvailableBits() {
+QStringList McProtocolDevice::availableDigitalIoNames() const {
     return m_m_device_names;
 }
 
-QStringList McProtocolDevice::getAvailableWords() {
+QStringList McProtocolDevice::availableWordIoNames() const {
     return m_d_device_names;
 }
 
@@ -366,7 +366,7 @@ void McProtocolDevice::update_m_map() {
 
     std::vector<McDeviceRange::DeviceRange> *m_ranges_ptr = &m_device_map.m_devices.ranges;
     int r_size = m_device_map.m_devices.ranges.size();
-    LOG_DEV_DEBUG << "RSize" << r_size;
+    // LOG_DEV_DEBUG << "RSize" << r_size;
     for (int index=0;index<r_size;index++) {
         int start_address = (m_ranges_ptr->begin())[index].start;
         int amount = (m_ranges_ptr->begin())[index].amount;
@@ -396,7 +396,7 @@ void McProtocolDevice::update_d_map() {
 
     std::vector<McDeviceRange::DeviceRange> *d_ranges_ptr = &m_device_map.d_devices.ranges;
     int r_size = m_device_map.d_devices.ranges.size();
-    LOG_DEV_DEBUG << "RSize" << r_size;
+    // LOG_DEV_DEBUG << "RSize" << r_size;
     for (int index=0;index<r_size;index++) {
         int start_address = (d_ranges_ptr->begin())[index].start;
         int amount  = (d_ranges_ptr->begin())[index].amount;

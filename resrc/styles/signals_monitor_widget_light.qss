@@ -1,13 +1,14 @@
-/* =====================================================================
-   Signals Monitor Widget - Light theme
-   Light-surface counterpart of signals_monitor_widget_dark.qss.
-   ===================================================================== */
+/* ═════════════════════════════════════════════════════════════════
+   Signals Monitor Widget - Light theme — Hybrid (Graphite Vision + Orange)
+   bg.surface: #ffffff  border.default: #c8ccd4  text.primary: #1a1c20
+   accent.primary: #c06400  state tokens used for type chips and status pills
+   ═════════════════════════════════════════════════════════════════ */
 
 QListWidget#smwList {
     background-color: #ffffff;
-    border: 1px solid #d0d0d0;
+    border: 1px solid #c8ccd4;
     border-radius: 6px;
-    color: #1e1e1e;
+    color: #1a1c20;
 }
 QListWidget#smwList::item {
     border: none;
@@ -22,14 +23,14 @@ QListWidget#smwList::item:hover {
 }
 
 QFrame#smwRow {
-    background-color: #f7f7f7;
-    border: 1px solid #d0d0d0;
+    background-color: #f2f3f5;
+    border: 1px solid #c8ccd4;
     border-radius: 5px;
     margin: 1px 1px;
 }
 
 QLabel#smwName {
-    color: #1e1e1e;
+    color: #1a1c20;
     background: transparent;
     font-size: 9pt;
 }
@@ -41,12 +42,12 @@ QLabel#smwTypeChip {
     font-weight: 600;
 }
 QLabel#smwTypeChip[typeKind="bool"] {
-    background-color: rgba(43, 140, 232, 36);
-    color: #1f6dbc;
+    background-color: rgba(0, 96, 160, 0.12);
+    color: #0060a0;
 }
 QLabel#smwTypeChip[typeKind="number"] {
-    background-color: rgba(60, 200, 160, 36);
-    color: #178060;
+    background-color: rgba(26, 122, 64, 0.12);
+    color: #1a7a40;
 }
 
 QLabel#smwOnOff {
@@ -57,17 +58,17 @@ QLabel#smwOnOff {
     min-width: 36px;
 }
 QLabel#smwOnOff[onOffState="on"] {
-    background-color: #2e7d32;
-    color: #ffffff;
+    background-color: rgba(26, 122, 64, 0.15);
+    color: #1a7a40;
 }
 QLabel#smwOnOff[onOffState="off"] {
-    background-color: #d6d6d6;
-    color: #555555;
+    background-color: #e8eaee;
+    color: #5a6878;
 }
 
 QLabel#smwRisingEdge {
-    background-color: #f0ad4e;
-    color: #1e1e1e;
+    background-color: rgba(154, 104, 0, 0.15);
+    color: #9a6800;
     border-radius: 4px;
     padding: 2px 6px;
     font-size: 8pt;
@@ -75,9 +76,9 @@ QLabel#smwRisingEdge {
 }
 
 QLabel#smwValueNumber {
-    color: #1e1e1e;
+    color: #1a1c20;
     background-color: #ffffff;
-    border: 1px solid #d0d0d0;
+    border: 1px solid #c8ccd4;
     border-radius: 4px;
     padding: 2px 10px;
     font-family: "Consolas", "Courier New", monospace;
@@ -86,7 +87,7 @@ QLabel#smwValueNumber {
 }
 
 QLabel#smwValueUnmapped {
-    color: #a0a0a0;
+    color: #a0a8b0;
     background-color: transparent;
     font-style: italic;
     font-size: 9pt;
@@ -94,17 +95,17 @@ QLabel#smwValueUnmapped {
 
 QToolButton#smwModifyBtn {
     background-color: transparent;
-    color: #1e1e1e;
-    border: 1px solid #c5c5c5;
+    color: #1a1c20;
+    border: 1px solid #c8ccd4;
     border-radius: 4px;
     padding: 0px 4px;
     font-weight: 700;
 }
 QToolButton#smwModifyBtn:hover:enabled {
-    border-color: #2b8ce8;
-    color: #2b8ce8;
+    border-color: #c06400;
+    color: #c06400;
 }
 QToolButton#smwModifyBtn:disabled {
-    color: #b0b0b0;
-    border-color: #e0e0e0;
+    color: #a0a8b0;
+    border-color: #dddfe3;
 }

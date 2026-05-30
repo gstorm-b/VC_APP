@@ -6,6 +6,7 @@
 
 #include "logger/app_logger.h"
 #include "model/project.h"
+#include "device/device_capabilities.h"
 #include "device/device_manager.h"
 
 #include <QComboBox>
@@ -117,7 +118,7 @@ void LocalizationSettingWidget::initWidget() {
             qOverload<int>(&QComboBox::currentIndexChanged),
             this, [this](int) {
         const QString id = ui->cbb_vision_output_device->currentData().toString();
-        m_config.d->m_sOutputDeviceId = id;
+        m_config.d->m_deviceBindings.setVisionOutputDeviceId(id);
         pushConfigToTask();
     });
 
@@ -125,7 +126,7 @@ void LocalizationSettingWidget::initWidget() {
             qOverload<int>(&QComboBox::currentIndexChanged),
             this, [this](int) {
         const QString id = ui->cbb_comm_device->currentData().toString();
-        m_config.d->m_sCommDeviceId = id;
+        m_config.d->m_deviceBindings.setPrimaryPlcDeviceId(id);
         pushConfigToTask();
         // Refresh the SignalsMapWidget tag lists from the new comm device.
         refreshCommTags(id);
@@ -134,7 +135,7 @@ void LocalizationSettingWidget::initWidget() {
     // ── Camera map ──────────────────────────────────────────────────────
     connect(ui->listView_cameras_map, &CameraMappingWidget::mappingChanged,
             this, [this](const QMap<int, QString> &m) {
-        m_config.d->m_sCameraNumberMap = m;
+        m_config.d->m_deviceBindings.setCameraNumberMap(m);
         pushConfigToTask();
     });
 
@@ -150,7 +151,7 @@ void LocalizationSettingWidget::initWidget() {
             this, [this] {
         rebuildDeviceCombos();
         rebuildCameraList();
-        // m_sCommDeviceId may now point to a stale device — refresh tags.
+        // The primary PLC binding may now point to a stale device - refresh tags.
         refreshCommTags(ui->cbb_comm_device->currentData().toString());
     });
 
@@ -214,8 +215,18 @@ void LocalizationSettingWidget::refreshCommTags(const QString &deviceId) {
         ui->listView_signals_map->setNumberTags({});
         return;
     }
-    ui->listView_signals_map->setBoolTags(dev->getAvailableBits());
-    ui->listView_signals_map->setNumberTags(dev->getAvailableWords());
+    auto *digitalProvider = dynamic_cast<vc::device::IDigitalIoProvider *>(dev.get());
+    auto *wordProvider = dynamic_cast<vc::device::IWordIoProvider *>(dev.get());
+    if (!digitalProvider || !wordProvider) {
+        LOG_DEV_ERR << "LocalizationSettingWidget: selected PLC device does not expose IO tag capability"
+                    << deviceId;
+        ui->listView_signals_map->setBoolTags({});
+        ui->listView_signals_map->setNumberTags({});
+        return;
+    }
+
+    ui->listView_signals_map->setBoolTags(digitalProvider->availableDigitalIoNames());
+    ui->listView_signals_map->setNumberTags(wordProvider->availableWordIoNames());
 }
 
 void LocalizationSettingWidget::loadConfigToWidget() {
@@ -228,21 +239,24 @@ void LocalizationSettingWidget::loadConfigToWidget() {
     // Select stored device ids
     {
         QSignalBlocker b(ui->cbb_vision_output_device);
-        int idx = ui->cbb_vision_output_device->findData(m_config.d->m_sOutputDeviceId);
+        int idx = ui->cbb_vision_output_device->findData(
+            m_config.d->m_deviceBindings.visionOutputDeviceId());
         ui->cbb_vision_output_device->setCurrentIndex(idx < 0 ? 0 : idx);
     }
     {
         QSignalBlocker b(ui->cbb_comm_device);
-        int idx = ui->cbb_comm_device->findData(m_config.d->m_sCommDeviceId);
+        int idx = ui->cbb_comm_device->findData(
+            m_config.d->m_deviceBindings.primaryPlcDeviceId());
         ui->cbb_comm_device->setCurrentIndex(idx < 0 ? 0 : idx);
     }
 
-    refreshCommTags(m_config.d->m_sCommDeviceId);
+    refreshCommTags(m_config.d->m_deviceBindings.primaryPlcDeviceId());
 
     // Camera map
     {
         QSignalBlocker b(ui->listView_cameras_map);
-        ui->listView_cameras_map->setCurrentMapping(m_config.d->m_sCameraNumberMap);
+        ui->listView_cameras_map->setCurrentMapping(
+            m_config.d->m_deviceBindings.cameraNumberMap());
     }
 
     // Signal map values

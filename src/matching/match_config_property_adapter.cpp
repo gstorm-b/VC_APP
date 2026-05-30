@@ -207,8 +207,9 @@ void MatchConfigPropertyAdapter::destroy()
 {
     // The variant manager is SHARED with the host widget (group-level props,
     // other adapters, …).  m_mgr->clear() would wipe everyone's properties.
-    // Delete only what this adapter created.
-    qDeleteAll(m_props);            // leaf spec properties
+    // Delete only the top-level groups this adapter created. Their child
+    // properties are owned by the QtProperty tree and are released together
+    // with the parent group.
     m_props.clear();
     m_propKeys.clear();
 

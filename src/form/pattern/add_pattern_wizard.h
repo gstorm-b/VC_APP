@@ -84,10 +84,12 @@ public:
     // otherwise raw source-image coordinates.  m_pick is always stored in
     // source-image pixels; we translate at the accessor boundary so callers
     // get the pick in the same frame as the pattern image they receive.
-    int     pickX()         const { return m_keepOriginal ? m_pick.x()
-                                                          : m_pick.x() - m_crop.x(); }
-    int     pickY()         const { return m_keepOriginal ? m_pick.y()
-                                                          : m_pick.y() - m_crop.y(); }
+    // int     pickX()         const { return m_keepOriginal ? m_pick.x()
+    //                                                       : m_pick.x() - m_crop.x(); }
+    // int     pickY()         const { return m_keepOriginal ? m_pick.y()
+    //                                                       : m_pick.y() - m_crop.y(); }
+    int     pickX()         const { return m_pick.x(); }
+    int     pickY()         const { return m_pick.y(); }
     double  pickBoxW()      const { return m_boxW;     }
     double  pickBoxH()      const { return m_boxH;     }
     double  pickBoxDist()   const { return m_boxDist;  }

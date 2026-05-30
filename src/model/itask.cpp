@@ -4,6 +4,25 @@
 
 namespace vc::model {
 
+bool ITask::transitionTaskState(TaskState targetState, const QString &reason)
+{
+    if (m_taskState == targetState) {
+        return true;
+    }
+
+    if (!canTransitionTaskState(m_taskState, targetState)) {
+        LOG_USER_WARN << buildInvalidTaskStateTransitionMessage(
+            m_taskState, targetState, reason);
+        return false;
+    }
+
+    LOG_USER_INFO << buildTaskStateTransitionMessage(
+        m_taskState, targetState, reason);
+    m_taskState = targetState;
+    emit taskStateChanged(m_taskState);
+    return true;
+}
+
 // ── Assigned-device helpers ───────────────────────────────────────────────────
 
 std::shared_ptr<vc::device::IDevice>
@@ -39,33 +58,69 @@ ITask::assignedDevicesOfType(vc::device::DeviceType t) const {
 
 void ITask::beginCommission()
 {
+    if (!transitionTaskState(TaskState::CommissionStarting,
+                             QStringLiteral("beginCommission"))) {
+        return;
+    }
+
     syncRunnersWithDevices();
     m_taskRunner->enterCommission();
+    transitionTaskState(TaskState::Commission,
+                        QStringLiteral("commission resources ready"));
     emit commissionStarted();
 }
 
 void ITask::endCommission()
 {
+    if (!transitionTaskState(TaskState::Stopping,
+                             QStringLiteral("endCommission"))) {
+        return;
+    }
+
     m_taskRunner->enterIdle();
+    transitionTaskState(TaskState::Idle,
+                        QStringLiteral("commission stopped"));
     emit commissionStopped();
 }
 
 void ITask::beginRuntime(bool mergeToTaskThread)
 {
+    if (!transitionTaskState(TaskState::RuntimeStarting,
+                             QStringLiteral("beginRuntime"))) {
+        return;
+    }
+
     syncRunnersWithDevices();
     m_taskRunner->enterRuntime(mergeToTaskThread);
+    transitionTaskState(TaskState::Ready,
+                        QStringLiteral("runtime ready"));
     emit runtimeStarted();
 }
 
 void ITask::endRuntime()
 {
+    if (!transitionTaskState(TaskState::Stopping,
+                             QStringLiteral("endRuntime"))) {
+        return;
+    }
+
     m_taskRunner->enterIdle();
+    transitionTaskState(TaskState::Idle,
+                        QStringLiteral("runtime stopped"));
     emit runtimeStopped();
 }
 
 void ITask::stopAll()
 {
+    if (m_taskState != TaskState::Idle &&
+        !transitionTaskState(TaskState::Stopping,
+                             QStringLiteral("stopAll"))) {
+        return;
+    }
+
     m_taskRunner->enterIdle();
+    transitionTaskState(TaskState::Idle,
+                        QStringLiteral("all task activity stopped"));
 }
 
 // ── Runner sync ───────────────────────────────────────────────────────────────

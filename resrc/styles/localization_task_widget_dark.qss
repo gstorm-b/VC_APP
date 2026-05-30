@@ -1,0 +1,215 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   LocalizationTaskWidget — Dark theme  (Hybrid: Graphite Vision + Orange)
+   bg.window: #1a1c20   bg.surface: #22252a   bg.elevated: #2c3038
+   border.default: #3a3f48   accent.primary: #e87c00
+   Dynamic properties:
+     lbl_bc_current  [breadcrumbRole] = accent|muted|camera|plc|robot|default
+     QFrame          [navItem]        = true
+     QFrame          [navActive]      = true|false
+     QFrame          [deviceType]     = camera|plc|robot|default
+     QLabel          [devNavName]     (objectName selector)
+     QLabel          [devNavType]     (objectName selector)
+     QLabel#lbl_active_title [taskState] = Idle|CommissionStarting|Commission|RuntimeStarting|Ready|RunningCycle|Recovering|Faulted|Stopping
+     QFrame#statusDot [lampState]     = on|off|warn|error
+     QLabel#statusLabel [lampState]   = on|off|warn|error
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Root ─────────────────────────────────────────────────────────────── */
+QWidget#LocalizationTaskWidget {
+    background: #1a1c20;
+    color: #e0e4ea;
+    font-family: 'Segoe UI';
+}
+QSplitter::handle { background: #3a3f48; }
+
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
+QScrollBar:vertical              { background: #1a1c20; width: 8px; }
+QScrollBar::handle:vertical      { background: #4e5562; border-radius: 3px; min-height: 20px; }
+QScrollBar::handle:vertical:hover { background: #7a8898; }
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical    { height: 0; background: transparent; }
+
+/* ── Left nav panel frames ────────────────────────────────────────────── */
+QFrame#nav_panel               { background: #1a1c20; border-right: 1px solid #2c3038; }
+QFrame#frame_task_header       { background: #1a1c20; border-bottom: 1px solid #2c3038; }
+QFrame#frame_status_lamps      { background: #1a1c20; border-bottom: 1px solid #2c3038; }
+QFrame#frame_nav_top           { background: #1a1c20; }
+QFrame#frame_devices_header    { background: #1a1c20; }
+QScrollArea#scroll_devices     { background: #1a1c20; border: none; }
+QWidget#scroll_devices_content { background: #1a1c20; }
+
+/* ── Task header labels ───────────────────────────────────────────────── */
+QLabel#lbl_active_title {
+    color: #7a8898;
+    font: 700 7.5pt 'Segoe UI';
+    letter-spacing: 1.6px;
+}
+QLabel#lbl_active_title[taskState="Ready"],
+QLabel#lbl_active_title[taskState="RunningCycle"] { color: #40c870; }
+QLabel#lbl_active_title[taskState="Recovering"],
+QLabel#lbl_active_title[taskState="CommissionStarting"],
+QLabel#lbl_active_title[taskState="Commission"],
+QLabel#lbl_active_title[taskState="RuntimeStarting"],
+QLabel#lbl_active_title[taskState="Stopping"] { color: #ffb020; }
+QLabel#lbl_active_title[taskState="Faulted"] { color: #ff5252; }
+QLabel#lbl_task_name_nav {
+    color: #e0e4ea;
+    font: 700 11pt 'JetBrains Mono';
+}
+QLabel#lbl_task_type_chip {
+    color: #ffa040;
+    background: rgba(232,124,0,28);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font: 700 8pt 'Segoe UI';
+    letter-spacing: 1px;
+}
+QLabel#lbl_devices_section {
+    color: #7a8898;
+    font: 700 7.5pt 'Segoe UI';
+    letter-spacing: 1.6px;
+}
+
+/* ── Nav buttons (Dashboard / Patterns / Settings) ────────────────────── */
+QPushButton#btn_nav_dashboard,
+QPushButton#btn_nav_patterns,
+QPushButton#btn_nav_settings {
+    text-align: left;
+    padding: 7px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-left: 2px solid transparent;
+    color: #7a8898;
+    font: 600 10.5pt 'Segoe UI';
+    border-radius: 3px;
+}
+QPushButton#btn_nav_dashboard:hover,
+QPushButton#btn_nav_patterns:hover,
+QPushButton#btn_nav_settings:hover {
+    background: #2c3038;
+    color: #7a8898;
+}
+QPushButton#btn_nav_dashboard:checked,
+QPushButton#btn_nav_patterns:checked,
+QPushButton#btn_nav_settings:checked {
+    background: rgba(232,124,0,28);
+    color: #ffa040;
+    border-left: 2px solid #e87c00;
+}
+
+/* ── Breadcrumb bar ───────────────────────────────────────────────────── */
+QFrame#frame_breadcrumb {
+    background: #22252a;
+    border-bottom: 1px solid #3a3f48;
+    min-height: 36px;
+    max-height: 36px;
+}
+QLabel#lbl_bc_task    { color: #7a8898; font: 8.5pt 'JetBrains Mono'; }
+QLabel#lbl_bc_sep     { color: #4a5260; font: 13pt  'JetBrains Mono'; }
+QLabel#lbl_bc_current { color: #e0e4ea; font: 700 9.5pt 'JetBrains Mono'; }
+
+QLabel#lbl_bc_current[breadcrumbRole="accent"]  { color: #e87c00; }
+QLabel#lbl_bc_current[breadcrumbRole="muted"]   { color: #7a8898; }
+QLabel#lbl_bc_current[breadcrumbRole="camera"]  { color: #2b8ce8; }
+QLabel#lbl_bc_current[breadcrumbRole="plc"]     { color: #22d17a; }
+QLabel#lbl_bc_current[breadcrumbRole="robot"]   { color: #f5a623; }
+QLabel#lbl_bc_current[breadcrumbRole="default"] { color: #6b7ea0; }
+
+/* ── Breadcrumb tool buttons ──────────────────────────────────────────── */
+QToolButton#tbtn_bc_save,
+QToolButton#tbtn_bc_refresh,
+QToolButton#tbtn_add_device {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 3px 6px;
+    color: #7a8898;
+}
+QToolButton#tbtn_bc_save:hover,
+QToolButton#tbtn_bc_refresh:hover,
+QToolButton#tbtn_add_device:hover {
+    background: #2c3038;
+    border: 1px solid #3a3f48;
+    color: #e0e4ea;
+}
+
+/* ── Content / property browser areas ────────────────────────────────── */
+QStackedWidget#content_stack { background: #1a1c20; }
+QWidget#wg_property_browser  { background: #1a1c20; }
+QWidget#page_task_config     { background: #1a1c20; }
+
+/* ── Status lamp dots ─────────────────────────────────────────────────── */
+QFrame#statusDot { border-radius: 5px; }
+QFrame#statusDot[lampState="on"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 #2eff98, stop:1 #40c870);
+    border: 1px solid rgba(64,200,112,100);
+}
+QFrame#statusDot[lampState="off"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 #ff5b5b, stop:1 #ff5252);
+    border: 1px solid rgba(255,82,82,100);
+}
+QFrame#statusDot[lampState="warn"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 #ffd060, stop:1 #ffb020);
+    border: 1px solid rgba(255,176,32,100);
+}
+QFrame#statusDot[lampState="error"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 #ff5b5b, stop:1 #ff5252);
+    border: 1px solid rgba(255,82,82,100);
+}
+
+/* ── Status lamp labels ───────────────────────────────────────────────── */
+QLabel#statusLabel                  { font: 700 6.5pt 'Segoe UI'; letter-spacing: 0.5px; }
+QLabel#statusLabel[lampState="on"]  { color: #7a8898; }
+QLabel#statusLabel[lampState="off"] { color: #4a5260; }
+QLabel#statusLabel[lampState="warn"] { color: #ffb020; }
+QLabel#statusLabel[lampState="error"] { color: #ff5252; }
+
+/* ── Device nav item frame ────────────────────────────────────────────── */
+QFrame[navItem="true"] {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 5px;
+}
+QFrame[navItem="true"]:hover { background: #2c3038; }
+
+QFrame[navItem="true"][navActive="true"][deviceType="camera"] {
+    background: rgba(43,140,232,28);
+    border: 1px solid rgba(43,140,232,102);
+}
+QFrame[navItem="true"][navActive="true"][deviceType="plc"] {
+    background: rgba(34,209,122,28);
+    border: 1px solid rgba(34,209,122,102);
+}
+QFrame[navItem="true"][navActive="true"][deviceType="robot"] {
+    background: rgba(245,166,35,28);
+    border: 1px solid rgba(245,166,35,102);
+}
+QFrame[navItem="true"][navActive="true"][deviceType="default"] {
+    background: rgba(107,126,160,28);
+    border: 1px solid rgba(107,126,160,102);
+}
+
+/* ── Device nav name label ────────────────────────────────────────────── */
+QLabel#devNavName { color: #7a8898; }
+QFrame[navItem="true"][navActive="true"] QLabel#devNavName {
+    color: #e0e4ea;
+    font-weight: bold;
+}
+
+/* ── Device nav type label (device-identity accent) ──────────────────── */
+QFrame[navItem="true"][deviceType="camera"]  QLabel#devNavType { color: #2b8ce8; }
+QFrame[navItem="true"][deviceType="plc"]     QLabel#devNavType { color: #22d17a; }
+QFrame[navItem="true"][deviceType="robot"]   QLabel#devNavType { color: #f5a623; }
+QFrame[navItem="true"][deviceType="default"] QLabel#devNavType { color: #6b7ea0; }
+
+/* ── Device nav status dot (connection indicator) ─────────────────────── */
+QFrame#devNavDot                    { border-radius: 2px; }
+QFrame#devNavDot[lampState="on"]  { background: #40c870; border: 1px solid #1a1c20; }
+QFrame#devNavDot[lampState="off"] { background: #ff5252; border: 1px solid #1a1c20; }
+
+/* ── Empty state label ────────────────────────────────────────────────── */
+QLabel#devNavEmpty { color: #4a5260; font-size: 8.5pt; }

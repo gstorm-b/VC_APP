@@ -1,0 +1,114 @@
+/* ═════════════════════════════════════════════════════════════════
+   Mitsubishi MC Device Widget - Light theme — Hybrid (Graphite Vision + Orange)
+   bg.window: #f2f3f5  bg.surface: #ffffff  border.default: #c8ccd4
+   accent.primary: #c06400  state.success: #1a7a40  state.error: #c0282a
+   Dynamic property "connectionState" ("connected"/"disconnected") drives
+   dot, label, and button colour variants via attribute selectors.
+   ═════════════════════════════════════════════════════════════════ */
+
+QWidget#MitsubishiMcDeviceWidget {
+    background-color: #f2f3f5;
+}
+
+/* ── Connection card ─────────────────────────────────────────── */
+
+QFrame#frame_connection {
+    background-color: #ffffff;
+    border: 1px solid #c8ccd4;
+    border-radius: 8px;
+}
+
+/* ── Labels ──────────────────────────────────────────────────── */
+
+QLabel#lbl_conn_title {
+    color: #5a6878;
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+QLabel#lbl_meta_frame {
+    color: #5a6878;
+    font: 9pt "JetBrains Mono";
+    letter-spacing: 1px;
+}
+
+QLabel#lbl_meta_hint {
+    color: #a0a8b0;
+    font: italic 9pt "Segoe UI";
+}
+
+QLabel#lbl_ip,
+QLabel#lbl_port,
+QLabel#lbl_conn_timeout,
+QLabel#lbl_resp_timeout {
+    color: #5a6878;
+    font: 700 8pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+/* ── Input fields ────────────────────────────────────────────── */
+
+QLineEdit#ledit_ip,
+QSpinBox#spb_port,
+QSpinBox#spb_conn_timeout,
+QSpinBox#spb_resp_timeout {
+    background-color: #ffffff;
+    color: #1a1c20;
+    border: 1px solid #c8ccd4;
+    border-radius: 5px;
+    padding: 6px 10px;
+    font: 11pt "JetBrains Mono";
+    min-height: 22px;
+}
+QLineEdit#ledit_ip:focus,
+QSpinBox#spb_port:focus,
+QSpinBox#spb_conn_timeout:focus,
+QSpinBox#spb_resp_timeout:focus {
+    border-color: #c06400;
+}
+
+/* ── Connection status dot ───────────────────────────────────── */
+
+QLabel#lbl_conn_dot {
+    border-radius: 5px;
+    min-width: 10px; max-width: 10px;
+    min-height: 10px; max-height: 10px;
+}
+QLabel#lbl_conn_dot[connectionState="connected"]    { background-color: #1a7a40; }
+QLabel#lbl_conn_dot[connectionState="disconnected"] { background-color: #c0282a; }
+
+/* ── Connection status text ──────────────────────────────────── */
+
+QLabel#lbl_conn_state {
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+QLabel#lbl_conn_state[connectionState="connected"]    { color: #1a7a40; }
+QLabel#lbl_conn_state[connectionState="disconnected"] { color: #c0282a; }
+
+/* ── Connect / Disconnect button ─────────────────────────────── */
+
+QPushButton#btn_connect {
+    border-radius: 5px;
+    padding: 7px 22px;
+    font: 700 10pt "Segoe UI";
+}
+QPushButton#btn_connect[connectionState="disconnected"] {
+    background-color: #c06400;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btn_connect[connectionState="disconnected"]:hover   { background-color: #e08020; }
+QPushButton#btn_connect[connectionState="disconnected"]:pressed { background-color: #8a4400; }
+QPushButton#btn_connect[connectionState="connected"] {
+    background-color: rgba(192, 40, 42, 0.10);
+    color: #c0282a;
+    border: 1px solid rgba(192, 40, 42, 0.30);
+}
+QPushButton#btn_connect[connectionState="connected"]:hover   { border-color: #c0282a; }
+QPushButton#btn_connect[connectionState="connected"]:pressed { background-color: rgba(192, 40, 42, 0.18); }
+
+/* ── Splitter ────────────────────────────────────────────────── */
+
+QSplitter#splitter_device_table::handle       { background-color: #f2f3f5; }
+QSplitter#splitter_device_table::handle:hover { background-color: #c06400; }

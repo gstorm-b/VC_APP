@@ -15,7 +15,7 @@
 #include "DockWidget.h"
 #include "FloatingDockContainer.h"
 
-#include "form/navigate_form.h"
+// #include "form/navigate_form.h"
 #include "form/new_project_dialog.h"
 #include "form/add_device_wizard.h"
 
@@ -27,7 +27,7 @@
 #include "device/plc/mc_protocol_device.h"
 
 #include "form/camera/basler_camera_widget.h"
-#include "form/plc/mc_protocol_device_widget.h"
+#include "form/plc/mitsubishi_mc_device_widget.h"
 
 #include "model/task_localization.h"
 #include "form/task/localization_task_widget.h"
@@ -207,6 +207,7 @@ void MainWindow::createMainContents() {
     ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton,  false);
 
     m_dockManager = new ads::CDockManager(ui->wg_dock);
+    m_dockManager->setStyleSheet(QString()); // disable ADS internal stylesheet; global QSS owns all ads-- rules
 
     QVBoxLayout *layout = new QVBoxLayout(ui->wg_dock);
     layout->addWidget(m_dockManager);

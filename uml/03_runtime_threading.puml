@@ -9,12 +9,25 @@ skinparam ArrowColor #2B4C7E
 skinparam ClassBackgroundColor #EEF5FF
 
 package "vc::model" {
+  enum TaskState {
+    Idle
+    CommissionStarting
+    Commission
+    RuntimeStarting
+    Ready
+    RunningCycle
+    Recovering
+    Faulted
+    Stopping
+  }
+
   abstract class ITask <<QObject>> {
     +beginCommission()
     +endCommission()
     +beginRuntime(mergeToTaskThread=false)
     +endRuntime()
     +stopAll()
+    +taskState() : TaskState
     +resyncDevices()
     #syncRunnersWithDevices()
   }
@@ -24,6 +37,44 @@ package "vc::model" {
     +executeLocalization()
     +startCommissionMatching(group, image)
   }
+
+  class LocalizationRuntimeController <<QObject>> {
+    +configure(config)
+    +setActiveCameraNumber(cameraNumber)
+    +setup(task) : SetupResult
+    +execute()
+    +handlePlcValues(values)
+    --
+    +runtimeRecovering(message)
+    +runtimeReady(message)
+    +runtimeFault(message)
+  }
+
+  enum LocalizationRecoveryAction {
+    Ignore
+    RetryScheduled
+    EscalateFault
+  }
+
+  class LocalizationRecoveryPolicy {
+    +roleName : QString
+    +maxRetries : int
+    +retryIntervalMs : int
+    +connectTimeoutMs : int
+    +retryOnConnectFailed : bool
+    +retryOnLostConnected : bool
+    +isRecoverableStatus(status) : bool
+    +canRetry(currentRetryCount) : bool
+  }
+
+  class LocalizationSignalMapper {
+    +configure(config)
+    +mapValues(values) : QList<LocalizationSignalEvent>
+  }
+
+  class LocalizationPipeline {
+    +runMatch(group, image) : MatchResult
+  }
 }
 
 package "vc::runtime" {
@@ -31,6 +82,63 @@ package "vc::runtime" {
     Idle
     Commission
     Runtime
+  }
+
+  enum DeviceCommandKind {
+    Unknown
+    Connect
+    Disconnect
+    CameraSingleShot
+    CameraApplyParams
+  }
+
+  enum DeviceCommandResultStatus {
+    Accepted
+    Rejected
+    Succeeded
+    Failed
+  }
+
+  enum DeviceCommandResultCode {
+    None
+    Busy
+    UnsupportedCommand
+    InvalidTarget
+    DeviceError
+    TimedOut
+    QueueFull
+  }
+
+  enum DeviceCommandQueuePolicy {
+    RejectWhenBusy
+    QueueWhenBusy
+    ReplacePendingSameKind
+  }
+
+  class DeviceCommand {
+    +id : QString
+    +kind : DeviceCommandKind
+    +targetDeviceId : QString
+    +timeoutMs : int
+    +payload : QVariantMap
+    +create(kind, targetDeviceId, timeoutMs, payload)
+  }
+
+  class DeviceCommandResult {
+    +commandId : QString
+    +kind : DeviceCommandKind
+    +targetDeviceId : QString
+    +status : DeviceCommandResultStatus
+    +code : DeviceCommandResultCode
+    +message : QString
+    +payload : QVariantMap
+  }
+
+  class DeviceCommandQueue {
+    +enqueue(command, policy, busy) : DeviceCommandEnqueueDecision
+    +hasPending() : bool
+    +takeNext() : DeviceCommand
+    +pendingCount() : int
   }
 
   abstract class IDeviceRunner <<QObject>> {
@@ -42,6 +150,7 @@ package "vc::runtime" {
     +device() : IDevice*
     +isAttached() : bool
     +isRunning() : bool
+    +submitCommand(command) : DeviceCommandResult
   }
 
   abstract class "DeviceRunner<TDevice>" as DeviceRunner {
@@ -66,6 +175,7 @@ package "vc::runtime" {
   }
 
   class CameraRunner <<QObject>> {
+    +submitCommand(command) : DeviceCommandResult
     +requestConnect()
     +requestDisconnect()
     +requestSingleShot()
@@ -97,9 +207,26 @@ package "vc::device" {
 
 ITask <|-- TaskLocalization
 ITask *-- TaskRunner : m_taskRunner
+ITask --> TaskState : current task lifecycle
+TaskLocalization *-- LocalizationRuntimeController : runtime orchestration
+TaskLocalization *-- LocalizationPipeline : matching pipeline
+LocalizationRuntimeController *-- LocalizationSignalMapper : PLC tag mapping
+LocalizationRuntimeController *-- LocalizationRecoveryPolicy : per-role policies
+LocalizationRuntimeController ..> LocalizationRecoveryAction : retry decision
+LocalizationRuntimeController ..> PlcRunner : connect valueChanged
+LocalizationRuntimeController ..> LocalizationPipeline : execute hook
 TaskRunner *-- "0..*" IDeviceRunner : m_runners[deviceId]
 TaskRunner *-- "1" QThread : m_runtimeThread
 TaskRunner --> Phase : currentPhase
+IDeviceRunner ..> DeviceCommand : standard command input
+IDeviceRunner ..> DeviceCommandResult : commandFinished(result)
+DeviceCommand --> DeviceCommandKind
+DeviceCommandResult --> DeviceCommandKind
+DeviceCommandResult --> DeviceCommandResultStatus
+DeviceCommandResult --> DeviceCommandResultCode
+DeviceCommandQueue --> DeviceCommandQueuePolicy
+CameraRunner *-- DeviceCommandQueue : m_commandQueue
+CameraRunner *-- QTimer : m_activeCommandTimer
 
 IDeviceRunner <|-- DeviceRunner
 DeviceRunner <|-- CameraRunner
@@ -109,6 +236,8 @@ DeviceRunner <|-- VisionOutputRunner
 DeviceRunner *-- QThread : per-device worker
 DeviceRunner o-- IDevice : raw pointer, not owned
 CameraRunner --> CameraDevice
+CameraRunner ..> DeviceCommand : routes request* methods
+CameraRunner ..> DeviceCommandResult : busy/invalid/final result
 PlcRunner --> PlcDevice
 VisionOutputRunner --> VisionOutputDevice
 
@@ -123,6 +252,15 @@ note right of TaskRunner
 
   Robot devices are ignored because
   RobotRunner does not exist yet.
+end note
+
+note right of CameraRunner
+  A31 extends CameraRunner with command queue and timeout handling.
+  Queue policy:
+  Connect/Disconnect -> reject while active.
+  CameraSingleShot -> FIFO queue.
+  CameraApplyParams -> replace pending same-kind request.
+  Active command timeout emits Failed(TimedOut).
 end note
 
 state "TaskRunner::Phase" as task_phase {
@@ -141,5 +279,45 @@ note bottom of task_phase
   Runtime, merge mode: devices are moved into m_runtimeThread.
 end note
 
-@enduml
+note right of LocalizationRuntimeController
+  Phase 2 separates runtime-only setup from TaskLocalization:
+  role validation, PLC runner signal wiring, PLC tag mapping,
+  and future trigger/image/output orchestration live here.
 
+  A32 adds role-based recovery policy handling for:
+  camera / primary_plc / vision_output.
+  LostConnected or ConnectFailed -> retry each 5s up to 10 times,
+  then raise runtime fault with role + retry history.
+
+  A50 surfaces runtimeRecovering/runtimeReady/runtimeFault so
+  TaskLocalization can keep an explicit task-level state machine.
+end note
+
+state "TaskLocalization::TaskState" as task_state {
+  [*] --> Idle
+  Idle --> CommissionStarting : beginCommission()
+  CommissionStarting --> Commission : runners attached
+  Commission --> RuntimeStarting : beginRuntime()
+  RuntimeStarting --> Ready : runtime setup valid
+  Ready --> RunningCycle : executeLocalization()
+  RunningCycle --> Ready : cycle complete
+  Ready --> Recovering : runtimeRecovering()
+  RunningCycle --> Recovering : runtimeRecovering()
+  Recovering --> Ready : runtimeReady()
+  Idle --> Faulted : runtime start/setup failed
+  Commission --> Faulted : runtimeFault()
+  RuntimeStarting --> Faulted : runtimeFault()
+  Ready --> Faulted : runtimeFault()
+  RunningCycle --> Faulted : runtimeFault()
+  Recovering --> Faulted : runtimeFault()
+  CommissionStarting --> Stopping : endCommission()
+  Commission --> Stopping : endCommission()
+  RuntimeStarting --> Stopping : endRuntime()/stopAll()
+  Ready --> Stopping : endRuntime()/stopAll()
+  RunningCycle --> Stopping : endRuntime()/stopAll()
+  Recovering --> Stopping : endRuntime()/stopAll()
+  Faulted --> Stopping : stopAll()
+  Stopping --> Idle : TaskRunner::enterIdle()
+}
+
+@enduml

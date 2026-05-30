@@ -36,6 +36,10 @@ package "Task UI" {
     -getOrCreateDeviceConfigPage(deviceId) : QWidget*
   }
 
+  class DeviceWidgetFactory {
+    +createDeviceWidget(device, runner, dock, parent) : QWidget*
+  }
+
   class LocalizationDashboardWidget <<ITaskWidget>>
 
   class LocalizationPatternsWidget <<ITaskWidget>> {
@@ -54,8 +58,8 @@ package "Task UI" {
 
 package "Device config UI" {
   class BaslerCameraWidget <<IDeviceWidget>>
-  class McProtocolDeviceWidget <<IDeviceWidget>>
-  class VisionOutputDeviceWidget <<IDeviceWidget>>
+  class MitsubishiMcDeviceWidget <<IDeviceWidget>>
+  class VisionTcpipDeviceWidget <<IDeviceWidget>>
 }
 
 package "Device creation UI" {
@@ -104,10 +108,15 @@ package "Calibration UI" {
 
 package "Models and devices" {
   class "vc::model::TaskLocalization" as TaskLocalization
+  enum "vc::model::TaskState" as TaskState
   class "mtc::PatternGroupManager" as PatternGroupManager
   class "vc::device::CameraDevice" as CameraDevice
   class "vc::device::PlcDevice" as PlcDevice
   class "vc::device::VisionOutputDevice" as VisionOutputDevice
+  interface "vc::device::IDigitalIoProvider" as IDigitalIoProvider
+  interface "vc::device::IWordIoProvider" as IWordIoProvider
+  class "vc::device::VisionTcpipRuntimeState" as VisionTcpipRuntimeState
+  class "vc::device::VisionTcpipDiagnostics" as VisionTcpipDiagnostics
 }
 
 ITaskWidget <|-- LocalizationTaskWidget
@@ -116,17 +125,19 @@ ITaskWidget <|-- LocalizationPatternsWidget
 ITaskWidget <|-- LocalizationSettingWidget
 
 IDeviceWidget <|-- BaslerCameraWidget
-IDeviceWidget <|-- McProtocolDeviceWidget
-IDeviceWidget <|-- VisionOutputDeviceWidget
+IDeviceWidget <|-- MitsubishiMcDeviceWidget
+IDeviceWidget <|-- VisionTcpipDeviceWidget
 
 LocalizationTaskWidget *-- LocalizationDashboardWidget : dashboard page
 LocalizationTaskWidget *-- LocalizationPatternsWidget : patterns page
 LocalizationTaskWidget *-- LocalizationSettingWidget : settings page
-LocalizationTaskWidget *-- BaslerCameraWidget : camera device page
-LocalizationTaskWidget *-- McProtocolDeviceWidget : PLC device page
-LocalizationTaskWidget *-- VisionOutputDeviceWidget : output device page
+LocalizationTaskWidget --> DeviceWidgetFactory : create device pages
+DeviceWidgetFactory ..> BaslerCameraWidget : BaslerGigE
+DeviceWidgetFactory ..> MitsubishiMcDeviceWidget : MitsubishiMc
+DeviceWidgetFactory ..> VisionTcpipDeviceWidget : VisionTCPIP
 
 LocalizationTaskWidget --> TaskLocalization
+LocalizationTaskWidget --> TaskState : state header + READY lamp
 LocalizationPatternsWidget --> TaskLocalization
 LocalizationPatternsWidget --> PatternGroupManager
 LocalizationPatternsWidget --> AddPatternWizard
@@ -135,14 +146,18 @@ LocalizationPatternsWidget --> PatternSettingPanel
 LocalizationSettingWidget --> TaskLocalization
 LocalizationSettingWidget *-- CameraMappingWidget
 LocalizationSettingWidget *-- SignalsMapWidget
+LocalizationSettingWidget ..> IDigitalIoProvider : PLC bool tags
+LocalizationSettingWidget ..> IWordIoProvider : PLC number tags
 
 CameraMappingWidget *-- CameraRowWidget
 CameraMappingWidget *-- AddRowWidget
 CameraRowWidget *-- EditableComboWidget
 
 BaslerCameraWidget --> CameraDevice
-McProtocolDeviceWidget --> PlcDevice
-VisionOutputDeviceWidget --> VisionOutputDevice
+MitsubishiMcDeviceWidget --> PlcDevice
+VisionTcpipDeviceWidget --> VisionOutputDevice
+VisionTcpipDeviceWidget ..> VisionTcpipRuntimeState : read-only browser section
+VisionTcpipDeviceWidget ..> VisionTcpipDiagnostics : read-only browser section
 IDeviceWidget *-- PropertyBrowserWidget
 ITaskWidget *-- PropertyBrowserWidget
 
@@ -157,10 +172,21 @@ note right of AddDeviceWizard
   Robot card is not implemented in the wizard.
 end note
 
-note bottom of VisionOutputDeviceWidget
-  This widget is named at family level but is
-  currently TCP/IP-specific in implementation.
+note bottom of DeviceWidgetFactory
+  Unsupported families or sub-types return nullptr.
+  LocalizationTaskWidget shows a fallback page.
+end note
+
+note right of LocalizationSettingWidget
+  A40 uses explicit PLC tag capabilities
+  instead of assuming every device exposes
+  getAvailableBits()/getAvailableWords().
+end note
+
+note right of LocalizationTaskWidget
+  A50 displays explicit task state in the task header.
+  READY lamp now reflects TaskState rather than
+  inferred "has assigned devices" status.
 end note
 
 @enduml
-

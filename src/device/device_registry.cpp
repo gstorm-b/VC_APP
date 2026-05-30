@@ -1,0 +1,193 @@
+#include "device/device_registry.h"
+
+#include "device/camera/camera_basler_gige.h"
+#include "device/camera/camera_device.h"
+#include "device/output_device/vision_output_config.h"
+#include "device/output_device/vision_tcpip_device.h"
+#include "device/plc/mc_protocol_device.h"
+#include "device/plc/plc_device.h"
+#include "device/robot/kawasaki_robot_device.h"
+#include "device/robot/nachi_robot_device.h"
+#include "device/robot/robot_device.h"
+
+namespace vc::device {
+
+namespace {
+
+IDevice *createBaslerGige(const QJsonObject &obj, QObject *parent)
+{
+    const QString deviceId = obj[DEVICE_JSK_ID].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new BaslerGigECamera(deviceId,
+                                        obj[DEVICE_JSK_NAME].toString(),
+                                        parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+IDevice *createMitsubishiMc(const QJsonObject &obj, QObject *parent)
+{
+    const QString deviceId = obj[DEVICE_JSK_ID].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new McProtocolDevice(deviceId,
+                                        obj[DEVICE_JSK_NAME].toString(),
+                                        parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+IDevice *createVisionTcpip(const QJsonObject &obj, QObject *parent)
+{
+    const QString deviceId = obj[DEVICE_JSK_ID].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new VisionTcpipDevice(deviceId,
+                                         obj[DEVICE_JSK_NAME].toString(),
+                                         parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+IDevice *createKawasaki(const QJsonObject &obj, QObject *parent)
+{
+    const QString deviceId = obj[DEVICE_JSK_ID].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new KawasakiRobotDevice(deviceId,
+                                           obj[DEVICE_JSK_NAME].toString(),
+                                           parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+IDevice *createNachi(const QJsonObject &obj, QObject *parent)
+{
+    const QString deviceId = obj[DEVICE_JSK_ID].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new NachiRobotDevice(deviceId,
+                                        obj[DEVICE_JSK_NAME].toString(),
+                                        parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
+const QList<DeviceRegistryEntry> kEntries = {
+    { DeviceType::Camera,
+      CameraTypeToString(CameraType::BaslerGigE),
+      QStringLiteral("Basler GigE"),
+      QStringLiteral(DEVICE_JSK_CAM_TYPE),
+      createBaslerGige,
+      true },
+    { DeviceType::PLC,
+      PlcTypeToString(PlcType::MitsubishiMc),
+      QStringLiteral("Mitsubishi MC"),
+      QStringLiteral(DEVICE_JSK_PLC_TYPE),
+      createMitsubishiMc,
+      true },
+    { DeviceType::VisionOutput,
+      VisionOutputTypeToString(VisionOutputType::VisionTCPIP),
+      QStringLiteral("Vision TCP/IP"),
+      QStringLiteral(DEVICE_JSK_VOUT_TYPE),
+      createVisionTcpip,
+      true },
+    { DeviceType::Robot,
+      RobotTypeToString(RobotType::Kawasaki),
+      QStringLiteral("Kawasaki"),
+      QStringLiteral(DEVICE_JSK_ROBOT_TYPE),
+      createKawasaki,
+      true },
+    { DeviceType::Robot,
+      RobotTypeToString(RobotType::Nachi),
+      QStringLiteral("Nachi"),
+      QStringLiteral(DEVICE_JSK_ROBOT_TYPE),
+      createNachi,
+      true }
+};
+
+QString subTypeValueFrom(const QJsonObject &obj, const QString &configJsonKey)
+{
+    if (configJsonKey.isEmpty()) {
+        return QString();
+    }
+
+    if (obj.contains(configJsonKey)) {
+        return obj[configJsonKey].toString();
+    }
+
+    const QJsonObject cfg = obj.value(DEVICE_JSK_CONFIG).toObject();
+    return cfg.value(configJsonKey).toString();
+}
+
+} // namespace
+
+const QList<DeviceRegistryEntry> &DeviceRegistry::entries()
+{
+    return kEntries;
+}
+
+const DeviceRegistryEntry *DeviceRegistry::find(DeviceType deviceType,
+                                                const QString &subTypeValue)
+{
+    for (const DeviceRegistryEntry &entry : kEntries) {
+        if (entry.deviceType == deviceType && entry.subTypeValue == subTypeValue) {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+const DeviceRegistryEntry *DeviceRegistry::find(const QJsonObject &obj,
+                                                DeviceType deviceType)
+{
+    for (const DeviceRegistryEntry &entry : kEntries) {
+        if (entry.deviceType != deviceType) {
+            continue;
+        }
+
+        if (subTypeValueFrom(obj, entry.configJsonKey) == entry.subTypeValue) {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+QStringList DeviceRegistry::displayNamesFor(DeviceType deviceType,
+                                            bool includeUnavailable)
+{
+    QStringList names;
+    for (const DeviceRegistryEntry &entry : kEntries) {
+        if (entry.deviceType != deviceType) {
+            continue;
+        }
+        if (!includeUnavailable && !entry.available) {
+            continue;
+        }
+        names.append(entry.subTypeValue);
+    }
+    return names;
+}
+
+} // namespace vc::device

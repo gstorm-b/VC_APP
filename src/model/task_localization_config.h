@@ -3,37 +3,11 @@
 
 #include <QSharedData>
 #include <QJsonObject>
-#include <QJsonArray>
 
 #include "model/itask_config.h"
+#include "model/task_device_binding.h"
 #include "matching/pattern_group_manager.h"
 #include "qgadget_marco.h"
-
-template<typename K, typename V>
-static QJsonArray mapToJsonObject(QMap<K, V> &mapping) {
-    QJsonArray arr;
-    auto map_it = mapping.cbegin();
-    while (map_it != mapping.cend()) {
-        QJsonObject obj;
-        obj["key"] = map_it.key();
-        obj["value"] = map_it.value();
-        arr.append(obj);
-        map_it++;
-    }
-    return arr;
-}
-
-template<typename K, typename V>
-static QMap<K, V> mapFromJsonObject(QJsonArray &arr) {
-    QMap<K, V> mapping;
-    for (int idx=0;idx<arr.size();idx++) {
-        QJsonObject obj = arr[idx].toObject();
-        K key = qvariant_cast<K>(obj["key"].toVariant());
-        V value = qvariant_cast<V>(obj["value"].toVariant());
-        mapping.insert(key, value);
-    }
-    return mapping;
-}
 
 namespace vc::model {
 
@@ -59,14 +33,7 @@ public:
     QString m_bMatchingLowArea;
     QString m_nDetectedNumber;
 
-    // <active number, Device id>
-    QMap<int, QString> m_sCameraNumberMap;
-
-    // PLC communication device ID
-    QString m_sCommDeviceId;
-
-    // Vision output device ID
-    QString m_sOutputDeviceId;
+    TaskDeviceBindings m_deviceBindings;
 };
 
 class TaskLocalizeConfig : public ITaskConfig {
@@ -113,11 +80,7 @@ public:
         obj["bMatchingDetected"] = d->m_bMatchingDetected;
         obj["bMatchingLowArea"]  = d->m_bMatchingLowArea;
 
-        obj["sCommDeviceId"]  = d->m_sCommDeviceId;
-        obj["sOutputDeviceId"]  = d->m_sOutputDeviceId;
-
-        QMap<int, QString> map = d->m_sCameraNumberMap;
-        obj["sCameraNumberMap"] = mapToJsonObject<int, QString>(map);
+        obj["deviceBindings"] = d->m_deviceBindings.toJson();
 
         return obj;
     }
@@ -141,11 +104,9 @@ public:
         d->m_bMatchingDetected  = obj["bMatchingDetected"].toString("");
         d->m_bMatchingLowArea   = obj["bMatchingLowArea"].toString("");
 
-        d->m_sCommDeviceId   = obj["sCommDeviceId"].toString("");
-        d->m_sOutputDeviceId   = obj["sOutputDeviceId"].toString("");
-
-        QJsonArray map_arr = obj["sCameraNumberMap"].toArray();
-        d->m_sCameraNumberMap = mapFromJsonObject<int, QString>(map_arr);
+        if (!d->m_deviceBindings.fromJson(obj["deviceBindings"])) {
+            return false;
+        }
 
         return true;
     }

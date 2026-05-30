@@ -9,6 +9,7 @@ VisionTcpipDevice::VisionTcpipDevice(QString id, QString name, QObject* parent)
     : VisionOutputDevice(id, name, parent) {
 
     IDevice::setDeviceConfig(&m_config);
+    syncRuntimeState();
 }
 
 VisionTcpipDevice::~VisionTcpipDevice() {
@@ -27,15 +28,19 @@ bool VisionTcpipDevice::deviceConnect() {
 
     if (m_mainServer || m_hbServer) {
         LOG_DEV_INFO << "VisionTcpipDevice already started";
+        syncRuntimeState();
         return true;
     }
 
     if (!startServers()) {
         stopServers();
+        m_diagnostics.lastError = m_last_msg;
         setConnectionStatus(ConnectStatus::ConnectFailed, m_last_msg);
         return false;
     }
 
+    m_diagnostics.lastError.clear();
+    syncRuntimeState();
     setConnectionStatus(ConnectStatus::Connected);
     LOG_DEV_INFO << "VisionTcpipDevice listening, main port:" << m_config.m_mainPort
                  << " heartbeat port:" << m_config.m_heartbeatPort;
@@ -45,6 +50,7 @@ bool VisionTcpipDevice::deviceConnect() {
 bool VisionTcpipDevice::deviceDisconnect() {
     QMutexLocker locker(&m_mutex);
     stopServers();
+    m_diagnostics.lastError.clear();
     setConnectionStatus(ConnectStatus::Disconnected);
     LOG_DEV_INFO << "VisionTcpipDevice disconnected";
     return true;
@@ -105,6 +111,7 @@ bool VisionTcpipDevice::pushRequest(IRequest *request) {
     }
     m_mainClient->flush();
 
+    ++m_diagnostics.resultPayloadsSent;
     emit resultSent(payload);
     return true;
 }
@@ -153,6 +160,7 @@ bool VisionTcpipDevice::startServers() {
                 this, &VisionTcpipDevice::onHeartbeatTick);
     }
     m_hbTimer->setInterval(m_config.m_heartbeatIntervalMs);
+    syncRuntimeState();
 
     return true;
 }
@@ -190,6 +198,7 @@ void VisionTcpipDevice::stopServers() {
     m_mainRxBuffer.clear();
     m_hbRxBuffer.clear();
     resetHeartbeatState();
+    syncRuntimeState();
 }
 
 void VisionTcpipDevice::resetHeartbeatState() {
@@ -197,6 +206,7 @@ void VisionTcpipDevice::resetHeartbeatState() {
     m_lastAckCount     = 0;
     m_hbAwaitingReply  = false;
     m_hbLastReplyTimer.invalidate();
+    syncRuntimeState();
 }
 
 // =====================================================================
@@ -222,6 +232,7 @@ void VisionTcpipDevice::onMainNewConnection() {
 
         LOG_DEV_INFO << "VisionTcpipDevice main client connected from"
                      << m_mainClient->peerAddress().toString();
+        syncRuntimeState();
     }
 }
 
@@ -231,6 +242,7 @@ void VisionTcpipDevice::onMainClientDisconnected() {
     m_mainClient->deleteLater();
     m_mainClient = nullptr;
     m_mainRxBuffer.clear();
+    syncRuntimeState();
 }
 
 void VisionTcpipDevice::onMainReadyRead() {
@@ -249,6 +261,7 @@ void VisionTcpipDevice::onMainReadyRead() {
 
 void VisionTcpipDevice::handleMainPayload(const QByteArray &payload) {
     LOG_DEV_DEBUG << "VisionTcpipDevice main RX:" << payload;
+    ++m_diagnostics.mainPayloadsReceived;
     emit mainRequestReceived(payload);
 }
 
@@ -283,6 +296,7 @@ void VisionTcpipDevice::onHeartbeatNewConnection() {
         if (m_hbTimer) {
             m_hbTimer->start();
         }
+        syncRuntimeState();
     }
 }
 
@@ -296,6 +310,7 @@ void VisionTcpipDevice::onHeartbeatClientDisconnected() {
         m_hbTimer->stop();
     }
     resetHeartbeatState();
+    syncRuntimeState();
 }
 
 void VisionTcpipDevice::onHeartbeatReadyRead() {
@@ -341,6 +356,7 @@ void VisionTcpipDevice::handleHeartbeatPayload(const QByteArray &payload) {
 
     // Tăng counter, reset khi vượt limit (2^16).
     m_expectedAckCount = static_cast<quint16>((m_expectedAckCount + 1) % VISION_OUTPUT_MSG_COUNT_LIMIT);
+    syncRuntimeState();
 }
 
 void VisionTcpipDevice::onHeartbeatTick() {
@@ -351,6 +367,7 @@ void VisionTcpipDevice::onHeartbeatTick() {
     // Nếu đang chờ reply mà quá timeout thì lost connect.
     if (m_hbAwaitingReply && m_hbLastReplyTimer.isValid()
         && m_hbLastReplyTimer.elapsed() > m_config.m_heartbeatTimeoutMs) {
+        ++m_diagnostics.heartbeatTimeoutCount;
         declareLostConnection(QString("Heartbeat reply timeout (%1 ms)")
                                   .arg(m_config.m_heartbeatTimeoutMs));
         return;
@@ -373,10 +390,14 @@ void VisionTcpipDevice::sendHeartbeatProbe() {
     if (!m_hbLastReplyTimer.isValid()) {
         m_hbLastReplyTimer.start();
     }
+    syncRuntimeState();
 }
 
 void VisionTcpipDevice::declareLostConnection(const QString &reason) {
     LOG_DEV_ERR << "VisionTcpipDevice lost connection:" << reason;
+    m_diagnostics.lastError = reason;
+    m_diagnostics.lastHeartbeatLossReason = reason;
+    ++m_diagnostics.lostConnectionCount;
     emit heartbeatLost(reason);
 
     if (m_hbTimer && m_hbTimer->isActive()) {
@@ -399,6 +420,17 @@ void VisionTcpipDevice::declareLostConnection(const QString &reason) {
     resetHeartbeatState();
 
     setConnectionStatus(ConnectStatus::LostConnected, reason);
+}
+
+void VisionTcpipDevice::syncRuntimeState()
+{
+    m_runtimeState.mainClientConnected =
+        m_mainClient && m_mainClient->state() == QAbstractSocket::ConnectedState;
+    m_runtimeState.heartbeatClientConnected =
+        m_hbClient && m_hbClient->state() == QAbstractSocket::ConnectedState;
+    m_runtimeState.awaitingHeartbeatReply = m_hbAwaitingReply;
+    m_runtimeState.expectedAckCount = m_expectedAckCount;
+    m_runtimeState.lastAckCount = m_lastAckCount;
 }
 
 } // namespace vc::device

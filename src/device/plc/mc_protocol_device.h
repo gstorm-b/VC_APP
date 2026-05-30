@@ -4,6 +4,7 @@
 #include "device/plc/plc_device.h"
 #include "device/plc/mc_protocol_config.h"
 #include "device/plc/mc_fame_3e.h"
+#include "device/device_capabilities.h"
 
 #include <QTimer>
 #include <chrono>
@@ -12,7 +13,7 @@
 
 namespace vc::device {
 
-class McProtocolDevice : public PlcDevice {
+class McProtocolDevice : public PlcDevice, public IPlcTagProvider {
     Q_OBJECT
 
 public:
@@ -37,8 +38,8 @@ public:
     void setMcProtocolConfig(McProtocolConfig& cfg);
     McProtocolConfig mcProtocolConfig() const;
 
-    QStringList getAvailableBits() override;
-    QStringList getAvailableWords() override;
+    QStringList availableDigitalIoNames() const override;
+    QStringList availableWordIoNames() const override;
 
     bool pushRequest(IRequest *request) override;
 

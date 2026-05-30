@@ -51,12 +51,29 @@ package "vc::device core" {
     +isDeviceConnected() : bool
     +deviceType() : DeviceType
     +pushRequest(request) : bool
-    +getAvailableBits() : QStringList
-    +getAvailableWords() : QStringList
     +toJson() : QJsonObject
     +fromJson(obj) : bool
     +setDeviceConfig(cfg) : void
     +deviceConfig() : IDeviceCfg*
+  }
+
+  interface IImageSourceDevice
+  interface IDigitalIoProvider {
+    +availableDigitalIoNames() : QStringList
+  }
+
+  interface IWordIoProvider {
+    +availableWordIoNames() : QStringList
+  }
+
+  interface IPlcTagProvider
+  interface IResultOutputDevice
+
+  class DeviceRegistry <<static>> {
+    +entries() : QList<DeviceRegistryEntry>
+    +find(type, subTypeValue) : DeviceRegistryEntry*
+    +find(obj, type) : DeviceRegistryEntry*
+    +displayNamesFor(type) : QStringList
   }
 
   class DeviceFactory <<static>> {
@@ -154,8 +171,8 @@ package "PLC" {
     +deviceConnect() : bool
     +deviceDisconnect() : bool
     +pushRequest(request) : bool
-    +getAvailableBits() : QStringList
-    +getAvailableWords() : QStringList
+    +availableDigitalIoNames() : QStringList
+    +availableWordIoNames() : QStringList
   }
 
   abstract class McContext {
@@ -207,8 +224,25 @@ package "VisionOutput" {
     +deviceConnect() : bool
     +deviceDisconnect() : bool
     +pushRequest(request) : bool
-    +isMainClientConnected() : bool
-    +isHeartbeatClientConnected() : bool
+    +runtimeState() : VisionTcpipRuntimeState
+    +diagnostics() : VisionTcpipDiagnostics
+  }
+
+  class VisionTcpipRuntimeState <<Q_GADGET>> {
+    +mainClientConnected : bool
+    +heartbeatClientConnected : bool
+    +awaitingHeartbeatReply : bool
+    +expectedAckCount : quint16
+    +lastAckCount : quint16
+  }
+
+  class VisionTcpipDiagnostics <<Q_GADGET>> {
+    +lastError : QString
+    +lastHeartbeatLossReason : QString
+    +mainPayloadsReceived : quint64
+    +resultPayloadsSent : quint64
+    +heartbeatTimeoutCount : quint64
+    +lostConnectionCount : quint64
   }
 
   class VisionOutputRequest {
@@ -251,6 +285,11 @@ IDevice <|-- CameraDevice
 IDevice <|-- PlcDevice
 IDevice <|-- VisionOutputDevice
 IDevice <|-- RobotDevice
+IImageSourceDevice <|.. CameraDevice
+IDigitalIoProvider <|.. IPlcTagProvider
+IWordIoProvider <|.. IPlcTagProvider
+IPlcTagProvider <|.. McProtocolDevice
+IResultOutputDevice <|.. VisionOutputDevice
 
 CameraCfg <|-- BaslerGigeCfg
 CameraDevice <|-- BaslerGigECamera
@@ -270,6 +309,8 @@ VisionOutputDeviceCfg <|-- VisionTcpipDeviceCfg
 VisionOutputDevice <|-- VisionTcpipDevice
 IRequest <|-- VisionOutputRequest
 VisionTcpipDevice *-- VisionTcpipDeviceCfg
+VisionTcpipDevice *-- VisionTcpipRuntimeState
+VisionTcpipDevice *-- VisionTcpipDiagnostics
 
 RobotCfg <|-- KawasakiRobotCfg
 RobotCfg <|-- NachiRobotCfg
@@ -281,6 +322,8 @@ IDevice --> ConnectStatus
 IDevice o-- IDeviceCfg
 DeviceManager o-- IDevice : shared_ptr by id
 DeviceFactory ..> IDevice : creates
+DeviceFactory ..> DeviceRegistry : registry-backed dispatch
+DeviceManager ..> DeviceRegistry : subtype list source
 DeviceFactory ..> CameraType
 DeviceFactory ..> PlcType
 DeviceFactory ..> VisionOutputType
@@ -290,14 +333,21 @@ CameraCfg *-- "calib::Calibrator" : persisted calibration
 BaslerGigECamera *-- BaslerGigeCfg
 
 note right of DeviceFactory
-  Current concrete creation:
-  - BaslerGigE camera
-  - Mitsubishi MC PLC
-  - VisionTCPIP output
-  - Kawasaki and Nachi robot stubs
+  A42 replaces central subtype switches with
+  DeviceRegistry-backed dispatch.
+  Unregistered / unavailable sub-types still
+  resolve as nullptr.
+end note
 
-  Returns nullptr for Realsense, BaslerUSB,
-  VisionSerial, Huayan, and unknown types.
+note right of IPlcTagProvider
+  A40 moves PLC tag-list capability out of IDevice.
+  Only PLC-family devices expose digital/word tags now.
+end note
+
+note right of VisionTcpipDevice
+  A41 keeps JSON persistence config-only and
+  exposes runtime state / diagnostics as read-only
+  operator-facing data for widgets and tests.
 end note
 
 note bottom of RobotDevice

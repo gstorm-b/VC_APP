@@ -4,8 +4,9 @@
 #include "model/itask.h"
 #include "device/camera/camera_device.h"
 #include "device/plc/mc_protocol_device.h"
+#include "model/localization_pipeline.h"
+#include "model/localization_runtime_controller.h"
 #include "task_localization_config.h"
-#include "matching/image_matcher.h"
 #include "matching/pattern_group_manager.h"
 #include <opencv2/imgcodecs.hpp>
 
@@ -30,11 +31,9 @@ public:
     }
 
     bool isReachLimitOfDeviceType(vc::device::DeviceType t) const override;
+    void beginRuntime(bool mergeToTaskThread = false) override;
 
-    void setTaskLocalizeConfig(TaskLocalizeConfig &cfg) {
-        m_config = cfg;
-        this->setTaskConfig(&m_config);
-    }
+    void setTaskLocalizeConfig(const TaskLocalizeConfig &cfg);
 
     TaskLocalizeConfig taskLocalizeConfig() const {
         return m_config;
@@ -65,9 +64,6 @@ public:
     // qobject_cast<McProtocolDevice *>(plcDevice()) at the call site.
     vc::device::PlcDevice *plcDevice() const;
 
-    void setPlcDeviceId(const QString &id)       { m_plcDeviceId    = id; }
-    QString plcDeviceId()     const              { return m_plcDeviceId;    }
-
 public slots:
     void setupTask();
     void executeLocalization();
@@ -82,6 +78,9 @@ private slots:
 
     void waitReconnectCameraHandle(device::ConnectStatus status);
     void selectedCameraConnectStatusChanged(device::ConnectStatus status);
+    void onRuntimeRecovering(const QString &message);
+    void onRuntimeReady(const QString &message);
+    void onRuntimeFault(const QString &message);
 
 private:
     void wireMatchingCommissionSignals();
@@ -126,13 +125,11 @@ private:
     std::shared_ptr<device::CameraDevice> m_selectedCamera;
     std::shared_ptr<device::CameraDevice> m_nextConnectCamera;
 
-    // <Signal tag, Signal name>
-    QMap<QString, QString> m_currentSignalsMap;
-
     mtc::MatchResult m_lastMatchResult;
     QString m_lastVisionOutput;
 
-    mtc::ImageMatcher m_matcher;
+    LocalizationPipeline m_pipeline;
+    LocalizationRuntimeController *m_runtimeController{nullptr};
     mtc::PatternGroupManager *m_patternManager;
 };
 

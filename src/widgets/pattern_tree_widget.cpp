@@ -1,60 +1,7 @@
 #include "pattern_tree_widget.h"
 
-#include <QApplication>
 #include <QTimer>
 #include <algorithm>
-
-// ============================================================================
-//  Shared style constants
-// ============================================================================
-namespace Style {
-
-// Dark-panel palette — adjust to match your application theme
-constexpr auto BG_PRIMARY       = "#1A1B1E";
-constexpr auto BG_ITEM          = "#1F2023";
-constexpr auto BG_ITEM_HOVER    = "#26282C";
-constexpr auto BG_ITEM_SELECTED = "#2A2D33";
-
-constexpr auto ACCENT_BLUE      = "#3D8EFF";
-constexpr auto ACCENT_GREEN     = "#2ECC71";
-constexpr auto ACCENT_PURPLE    = "#9B59B6";
-constexpr auto ACCENT_RED       = "#E74C3C";
-constexpr auto ACCENT_RED_HOVER = "#C0392B";
-
-constexpr auto TEXT_PRIMARY     = "#E8E9EB";
-constexpr auto TEXT_SECONDARY   = "#8B8FA8";
-constexpr auto TEXT_ACCENT      = "#5DADE2";
-
-constexpr auto BORDER_SUBTLE    = "#2E3035";
-
-// Reusable button style templates
-inline QString destructiveBtn()
-{
-    return QStringLiteral(
-               "QPushButton {"
-               "  background:%1; color:#FFF;"
-               "  border:none; border-radius:4px;"
-               "  font-size:11px; font-weight:600;"
-               "}"
-               "QPushButton:hover { background:%2; }"
-               "QPushButton:pressed { background:#922B21; }")
-        .arg(ACCENT_RED, ACCENT_RED_HOVER);
-}
-
-inline QString primaryBtn(const char *bg, const char *bgHover)
-{
-    return QStringLiteral(
-               "QPushButton {"
-               "  background:%1; color:#FFF;"
-               "  border:none; border-radius:4px;"
-               "  font-size:11px; font-weight:600;"
-               "}"
-               "QPushButton:hover { background:%2; }"
-               "QPushButton:pressed { opacity:0.8; }")
-        .arg(bg, bgHover);
-}
-
-} // namespace Style
 
 
 // ============================================================================
@@ -80,26 +27,18 @@ void PatternGroupItemWidget::setupUi()
 
     // ── Left accent bar ───────────────────────────────────────────────────────
     auto *bar = new QFrame(this);
+    bar->setObjectName(QStringLiteral("patternGroupAccentBar"));
     bar->setFixedSize(3, 26);
-    bar->setStyleSheet(
-        QStringLiteral("background:%1; border-radius:2px;").arg(Style::ACCENT_BLUE));
     root->addWidget(bar, 0, Qt::AlignVCenter);
 
     // ── Name label ────────────────────────────────────────────────────────────
     m_nameLabel = new QLabel(this);
-    m_nameLabel->setStyleSheet(
-        QStringLiteral("color:%1; font-size:13px; font-weight:700;")
-            .arg(Style::TEXT_PRIMARY));
+    m_nameLabel->setStyleSheet(QStringLiteral("font-size:13px; font-weight:700;"));
     root->addWidget(m_nameLabel);
 
     // ── Group number badge ────────────────────────────────────────────────────
     m_numberLabel = new QLabel(this);
-    m_numberLabel->setStyleSheet(
-        QStringLiteral(
-            "color:%1; font-size:11px;"
-            "background:%2; border-radius:3px;"
-            "padding:1px 5px;")
-            .arg(Style::TEXT_SECONDARY, Style::BG_PRIMARY));
+    m_numberLabel->setObjectName(QStringLiteral("patternGroupNumber"));
     root->addWidget(m_numberLabel);
 
     root->addStretch();
@@ -108,17 +47,13 @@ void PatternGroupItemWidget::setupUi()
     m_addPatternBtn = new QPushButton(QStringLiteral("＋ Pattern"), this);
     m_addPatternBtn->setFixedHeight(24);
     m_addPatternBtn->setCursor(Qt::PointingHandCursor);
-    m_addPatternBtn->setStyleSheet(
-        Style::primaryBtn(Style::ACCENT_GREEN, "#27AE60"));
-    m_addPatternBtn->setContentsMargins(8, 0, 8, 0);
     root->addWidget(m_addPatternBtn);
 
     // ── Delete button ─────────────────────────────────────────────────────────
     m_deleteBtn = new QPushButton(QStringLiteral("✕"), this);
+    m_deleteBtn->setObjectName(QStringLiteral("patternDeleteBtn"));
     m_deleteBtn->setFixedSize(24, 24);
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
-    m_deleteBtn->setStyleSheet(Style::destructiveBtn());
-    m_deleteBtn->setContentsMargins(8, 0, 8, 0);
     root->addWidget(m_deleteBtn);
 
     connect(m_deleteBtn,     &QPushButton::clicked,
@@ -181,13 +116,9 @@ void PatternItemWidget::setupUi()
 
     // ── Thumbnail ─────────────────────────────────────────────────────────────
     m_thumbnail = new QLabel(this);
+    m_thumbnail->setObjectName(QStringLiteral("patternThumbnail"));
     m_thumbnail->setFixedSize(60, 60);
     m_thumbnail->setAlignment(Qt::AlignCenter);
-    m_thumbnail->setStyleSheet(
-        QStringLiteral(
-            "background:%1; border:1px solid %2;"
-            "border-radius:5px; color:%3; font-size:9px;")
-            .arg(Style::BG_PRIMARY, Style::BORDER_SUBTLE, Style::TEXT_SECONDARY));
     root->addWidget(m_thumbnail, 0, Qt::AlignVCenter);
 
     // ── Info column ───────────────────────────────────────────────────────────
@@ -196,17 +127,13 @@ void PatternItemWidget::setupUi()
     infoBox->setContentsMargins(0, 0, 0, 0);
 
     m_nameLabel = new QLabel(this);
-    m_nameLabel->setStyleSheet(
-        QStringLiteral("color:%1; font-size:12px; font-weight:600;")
-            .arg(Style::TEXT_PRIMARY));
+    m_nameLabel->setStyleSheet(QStringLiteral("font-size:12px; font-weight:600;"));
 
     m_numberLabel = new QLabel(this);
-    m_numberLabel->setStyleSheet(
-        QStringLiteral("color:%1; font-size:10px;").arg(Style::TEXT_SECONDARY));
+    m_numberLabel->setObjectName(QStringLiteral("patternNumber"));
 
     m_threshLabel = new QLabel(this);
-    m_threshLabel->setStyleSheet(
-        QStringLiteral("color:%1; font-size:10px;").arg(Style::TEXT_ACCENT));
+    m_threshLabel->setObjectName(QStringLiteral("patternThresh"));
 
     infoBox->addWidget(m_nameLabel);
     infoBox->addWidget(m_numberLabel);
@@ -217,11 +144,9 @@ void PatternItemWidget::setupUi()
 
     // ── Delete button ─────────────────────────────────────────────────────────
     m_deleteBtn = new QPushButton(QStringLiteral("✕"), this);
+    m_deleteBtn->setObjectName(QStringLiteral("patternDeleteBtn"));
     m_deleteBtn->setFixedSize(22, 22);
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
-    m_deleteBtn->setStyleSheet(Style::destructiveBtn());
-    m_deleteBtn->setContentsMargins(8, 0, 8, 0);
-
     root->addWidget(m_deleteBtn, 0, Qt::AlignVCenter);
 
     connect(m_deleteBtn, &QPushButton::clicked,
@@ -287,14 +212,10 @@ void FooterItemWidget::setupUi()
     m_addGroupBtn = new QPushButton(QStringLiteral("＋  Add Group"), this);
     m_addGroupBtn->setCursor(Qt::PointingHandCursor);
     m_addGroupBtn->setFixedHeight(28);
-    m_addGroupBtn->setStyleSheet(
-        Style::primaryBtn(Style::ACCENT_BLUE, "#2D7DD2"));
 
     m_autoSortBtn = new QPushButton(QStringLiteral("⇅  Auto Sort"), this);
     m_autoSortBtn->setCursor(Qt::PointingHandCursor);
     m_autoSortBtn->setFixedHeight(28);
-    m_autoSortBtn->setStyleSheet(
-        Style::primaryBtn(Style::ACCENT_PURPLE, "#7D3C98"));
 
     root->addWidget(m_addGroupBtn);
     root->addWidget(m_autoSortBtn);
@@ -461,38 +382,7 @@ void PatternTreeWidget::setupStyle()
     setSelectionMode(QAbstractItemView::SingleSelection);
     setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-    setStyleSheet(QStringLiteral(
-                      "QTreeWidget {"
-                      "  background:%1; border:none; outline:none;"
-                      "}"
-                      "QTreeWidget::item {"
-                      "  padding:0; margin:0; border:none;"
-                      "  background:transparent;"
-                      "}"
-                      "QTreeWidget::item:selected {"
-                      "  background:%2;"
-                      "}"
-                      "QTreeWidget::item:hover:!selected {"
-                      "  background:%3;"
-                      "}"
-                      /* Expand/collapse branch indicator */
-                      "QTreeWidget::branch {"
-                      "  background:%1;"
-                      "}"
-                      "QTreeWidget::branch:has-children:!has-siblings:closed,"
-                      "QTreeWidget::branch:closed:has-children:has-siblings {"
-                      "  image: url(none);" // rely on Qt default arrows — remove to use custom
-                      "}"
-                      /* Separator between groups */
-                      "QTreeWidget::item[type='group'] {"
-                      "  border-bottom:1px solid %4;"
-                      "}"
-                      )
-                      .arg(Style::BG_PRIMARY,
-                           Style::BG_ITEM_SELECTED,
-                           Style::BG_ITEM_HOVER,
-                           Style::BORDER_SUBTLE));
+    // Visual styling owned by dark.qss / light.qss via PatternTreeWidget selectors
 }
 
 void PatternTreeWidget::rebuildTree()
@@ -543,16 +433,7 @@ void PatternTreeWidget::appendGroupItem(const MatchGroupConfig &group, int group
 
     connect(w, &PatternGroupItemWidget::deleteRequested, this,
             [this, group]() {
-                // Emit intent first (so host can veto or react before removal)
                 emit deleteGroupRequested(group.number);
-                // // Then apply: deferred to avoid destroying widget mid-signal
-                // QTimer::singleShot(0, this, [this, groupIndex]() {
-                //     if (groupIndex >= 0 && groupIndex < m_groups.size()) {
-                //         m_groups.removeAt(groupIndex);
-                //         rebuildTree();
-                //         emit groupsChanged(m_groups);
-                //     }
-                // });
             });
 
     // ── Patterns ─────────────────────────────────────────────────────────────
@@ -583,18 +464,6 @@ void PatternTreeWidget::appendPatternItem(QTreeWidgetItem *parentItem,
     connect(w, &PatternItemWidget::deleteRequested, this,
             [this, groupIndex, patternIndex, patternIdx]() {
                 emit deletePatternRequested(m_groups[groupIndex].number, patternIdx);
-                // QTimer::singleShot(0, this, [this, groupIndex, patternIndex]() {
-                //     if (groupIndex < m_groups.size()) {
-                //         auto &patterns = m_groups[groupIndex].patterns;
-                //         if (patternIndex < patterns.size()) {
-                //             patterns.removeAt(patternIndex);
-                //             rebuildTree();
-                //             // emit groupChanged(groupIndex, m_groups[groupIndex]);
-                //             emit groupChanged(m_groups[groupIndex].number, m_groups[groupIndex]);
-                //             emit groupsChanged(m_groups);
-                //         }
-                //     }
-                // });
             });
 }
 

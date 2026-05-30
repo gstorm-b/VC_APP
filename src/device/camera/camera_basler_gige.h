@@ -192,14 +192,6 @@ public:
     void stopContinuousShot() override;
     GrabResult softwareTriggerShot() override;
 
-    QStringList getAvailableBits() override {
-        return QStringList();
-    }
-
-    QStringList getAvailableWords() override {
-        return QStringList();
-    }
-
     virtual bool fromJson(const QJsonObject &obj) override {
         if (!CameraDevice::fromJson(obj)) {
             return false;

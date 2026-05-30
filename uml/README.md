@@ -35,6 +35,9 @@ marked explicitly when the implementation is not wired yet.
 - `TaskLocalization` is the only concrete task currently implemented.
 - Pattern data belongs to `PatternGroupManager`, while binary pattern images
   are persisted through `ProjectRepository::project_images`.
+- Architecture contract tests live in
+  `tests/architecture_contract_test/` and should be updated when these diagrams
+  expose a new structural contract.
 
 ## Known Placeholders
 
@@ -45,4 +48,3 @@ marked explicitly when the implementation is not wired yet.
 - `RobotType::Huayan` is declared but has no concrete implementation.
 - `KawasakiRobotDevice` and `NachiRobotDevice` are minimum stubs.
 - `TaskRunner` does not create a `RobotRunner`.
-

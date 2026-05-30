@@ -39,7 +39,8 @@ AddDeviceWizard::AddDeviceWizard(std::shared_ptr<vc::device::DeviceManager> mng,
 
     if (m_manager) {
         ui->cbxCameraType->addItems(m_manager->getSubDeviceTypeList(vc::device::Camera));
-        ui->cbxMcFrameType->addItems(m_manager->getSubDeviceTypeList(vc::device::PLC));
+        ui->cbxMcFrameType->addItem(
+            vc::device::mc::McFrameTypeToString(vc::device::mc::McFrameType::Frame_3E));
         ui->cbxMcCode->addItem(
             vc::device::mc::McDataCodeToString(vc::device::mc::McDataCode::Binary));
         ui->cbxVisionType->addItems(m_manager->getSubDeviceTypeList(vc::device::VisionOutput));

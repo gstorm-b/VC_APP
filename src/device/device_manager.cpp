@@ -2,6 +2,7 @@
 #include "logger/app_logger.h"
 
 #include "device/camera/camera_device.h"
+#include "device/device_registry.h"
 #include "device/plc/mc_protocol_device.h"
 #include "device/output_device/vision_output_device.h"
 #include "device/robot/robot_device.h"
@@ -39,30 +40,14 @@ DeviceManager::DeviceManager(vc::model::Project* proj, QObject* parent)
     maxLimits[DeviceType::Robot] = ROBOT_NUM_LIMIT;
     currentCounts[DeviceType::Robot] = 0;
 
-    QStringList camera_type_strlist;
-    // camera_type_strlist.append(CameraTypeToString(CameraType::Realsense));
-    // camera_type_strlist.append(CameraTypeToString(CameraType::BaslerUSB));
-    camera_type_strlist.append(CameraTypeToString(CameraType::BaslerGigE));
-
-    QStringList mc_type_strlist;
-    // mc_type_strlist.append(McFrameTypeToString(McFrameType::Frame_1E));
-    mc_type_strlist.append(McFrameTypeToString(McFrameType::Frame_3E));
-
-    QStringList robot_type_strlist;
-    robot_type_strlist.append(RobotTypeToString(RobotType::Kawasaki));
-    robot_type_strlist.append(RobotTypeToString(RobotType::Nachi));
-
-    QStringList vision_output_type_strlist;
-    vision_output_type_strlist.append(VisionOutputTypeToString(VisionOutputType::VisionTCPIP));
-
-    subDeviceTypeLists.insert(DeviceType::Camera,       camera_type_strlist);
-    // NOTE: Under PLC we still store the Mitsubishi MC frame-type list rather
-    // than the PlcType list (which would just be ["MitsubishiMc"]). When a
-    // second vendor lands the wizard will need a separate per-vendor
-    // protocol-options source (see later_todo_list.md).
-    subDeviceTypeLists.insert(DeviceType::PLC,          mc_type_strlist);
-    subDeviceTypeLists.insert(DeviceType::Robot,        robot_type_strlist);
-    subDeviceTypeLists.insert(DeviceType::VisionOutput, vision_output_type_strlist);
+    subDeviceTypeLists.insert(DeviceType::Camera,
+                              DeviceRegistry::displayNamesFor(DeviceType::Camera));
+    subDeviceTypeLists.insert(DeviceType::PLC,
+                              DeviceRegistry::displayNamesFor(DeviceType::PLC));
+    subDeviceTypeLists.insert(DeviceType::Robot,
+                              DeviceRegistry::displayNamesFor(DeviceType::Robot));
+    subDeviceTypeLists.insert(DeviceType::VisionOutput,
+                              DeviceRegistry::displayNamesFor(DeviceType::VisionOutput));
 
     QMap<DeviceType, int>::const_iterator cnt_it = currentCounts.constBegin();
     while (cnt_it != currentCounts.cend()) {

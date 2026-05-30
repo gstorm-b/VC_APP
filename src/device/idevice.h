@@ -113,9 +113,6 @@ public:
 
     virtual bool pushRequest(IRequest *request) = 0;
 
-    virtual QStringList getAvailableBits() = 0;
-    virtual QStringList getAvailableWords() = 0;
-
     /**
      * @brief toJson
      * @return

@@ -2,6 +2,7 @@
 #define CAMERA_DEVICE_H
 
 #include "device/idevice.h"
+#include "device/device_capabilities.h"
 #include "calibration/calibrator.h"
 #include <opencv2/opencv.hpp>
 
@@ -119,7 +120,7 @@ struct GrabResult {
     QString msg;
 };
 
-class CameraDevice : public IDevice {
+class CameraDevice : public IDevice, public IImageSourceDevice {
     Q_OBJECT
 
 public:
@@ -170,5 +171,7 @@ signals:
 
 
 } // namespace vc::device
+
+Q_DECLARE_METATYPE(vc::device::GrabResult)
 
 #endif // CAMERA_DEVICE_H

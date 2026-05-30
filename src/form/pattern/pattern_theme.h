@@ -5,40 +5,39 @@
 #include <QColor>
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Pattern UI theme tokens
+//  Pattern UI theme tokens — Hybrid (Graphite Vision + Orange)
 //
-//  Mirrors the design handoff (`ui_scratch/design_handoff_full_project`).
-//  Every color used in the pattern manager / wizards lives here so that the
-//  design and implementation never drift.
-//
-//  Values are taken verbatim from `README.md` "Design Tokens" table.
+//  Single source of truth for C++ painted / inline-styled surfaces in the
+//  pattern manager and device wizards. Aligned with docs/ui_design_rules.md §5.
+//  QSS-driven widgets use resrc/styles/*.qss directly; this header covers only
+//  surfaces that cannot be styled via QSS (custom-painted or runtime-built).
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace ptn {
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
-constexpr const char* BG     = "#1e1e1e";   // Page background, panels
-constexpr const char* SURF   = "#252526";   // Cards, headers
-constexpr const char* SURF2  = "#2d2d2d";   // Elevated modals
-constexpr const char* HD     = "#1e1e1e";   // Header strip background
+constexpr const char* BG     = "#1a1c20";   // bg.window — page background
+constexpr const char* SURF   = "#22252a";   // bg.surface — cards, headers
+constexpr const char* SURF2  = "#2c3038";   // bg.elevated — raised modals
+constexpr const char* HD     = "#1a1c20";   // bg.window — header strip background
 
 // ── Borders ──────────────────────────────────────────────────────────────────
-constexpr const char* BD     = "#3c3c3c";   // Default borders
-constexpr const char* BD2    = "#454545";   // Input borders, hover borders
+constexpr const char* BD     = "#3a3f48";   // border.default
+constexpr const char* BD2    = "#4e5562";   // border.strong — input / hover borders
 
 // ── Text ─────────────────────────────────────────────────────────────────────
-constexpr const char* TXT    = "#cccccc";   // Primary text
-constexpr const char* TXT2   = "#9a9a9a";   // Secondary text
-constexpr const char* TXT3   = "#7a7a7a";   // Muted / hint text
-constexpr const char* TXT4   = "#5a5a5a";   // Disabled text
-constexpr const char* TXT5   = "#454545";   // Placeholder / label text
+constexpr const char* TXT    = "#e0e4ea";   // text.primary
+constexpr const char* TXT2   = "#7a8898";   // text.muted — secondary text
+constexpr const char* TXT3   = "#7a8898";   // text.muted — hint text
+constexpr const char* TXT4   = "#4a5260";   // text.disabled
+constexpr const char* TXT5   = "#4a5260";   // text.disabled — placeholder / label text
 
 // ── Accents ──────────────────────────────────────────────────────────────────
-constexpr const char* ACC    = "#2b8ce8";   // Primary accent (blue)
-constexpr const char* OK     = "#22d17a";   // Success / connected green
-constexpr const char* WARN   = "#f5a623";   // Warning orange
-constexpr const char* ERR    = "#e84040";   // Error red
-constexpr const char* OUTPUT = "#9cdcfe";   // PLC output ID (light blue)
+constexpr const char* ACC    = "#e87c00";   // accent.primary (orange)
+constexpr const char* OK     = "#40c870";   // state.success — connected / healthy green
+constexpr const char* WARN   = "#ffb020";   // state.warning
+constexpr const char* ERR    = "#ff5252";   // state.error
+constexpr const char* OUTPUT = "#9cdcfe";   // PLC output ID — semantic light blue (not in theme palette)
 
 // ── Edit Pattern Wizard "lock" color ────────────────────────────────────────
 constexpr const char* LOCK   = "#6a5acd";   // Purple for locked/identity step
@@ -98,13 +97,13 @@ inline QString inputStyle() {
     ).arg(BG, TXT, BD2, FONT_MONO, ACC, TXT4);
 }
 
-// Primary button (bold blue).
+// Primary button (accent fill).
 inline QString primaryButtonStyle() {
     return QString(
         "QPushButton {"
         "  background-color: %1; color: white; border: none; border-radius: 4px;"
         "  padding: 7px 18px; font: 700 10pt \"Segoe UI\"; }"
-        "QPushButton:hover { background-color: #3a9ef5; }"
+        "QPushButton:hover { background-color: #ffa040; }"
         "QPushButton:disabled { background-color: %2; color: %3; }"
     ).arg(ACC, SURF2, TXT4);
 }

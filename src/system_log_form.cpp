@@ -1,5 +1,6 @@
 #include "system_log_form.h"
 #include "ui_system_log_form.h"
+#include "utils/theme_manager.h"
 
 SystemLogForm::SystemLogForm(QWidget *parent)
     : QWidget(parent)
@@ -21,29 +22,32 @@ SystemLogForm::~SystemLogForm() {
 }
 
 void SystemLogForm::onNewLogReceived(const LogMessage &msg) {
-    bool isDevMode = (ui->cbx_view_mode->currentIndex() == 1);
-
-    // log filter, ignore dev log in user view mode
-    if (!isDevMode && msg.category == LogCategory::Developer) {
+    if (ui->cbx_view_mode->currentIndex() != 1 &&
+        msg.category == LogCategory::Developer)
         return;
-    }
 
-    // log color level
-    QString color = "#000000"; // infor black
-    if (msg.level == LogLevel::Warning) color = "#ff8c00"; // warning orange
-    else if (msg.level == LogLevel::Error) color = "#ff0000"; // error red
-    else if (msg.level == LogLevel::Debug) color = "##00ff33"; // debug green
+    const bool dark = ThemeManager::instance()->isDark();
 
-    QString timeStr = msg.timestamp.toString("hh:mm:ss");
-    QString catStr = (msg.category == LogCategory::User) ? "[USER]" : "[DEV]";
+    // §5 state tokens — chosen per-entry at append time so new entries
+    // reflect the current theme without needing a themeChanged subscription.
+    QString color;
+    if (msg.level == LogLevel::Warning)
+        color = dark ? QStringLiteral("#ffb020") : QStringLiteral("#9a6800");  // state.warning
+    else if (msg.level == LogLevel::Error)
+        color = dark ? QStringLiteral("#ff5252") : QStringLiteral("#c0282a");  // state.error
+    else if (msg.level == LogLevel::Debug)
+        color = dark ? QStringLiteral("#40c870") : QStringLiteral("#1a7a40");  // state.success
+    else
+        color = dark ? QStringLiteral("#e0e4ea") : QStringLiteral("#1a1c20");  // text.primary
 
-    // HTML log format
-    QString html = QString("<span style='color: %1;'>[%2]%3 %4 %5</span>")
-                       .arg(color)
-                       .arg(timeStr)
-                       .arg(catStr)
-                       .arg(msg.message)
-                       .arg(msg.context.isEmpty() ? "" : "<i>(" + msg.context + ")</i>");
+    const QString timeStr = msg.timestamp.toString("hh:mm:ss");
+    const QString catStr  = (msg.category == LogCategory::User)
+                            ? QStringLiteral("[USER]") : QStringLiteral("[DEV]");
+    const QString ctx     = msg.context.isEmpty()
+                            ? QString()
+                            : QStringLiteral(" <i>(") + msg.context + QStringLiteral(")</i>");
 
-    ui->log_view->appendHtml(html);
+    ui->log_view->appendHtml(
+        QStringLiteral("<span style='color: %1;'>[%2]%3 %4%5</span>")
+            .arg(color, timeStr, catStr, msg.message, ctx));
 }

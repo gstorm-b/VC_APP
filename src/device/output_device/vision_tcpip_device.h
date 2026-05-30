@@ -18,6 +18,42 @@ namespace vc::device {
 #define VISION_OUTPUT_HB_TERMINATOR     '.'
 #define VISION_OUTPUT_MSG_COUNT_LIMIT   (1 << 16)
 
+struct VisionTcpipRuntimeState {
+    Q_GADGET
+
+    Q_PROPERTY(bool mainClientConnected MEMBER mainClientConnected)
+    Q_PROPERTY(bool heartbeatClientConnected MEMBER heartbeatClientConnected)
+    Q_PROPERTY(bool awaitingHeartbeatReply MEMBER awaitingHeartbeatReply)
+    Q_PROPERTY(quint16 expectedAckCount MEMBER expectedAckCount)
+    Q_PROPERTY(quint16 lastAckCount MEMBER lastAckCount)
+
+public:
+    bool mainClientConnected{false};
+    bool heartbeatClientConnected{false};
+    bool awaitingHeartbeatReply{false};
+    quint16 expectedAckCount{0};
+    quint16 lastAckCount{0};
+};
+
+struct VisionTcpipDiagnostics {
+    Q_GADGET
+
+    Q_PROPERTY(QString lastError MEMBER lastError)
+    Q_PROPERTY(QString lastHeartbeatLossReason MEMBER lastHeartbeatLossReason)
+    Q_PROPERTY(quint64 mainPayloadsReceived MEMBER mainPayloadsReceived)
+    Q_PROPERTY(quint64 resultPayloadsSent MEMBER resultPayloadsSent)
+    Q_PROPERTY(quint64 heartbeatTimeoutCount MEMBER heartbeatTimeoutCount)
+    Q_PROPERTY(quint64 lostConnectionCount MEMBER lostConnectionCount)
+
+public:
+    QString lastError;
+    QString lastHeartbeatLossReason;
+    quint64 mainPayloadsReceived{0};
+    quint64 resultPayloadsSent{0};
+    quint64 heartbeatTimeoutCount{0};
+    quint64 lostConnectionCount{0};
+};
+
 /**
  * @brief VisionTcpipDevice
  *
@@ -60,10 +96,10 @@ public:
      */
     bool pushRequest(IRequest *request) override;
 
-    QStringList getAvailableBits() override   { return QStringList(); }
-    QStringList getAvailableWords() override  { return QStringList(); }
-
     bool fromJson(const QJsonObject &obj) override;
+
+    VisionTcpipRuntimeState runtimeState() const { return m_runtimeState; }
+    VisionTcpipDiagnostics diagnostics() const { return m_diagnostics; }
 
     // ==== Trạng thái runtime cho test / UI ====
     bool isMainClientConnected() const      { return m_mainClient != nullptr; }
@@ -105,7 +141,11 @@ private:
     void resetHeartbeatState();
 
 private:
+    void syncRuntimeState();
+
     VisionTcpipDeviceCfg m_config;
+    VisionTcpipRuntimeState m_runtimeState;
+    VisionTcpipDiagnostics m_diagnostics;
 
     QTcpServer *m_mainServer{nullptr};
     QTcpServer *m_hbServer{nullptr};
@@ -125,5 +165,8 @@ private:
 };
 
 } // namespace vc::device
+
+Q_DECLARE_METATYPE(vc::device::VisionTcpipRuntimeState)
+Q_DECLARE_METATYPE(vc::device::VisionTcpipDiagnostics)
 
 #endif // VISION_TCPIP_DEVICE_H

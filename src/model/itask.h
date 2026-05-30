@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "task_define.h"
+#include "task_state_machine.h"
 #include "itask_config.h"
 #include "logger/app_logger.h"
 #include "runtime/task_runner.h"
@@ -43,6 +44,8 @@ public:
 
     virtual TaskType taskType() const = 0;
     virtual bool isValid() const = 0;
+    TaskState taskState() const { return m_taskState; }
+    QString taskStateName() const { return taskStateDisplayName(m_taskState); }
 
     QString id() const {
         return m_id;
@@ -226,6 +229,7 @@ signals:
     void cameraSourceTypeChanged();
     void patternsChanged();
     void devicesChanged();
+    void taskStateChanged(vc::model::TaskState newState);
 
     void signalChanged(QString name, QVariant value);
 
@@ -235,6 +239,8 @@ signals:
     void runtimeStopped();
 
 protected:
+    bool transitionTaskState(TaskState targetState, const QString &reason = QString());
+
     // Syncs registered runners with m_assignedDeviceIds.
     // Must be called from beginCommission() / beginRuntime().
     // Implemented in itask.cpp (needs full Project definition).
@@ -253,6 +259,7 @@ private:
 
     // Owned thread/runner manager — created once, lives with the task.
     vc::runtime::TaskRunner *m_taskRunner{new vc::runtime::TaskRunner(this)};
+    TaskState m_taskState{TaskState::Idle};
 };
 
 } // namespace vc::model

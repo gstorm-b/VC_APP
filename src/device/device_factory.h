@@ -2,6 +2,7 @@
 #define DEVICE_FACTORY_H
 
 #include "device/idevice.h"
+#include "device/device_registry.h"
 #include <QJsonObject>
 #include <QString>
 #include <QSet>
@@ -25,26 +26,12 @@ public:
 
     static IDevice* createCamera(const QJsonObject& obj,
                                  QObject* parent = nullptr);
-
-    static IDevice* createBaslerGigeCamera(const QJsonObject& obj,
-                                 QObject* parent = nullptr);
-
     static IDevice* createPlcDevice(const QJsonObject& obj,
-                              QObject* parent = nullptr);
-    static IDevice* createMcProtocolDevice(const QJsonObject& obj,
-                              QObject* parent = nullptr);
-
+                                    QObject* parent = nullptr);
     static IDevice* createVisionOutputDevice(const QJsonObject& obj,
-                              QObject* parent = nullptr);
-    static IDevice* createVisionTcpipDevice(const QJsonObject& obj,
-                              QObject* parent = nullptr);
-
+                                             QObject* parent = nullptr);
     static IDevice* createRobotDevice(const QJsonObject& obj,
                                       QObject* parent = nullptr);
-    static IDevice* createKawasakiRobot(const QJsonObject& obj,
-                                        QObject* parent = nullptr);
-    static IDevice* createNachiRobot(const QJsonObject& obj,
-                                     QObject* parent = nullptr);
 };
 
 } // namespace vc::device

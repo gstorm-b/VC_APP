@@ -21,6 +21,9 @@ package "vc::model" as model {
   component "ProjectRepository" as repository
   component "ITask" as itask
   component "TaskLocalization" as localization_task
+  component "LocalizationRuntimeController" as localization_runtime
+  component "LocalizationSignalMapper" as localization_signal_mapper
+  component "LocalizationPipeline" as localization_pipeline
   component "TaskFactory" as task_factory
   component "TaskLocalizeConfig" as localization_config
 }
@@ -28,6 +31,7 @@ package "vc::model" as model {
 package "vc::device" as device {
   component "DeviceManager" as device_manager
   component "DeviceFactory" as device_factory
+  component "DeviceRegistry" as device_registry
   component "IDevice / IDeviceCfg" as idevice
   component "Camera family" as camera
   component "PLC family" as plc
@@ -49,6 +53,7 @@ package "UI forms" as forms {
   component "LocalizationDashboardWidget" as dashboard_widget
   component "LocalizationPatternsWidget" as patterns_widget
   component "LocalizationSettingWidget" as setting_widget
+  component "DeviceWidgetFactory" as device_widget_factory
   component "Device config widgets" as device_widgets
 }
 
@@ -94,11 +99,18 @@ repository ..> device_factory
 itask <|-- localization_task
 localization_task *-- localization_config
 localization_task *-- pattern_manager
-localization_task *-- image_matcher
+localization_task *-- localization_runtime
+localization_task *-- localization_pipeline
 localization_task *-- task_runner
+localization_runtime *-- localization_signal_mapper
+localization_runtime ..> plc_runner : valueChanged wiring
+localization_runtime ..> localization_pipeline : production cycle hook
+localization_pipeline ..> image_matcher : matching execution
 
 device_manager *-- idevice
 device_factory ..> idevice : creates
+device_factory ..> device_registry : subtype dispatch
+device_manager ..> device_registry : subtype lists
 idevice <|-- camera
 idevice <|-- plc
 idevice <|-- vision_output
@@ -120,6 +132,8 @@ patterns_widget --> pattern_manager
 patterns_widget --> match_property_adapter
 setting_widget --> camera_mapping
 setting_widget --> signals_map
+localization_widget --> device_widget_factory
+device_widget_factory --> device_widgets
 device_widgets --> property_browser
 
 pattern_manager *-- pattern_model
@@ -139,4 +153,3 @@ note bottom of robot
 end note
 
 @enduml
-

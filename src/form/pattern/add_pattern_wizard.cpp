@@ -572,6 +572,7 @@ void AddPatternWizard::goToStep(int step) {
     // Validate forward moves
     if (step > m_currentStep && !currentStepValid()) return;
 
+    int last_step = m_currentStep;
     m_currentStep = step;
     m_stack->setCurrentIndex(step);
 
@@ -586,20 +587,24 @@ void AddPatternWizard::goToStep(int step) {
         // the user knows the active crop area.  Empty rect = no overlay.
         m_pickCanvas->setCrop(m_keepOriginal ? QRect() : m_crop);
         m_pickCanvas->setPick(m_pick);
+        if (last_step == 1) {
+            onPickCenter();
+        }
     }
     if (step == 3 && m_boxCanvas) {
-        // if (m_keepOriginal) {
-        //     m_boxCanvas->setImage(m_capturedMat);
-        // } else {
-
-        // }
         m_boxCanvas->setImage(m_capturedMat);
         m_boxCanvas->setPick(m_keepOriginal ? m_pick : (m_pick + m_crop.topLeft()));
         m_boxCanvas->setBoxConfig(m_boxW, m_boxH, m_boxDist, m_boxAngle);
     }
     if (step == 4 && m_finishCanvas) {
+        // QPoint  final_pick = m_pick;
+        // if (!m_keepOriginal) {
+        //     final_pick = m_pick + m_crop.topLeft();
+        // }
+
         m_finishCanvas->setImage(patternImage());
         m_finishCanvas->setPick(m_pick);
+        // m_finishCanvas->setPick(final_pick);
         m_finishCanvas->setBoxConfig(m_boxW, m_boxH, m_boxDist, m_boxAngle);
         refreshFinishSummary();
     }
@@ -725,7 +730,8 @@ void AddPatternWizard::refreshFinishSummary() {
                     : QString("%1×%2 @ (%3,%4)").arg(m_crop.width()).arg(m_crop.height())
                                                   .arg(m_crop.x()).arg(m_crop.y()));
     {
-        const QPoint p = m_keepOriginal ? m_pick : (m_pick - m_crop.topLeft());
+        // const QPoint p = m_keepOriginal ? m_pick : (m_pick - m_crop.topLeft());
+        const QPoint p = m_pick;
         html += row(tr("PICK POINT"), QString("(%1, %2) px").arg(p.x()).arg(p.y()));
     }
     html += row(tr("BOX SIZE"),   QString("%1 × %2 px").arg(m_boxW).arg(m_boxH));

@@ -23,9 +23,6 @@ public:
 
     bool pushRequest(IRequest *request) override;
 
-    QStringList getAvailableBits() override;
-    QStringList getAvailableWords() override;
-
 public slots:
     void deviceTerminate() override;
 

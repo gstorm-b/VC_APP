@@ -104,6 +104,12 @@ package "mtc matching" {
   class MatchConfigPropertyAdapter <<QObject>>
 }
 
+package "vc::model" {
+  class LocalizationPipeline {
+    +runMatch(group, image) : MatchResult
+  }
+}
+
 package "calib calibration" {
   abstract class CalibrationBoard {
     +generateImage(pixelsPerMm) : cv::Mat
@@ -165,6 +171,11 @@ ImageMatcher *-- MatchResult
 ImageMatcher ..> MatchPattern
 ImageMatcher ..> MatchParams
 ImageMatcher ..> MatchedObject
+
+LocalizationPipeline ..> MatchGroup : clones config/patterns
+LocalizationPipeline ..> MatchPattern : reads train images
+LocalizationPipeline ..> ImageMatcher : creates local matcher
+LocalizationPipeline ..> MatchResult : returns
 
 MatchConfigPropertyAdapter ..> MatchPatternConfig
 MatchConfigPropertyAdapter ..> MatchGroupConfig

@@ -49,9 +49,34 @@ TaskLocalization::TaskLocalization(QString name, QString id, QObject* parent)
     m_limitDeviceMap.insert(device::DeviceType::Camera, limit_num_camera);
 
     m_patternManager = new mtc::PatternGroupManager(this);
+    m_runtimeController = new LocalizationRuntimeController(this);
+    m_runtimeController->setPipeline(&m_pipeline);
+    m_runtimeController->configure(m_config);
+
+    connect(m_runtimeController, &LocalizationRuntimeController::signalChanged,
+            this, &ITask::signalChanged);
+    connect(m_runtimeController, &LocalizationRuntimeController::cameraNumberChanged,
+            this, &TaskLocalization::onSignalChangeCameraNumber);
+    connect(m_runtimeController, &LocalizationRuntimeController::patternNumberChanged,
+            this, &TaskLocalization::onSignalChangePatternNumber);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeRecovering,
+            this, &TaskLocalization::onRuntimeRecovering);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeReady,
+            this, &TaskLocalization::onRuntimeReady);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeFault,
+            this, &TaskLocalization::onRuntimeFault);
+
     matchingRunner = new QThread();
     wireMatchingCommissionSignals();
     matchingRunner->start();
+}
+
+void TaskLocalization::setTaskLocalizeConfig(const TaskLocalizeConfig &cfg)
+{
+    m_config = cfg;
+    this->setTaskConfig(&m_config);
+    if (m_runtimeController)
+        m_runtimeController->configure(m_config);
 }
 
 bool TaskLocalization::isReachLimitOfDeviceType(vc::device::DeviceType t) const {
@@ -80,6 +105,18 @@ bool TaskLocalization::isReachLimitOfDeviceType(vc::device::DeviceType t) const 
     return false;
 }
 
+void TaskLocalization::beginRuntime(bool mergeToTaskThread)
+{
+    setupTask();
+    if (!m_runtimeController || !m_runtimeController->isValid()) {
+        transitionTaskState(TaskState::Faulted,
+                            QStringLiteral("Runtime start aborted: setupTask failed"));
+        return;
+    }
+
+    ITask::beginRuntime(mergeToTaskThread);
+}
+
 // ── Typed runner helpers ──────────────────────────────────────────────────────
 
 vc::runtime::CameraRunner *TaskLocalization::cameraRunner(const QString &deviceId) const
@@ -104,9 +141,6 @@ vc::device::PlcDevice *TaskLocalization::plcDevice() const
 QJsonObject TaskLocalization::toJson() const {
     QJsonObject obj = ITask::toJson();
 
-    // Device role assignments resolved at commission/runtime time.
-    obj["plcDeviceId"]     = m_plcDeviceId;
-
     // Pattern library — fully delegated to the manager.  Training images
     // are excluded from JSON and travel through the project_images BLOB
     // table (see getTaskImageMap() / loadTaskImageMap()).
@@ -119,8 +153,6 @@ QJsonObject TaskLocalization::toJson() const {
 bool TaskLocalization::fromJson(const QJsonObject& obj) {
     bool isOk = ITask::fromJson(obj);
     if (!isOk) return false;
-
-    m_plcDeviceId     = obj["plcDeviceId"]    .toString();
 
     // Rebuild the pattern library.  Pattern images are restored later
     // by loadTaskImageMap().
@@ -194,34 +226,43 @@ bool TaskLocalization::loadTaskImageMap(QMap<QString, cv::Mat> &mapping) {
 
 void TaskLocalization::setupTask()
 {
-    // Called after commission: device roles are already assigned via
-    // setCameraDeviceId() / setPlcDeviceId().  Just verify runners exist.
-
-    // if (!m_cameraDeviceId.isEmpty() && !taskRunner()->hasRunner(m_cameraDeviceId)) {
-    //     LOG_DEV_ERR << "TaskLocalization::setupTask – camera runner not registered";
-    // }
-
-    if (!m_plcDeviceId.isEmpty() && !taskRunner()->hasRunner(m_plcDeviceId)) {
-        LOG_DEV_ERR << "TaskLocalization::setupTask – MC device runner not registered";
+    if (!m_runtimeController) {
+        m_isValid = false;
+        return;
     }
 
-    // m_isValid = (!m_cameraDeviceId.isEmpty() && taskRunner()->hasRunner(m_cameraDeviceId));
+    const auto result = m_runtimeController->setup(this);
+    m_plcDeviceId = result.primaryPlcDeviceId;
+    m_isValid = result.valid;
 }
 
 void TaskLocalization::executeLocalization()
 {
-    // This method runs on the task runtime thread (m_taskRunner->runtimeThread()).
-    // Interact with devices via their runners using QueuedConnection signals.
-
-    if (!m_isValid) {
+    if (!m_runtimeController || !m_runtimeController->isValid()) {
         LOG_DEV_ERR << "TaskLocalization::executeLocalization – task not set up";
         return;
     }
 
-    // Example: trigger a grab
-    // auto *camRunner = cameraRunner(m_cameraDeviceId);
-    // if (camRunner) camRunner->requestSingleShot();
-    // → onGrabFinished() arrives back when done
+    if (taskState() != TaskState::Ready &&
+        taskState() != TaskState::RunningCycle) {
+        LOG_USER_WARN << buildInvalidTaskStateTransitionMessage(
+            taskState(),
+            TaskState::RunningCycle,
+            QStringLiteral("executeLocalization"));
+        return;
+    }
+
+    if (!transitionTaskState(TaskState::RunningCycle,
+                             QStringLiteral("Localization cycle started"))) {
+        return;
+    }
+
+    m_runtimeController->execute();
+
+    if (taskState() == TaskState::RunningCycle) {
+        transitionTaskState(TaskState::Ready,
+                            QStringLiteral("Localization cycle completed"));
+    }
 }
 
 void TaskLocalization::setCameraNumber(int number) {
@@ -229,8 +270,7 @@ void TaskLocalization::setCameraNumber(int number) {
         return;
     }
 
-    QMap<int, QString> cam_map = m_config.d->m_sCameraNumberMap;
-    QString cam_id = cam_map.value(number, "");
+    QString cam_id = m_config.d->m_deviceBindings.cameraDeviceId(number);
     if (cam_id.isEmpty()) {
         LOG_USER_WARN << tr("Cannot change camera, not found camera number %1").arg(number);
         return;
@@ -264,12 +304,19 @@ void TaskLocalization::setCameraNumber(int number) {
                     this, &TaskLocalization::waitReconnectCameraHandle, Qt::SingleShotConnection);
 
             m_nextConnectCamera.reset(camera);
+            if (m_runtimeController) {
+                m_runtimeController->setActiveCameraNumber(number);
+            }
             return;
         }
     }
 
     m_nextConnectCamera.reset(camera);
     m_selectedCamera.reset(camera);
+
+    if (m_runtimeController) {
+        m_runtimeController->setActiveCameraNumber(number);
+    }
 }
 
 void TaskLocalization::setPatternNumber(int number) {
@@ -277,33 +324,8 @@ void TaskLocalization::setPatternNumber(int number) {
 }
 
 void TaskLocalization::onCommDeviceValueChanged(QMap<QString, QVariant> values) {
-    if (values.isEmpty()) {
-        LOG_USER_ERR << "Communication device pass an empty values-map.";
-        return;
-    }
-
-    auto it = values.cbegin();
-    auto it_end = values.cend();
-
-    while (it != it_end) {
-        QString signal_tag = it.key();
-        QString signal_name = m_currentSignalsMap.value(signal_tag, "");
-        QVariant value = it.value();
-
-        // not found signal name
-        if (signal_name.isEmpty()) {
-            LOG_DEV_ERR << "Task Localization not found signal name of tag:" << signal_tag;
-            continue;
-        }
-
-        // found signal name, handle with mapped method
-
-
-
-        // emit signal for monitor
-        emit signalChanged(signal_name,  value);
-        it++;
-    }
+    if (m_runtimeController)
+        m_runtimeController->handlePlcValues(values);
 }
 
 void TaskLocalization::onSignalChangeCameraNumber(QVariant value) {
@@ -367,6 +389,27 @@ void TaskLocalization::onSignalChangePatternNumber(QVariant value) {
     setPatternNumber(number);
 }
 
+void TaskLocalization::onRuntimeRecovering(const QString &message)
+{
+    transitionTaskState(TaskState::Recovering, message);
+}
+
+void TaskLocalization::onRuntimeReady(const QString &message)
+{
+    if (taskState() == TaskState::Faulted ||
+        taskState() == TaskState::Stopping ||
+        taskState() == TaskState::Idle) {
+        return;
+    }
+
+    transitionTaskState(TaskState::Ready, message);
+}
+
+void TaskLocalization::onRuntimeFault(const QString &message)
+{
+    transitionTaskState(TaskState::Faulted, message);
+}
+
 
 void TaskLocalization::wireMatchingCommissionSignals() {
     QObject *worker = new QObject();
@@ -386,40 +429,7 @@ void TaskLocalization::wireMatchingCommissionSignals() {
     connect(this, &TaskLocalization::startCommissionMatchingRequest,
             worker, [this](std::shared_ptr<mtc::MatchGroup> group, cv::Mat image) {
 
-        auto matcher = std::make_unique<mtc::ImageMatcher>();
-        auto *model  = matcher->getModel();
-        group->cloneConfigTo(*model);
-        for (const auto &patternPtr : group->patterns()) {
-            if (!patternPtr) continue;
-
-            mtc::MatchPatternConfig cfg = patternPtr->config();
-            if (cfg.m_rawImage.empty()) continue;
-
-            auto r = model->addPattern(cfg);
-            if (!r) continue;
-
-            auto last = model->lastPatternAccess();
-            if (!last) continue;
-
-            cv::Mat trainImg = cfg.m_rawImage.clone();
-            if (!last->learnPattern(trainImg)) {
-                LOG_USER_ERR << "[LocalizationPatternsWidget] learnPattern failed for"
-                           << QString::fromStdWString(cfg.m_patternName);
-            }
-        }
-
-        if (model->isEmpty()) {
-            LOG_USER_ERR << "Commission matching failed: matching model is empty.";
-            emit this->commissionMatchingFinished(mtc::MatchResult());
-            return;
-        }
-
-        matcher->setImageSource(image.clone());
-        /// TODO: add bounding box check, using ROI
-        // matcher->matching(false, -1, false);
-        matcher->matching(true, -1, false);
-
-        emit this->commissionMatchingFinished(matcher->match_result);
+        emit this->commissionMatchingFinished(m_pipeline.runMatch(group, image));
     });
 }
 

@@ -204,53 +204,11 @@ pattern library on load.
 
 ## 6. UI Composition Conventions
 
-### 6.1 Reusable navigation buttons live in `.ui`, not in code
-
-**Rule.** Nav-bar buttons (Dashboard / Patterns / Settings) are declared
-in the `.ui` XML with `checkable="true"`. Code only handles wiring
-(text, icon, signal connection, button-group membership). No
-`new QPushButton(...)` for navigation primitives.
-
-**Why.** Designers can re-order/restyle nav items in Qt Designer without
-touching the cpp. Code is shorter and uniform across buttons.
-
-**Where applied.**
-- [src/form/task/localization_task_widget.ui](src/form/task/localization_task_widget.ui) — `btn_nav_dashboard`, `btn_nav_patterns`, `btn_nav_settings` all in `vl_nav_top`.
-- [src/form/task/localization_task_widget.cpp](src/form/task/localization_task_widget.cpp) — `initNavPanel` only wires.
-
-### 6.2 Group selectors, not per-widget rules
-
-**Rule.** A QSS rule that applies to a navigation cluster lists the
-selectors together: `QPushButton#btn_a, QPushButton#btn_b, QPushButton#btn_c { ... }`.
-One rule per visual state (default, `:hover`, `:checked`), not one rule
-per button.
-
-**Why.** Drift between buttons is the #1 source of nav-bar visual
-inconsistency. Group selectors make adding a fourth button mechanical.
-
-**Where applied.**
-- `localization_task_widget.cpp` QSS block.
-
-### 6.3 Removed widgets → removed QSS
-
-**Rule.** When a widget (e.g. `frame_nav_bottom`) is deleted from the
-`.ui`, the matching QSS rule **must** be removed from the cpp in the same
-change. Orphan rules are noise and confuse the next reader.
-
-**Where applied.** The `QFrame#frame_nav_bottom` QSS rule was removed as
-part of the nav consolidation.
-
-### 6.4 `QButtonGroup::setExclusive(true)` ≠ programmatic uncheck
-
-**Rule.** Exclusivity only auto-unchecks siblings when the user clicks.
-Code paths that switch panes programmatically (e.g. `showDeviceConfigPage`)
-must explicitly `setChecked(false)` on every sibling nav button.
-
-**Why.** Otherwise the visual checked state lies — multiple buttons can
-appear active.
-
-**Where applied.** Flagged as a follow-up in `showDeviceConfigPage`
-(needs to also uncheck `btn_nav_patterns`).
+> **Moved.** UI structure/composition rules now live in
+> [ui_design_rules.md](ui_design_rules.md) (the single source of truth for
+> UI/QSS). See §1–§2 there for: nav/layout primitives authored in `.ui` (not
+> code), grouped QSS selectors, removing orphan QSS with the widget, and
+> programmatic uncheck of exclusive button groups.
 
 ---
 
@@ -438,6 +396,22 @@ related. Match action scope to what was actually requested.
 **Rule.** Code and comments contain no emoji. User-facing text in this
 project uses markdown link syntax `[file.cpp:42](src/file.cpp#L42)` for
 file references — never backticks or HTML.
+
+### 11.4 Build outputs stay under `build/`, never at repository root
+
+**Rule.** Any local build, rebuild, test build, or verification build must be
+performed inside a dedicated subfolder under the repository's `build/`
+directory, following the pattern `./build/<build-folder>/`. Do not generate
+build artifacts directly in the repository root.
+
+**Why.** Root-level build output pollutes the working tree, makes navigation
+harder, and increases the chance of accidentally mixing generated files with
+source-controlled files. Keeping every build in `build/...` makes cleanup,
+comparison, and parallel debug/release or test/app builds predictable.
+
+**Where applied.**
+- Session rule added on 2026-05-31 for all future Codex build/test runs in this
+  project.
 
 ---
 
@@ -670,87 +644,30 @@ flaky.
 
 ## 15. Themed Form Stylesheets
 
-### 15.1 Per-form QSS lives in `resrc/styles/<form>_<theme>.qss`, loaded from resource
-
-**Rule.** A form or wizard that needs theme-aware styling beyond the
-app-wide rules ships a pair of files under `resrc/styles/`:
-`<form>_dark.qss` and `<form>_light.qss`. Both are registered in
-[resrc.qrc](resrc.qrc) with `<file alias="styles/...">`. The form loads
-its variant in a `reloadStyleSheet()` helper keyed off
-`ThemeManager::instance()->isDark()`, and subscribes to
-`ThemeManager::themeChanged` to reload on toggle.
-
-**Why.** Inline stylesheet strings inside the .cpp constructor was the
-previous pattern. Those strings fight against `ThemeManager`'s
-app-level QSS, force a C++ rebuild for a colour tweak, and cannot be
-hot-edited on disk during design iteration. Splitting per-form,
-per-theme files keeps the palette reviewable and lets a designer touch
-colours without touching cpp.
-
-**Where applied.**
-- [resrc/styles/add_device_wizard_dark.qss](resrc/styles/add_device_wizard_dark.qss)
-  + [resrc/styles/add_device_wizard_light.qss](resrc/styles/add_device_wizard_light.qss).
-- [src/form/add_device_wizard.cpp](src/form/add_device_wizard.cpp) —
-  `reloadStyleSheet()` plus a `connect(ThemeManager::instance(), &ThemeManager::themeChanged, …)`.
-
-### 15.2 No `styleSheet` property in `.ui` XML
-
-**Rule.** Qt Designer's `styleSheet` property must remain empty on
-every widget in a `.ui`. Visual styling is the `.qss` file's job; the
-`.ui` only carries structure, `objectName`, and dynamic property hooks.
-
-**Why.** Inline `.ui` stylesheets are invisible to a global theme
-switch (`ThemeManager` only re-applies the qApp stylesheet), produce
-duplicate rules that diverge from the central palette, and silently
-override the `.qss` when both are present.
-
-**Where applied.**
-- [src/form/add_device_wizard.ui](src/form/add_device_wizard.ui) —
-  every frame, label, and button carries only `objectName` plus
-  dynamic properties; no `styleSheet`.
-
-### 15.3 Variant styling via dynamic properties + attribute selectors
-
-**Rule.** When a widget needs different styling based on state or role
-(selected card, accent button colour, label role), declare it as a
-dynamic property in the `.ui`
-(`<property name="selected" stdset="0"><bool>...</bool></property>`)
-and target it in QSS via attribute selectors
-(`QFrame#card[selected="true"] { ... }`,
-`QPushButton#btn[deviceColor="camera"] { ... }`). After mutating the
-property in code, call `style()->unpolish(w); style()->polish(w); w->update();`
-to force QSS re-evaluation.
-
-**Why.** Qt does not auto-repolish on `setProperty()`. Without
-unpolish/polish the selector keeps reading the stale value. Dynamic
-properties also beat per-state stylesheet strings (the previous
-pattern) because all variants live in one `.qss` block instead of
-being scattered across `selectCard()` / `updateButton()` branches.
-
-**Where applied.**
-- `adwCard_camera[selected="true"]`,
-  `adwCardName_*[selected="true"]`,
-  `adwAddBtn[deviceColor="camera|mc|visionOutput"]` in the wizard's
-  QSS pair.
-- `AddDeviceWizard::selectCard()` calls `repolish()` after toggling
-  properties.
-
-### 15.4 Hide the stack rather than show an empty page
-
-**Rule.** When a `QStackedWidget` drives type-conditional config and
-one type has no options, mark that type with `stackPage = -1` and
-hide the stack widget entirely. Do not add an empty page padded with
-a "no options" label.
-
-**Why.** Empty pages introduce phantom vertical space (the parent
-layout reserves the page height). Hiding the stack lets the surrounding
-layout collapse naturally and signals to the user that this device
-type is fully configured by name alone.
-
-**Where applied.**
-- [src/form/add_device_wizard.cpp](src/form/add_device_wizard.cpp) —
-  the VisionOutput card has `stackPage = -1`; `selectCard()` calls
-  `ui->adwConfigStack->hide()`.
+> **Moved.** Theming and stylesheet rules now live in
+> [ui_design_rules.md](ui_design_rules.md) (the single source of truth for
+> UI/QSS). See there for: per-form `<form>_<theme>.qss` pairs and the global
+> vs per-form layers (§3), the `reloadStyleSheet()` + `themeChanged` contract
+> and repolish-after-`setProperty` (§4), the design-token palette (§5), the
+> empty-`styleSheet`-property rule (§2.2), and dynamic-property variant styling
+> (§3.4).
+>
+> One UI behaviour kept here because it is layout logic, not styling:
+>
+> ### 15.4 Hide the stack rather than show an empty page
+>
+> **Rule.** When a `QStackedWidget` drives type-conditional config and one type
+> has no options, mark that type with `stackPage = -1` and hide the stack widget
+> entirely. Do not add an empty page padded with a "no options" label.
+>
+> **Why.** Empty pages introduce phantom vertical space (the parent layout
+> reserves the page height). Hiding the stack lets the surrounding layout
+> collapse naturally.
+>
+> **Where applied.**
+> - [src/form/add_device_wizard.cpp](src/form/add_device_wizard.cpp) — the
+>   VisionOutput card has `stackPage = -1`; `selectCard()` calls
+>   `ui->adwConfigStack->hide()`.
 
 ---
 
@@ -778,6 +695,28 @@ silently rewritten — see Rule 11.2).
 
 ---
 
+## 17. UML Documentation Maintenance
+
+### 17.1 Structural code changes must update `uml/`
+
+**Rule.** Any change that modifies the code organization or architecture must
+update the corresponding PlantUML source under [uml/](uml/) in the same task.
+This includes adding, removing, renaming, or moving modules, device families,
+device sub-types, task types, runtime runners, persistence ownership, major UI
+containers, or shared model relationships. If the change intentionally does not
+affect the diagrams, say so in the response.
+
+**Why.** The `uml/` folder is the current architecture reference and replaces
+the historical `uml_diagram/` folder. Letting diagrams drift makes onboarding
+and design review unreliable, especially in this project where runtime
+threading, device dispatch, and industrial I/O ownership are safety-critical
+design surfaces.
+
+**Where applied.**
+- [uml/README.md](../uml/README.md) plus the PlantUML files in [uml/](../uml/).
+
+---
+
 ## Cross-Reference Map
 
 | Rule | Primary file |
@@ -787,7 +726,7 @@ silently rewritten — see Rule 11.2).
 | 3.x  Adapter ownership | [match_config_property_adapter.cpp](src/matching/match_config_property_adapter.cpp) |
 | 4.x  Manager signals | [pattern_group_manager.cpp](src/matching/pattern_group_manager.cpp) |
 | 5.x  JSON delegation | [task_localization.cpp](src/model/task_localization.cpp), [task_factory.cpp](src/model/task_factory.cpp) |
-| 6.x  Nav UI | [localization_task_widget.ui](src/form/task/localization_task_widget.ui), [localization_task_widget.cpp](src/form/task/localization_task_widget.cpp) |
+| 6.x  UI composition | → [ui_design_rules.md](ui_design_rules.md) §1–§2 |
 | 7.x  Signal plumbing | [localization_patterns_widget.cpp](src/form/task/localization_patterns_widget.cpp) |
 | 8.x  Device resolution | [itask.cpp](src/model/itask.cpp) |
 | 9.x  Canvas | [pattern_canvas.cpp](src/form/pattern/pattern_canvas.cpp), [add_pattern_wizard.cpp](src/form/pattern/add_pattern_wizard.cpp) |
@@ -796,5 +735,6 @@ silently rewritten — see Rule 11.2).
 | 12.x  Device family modules | [idevice_config.h](src/device/idevice_config.h), [device_factory.cpp](src/device/device_factory.cpp), [vision_output_config.h](src/device/output_device/vision_output_config.h) |
 | 13.x  TCP / network patterns | [vision_output_device.cpp](src/device/output_device/vision_output_device.cpp) |
 | 14.x  Qt Test subprojects | [tests/vision_output_device_test/](tests/vision_output_device_test/) |
-| 15.x  Themed form stylesheets | [add_device_wizard.cpp](src/form/add_device_wizard.cpp), [add_device_wizard.ui](src/form/add_device_wizard.ui), [resrc/styles/add_device_wizard_dark.qss](resrc/styles/add_device_wizard_dark.qss) |
+| 15.x  Themed form stylesheets | → [ui_design_rules.md](ui_design_rules.md) §3–§6 |
 | 16.x  Documentation language | (this document) |
+| 17.x  UML maintenance | [uml/README.md](../uml/README.md), [uml/](../uml/) |

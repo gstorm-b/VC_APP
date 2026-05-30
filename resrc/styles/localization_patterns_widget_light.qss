@@ -1,0 +1,143 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   LocalizationPatternsWidget — Light theme  (Hybrid: Graphite Vision + Orange)
+   bg.window: #f2f3f5   bg.surface: #ffffff   bg.elevated: #e8eaee
+   border.default: #c8ccd4   accent.primary: #c06400
+   Dynamic properties: same as dark variant — see dark.qss header.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Root ─────────────────────────────────────────────────────────────── */
+QWidget#LocalizationPatternsWidget {
+    background: #f2f3f5;
+    color: #1a1c20;
+}
+
+/* ── Toolbar bar ──────────────────────────────────────────────────────── */
+QFrame#frame_toolbar {
+    background: #ffffff;
+    border-bottom: 1px solid #c8ccd4;
+}
+
+QToolButton#btn_trigger_camera,
+QToolButton#btn_choose_image,
+QToolButton#btn_set_workspace,
+QToolButton#btn_run_match {
+    background: transparent;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: #1a1c20;
+    font: 9pt 'Segoe UI';
+}
+QToolButton#btn_trigger_camera:hover,
+QToolButton#btn_choose_image:hover,
+QToolButton#btn_set_workspace:hover,
+QToolButton#btn_run_match:hover {
+    background: #e8eaee;
+    border-color: #a8adb8;
+}
+QToolButton#btn_trigger_camera:pressed,
+QToolButton#btn_choose_image:pressed,
+QToolButton#btn_set_workspace:pressed,
+QToolButton#btn_run_match:pressed {
+    background: rgba(192,100,0,0.09);
+    border-color: #c06400;
+}
+QToolButton#btn_run_match {
+    background: rgba(192,100,0,0.09);
+    border-color: #c06400;
+    color: #9a5000;
+    font-weight: 700;
+}
+QToolButton#btn_run_match:hover   { background: rgba(192,100,0,0.16); }
+QToolButton#btn_run_match:pressed { background: rgba(138,68,0,0.18); }
+
+/* ── State pill ───────────────────────────────────────────────────────── */
+QLabel#label_state_pill {
+    background: #e8eaee;
+    color: #5a6878;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+    font: 700 8pt 'Segoe UI';
+    letter-spacing: 1px;
+    padding: 2px 10px;
+}
+
+/* ── Operate bar ──────────────────────────────────────────────────────── */
+QFrame#frame_operate {
+    background: #f2f3f5;
+    border-bottom: 1px solid #e8eaee;
+}
+
+/* ── View header (monitor pane) ───────────────────────────────────────── */
+QFrame#frame_view_header {
+    background: #ffffff;
+    border-bottom: 1px solid #c8ccd4;
+}
+
+QPushButton#btn_view_raw,
+QPushButton#btn_view_result {
+    background: transparent;
+    border: 1px solid #c8ccd4;
+    border-radius: 3px;
+    padding: 3px 10px;
+    color: #5a6878;
+    font: 9pt 'Segoe UI';
+}
+QPushButton#btn_view_raw:hover,
+QPushButton#btn_view_result:hover   { background: #e8eaee; color: #1a1c20; }
+QPushButton#btn_view_raw:checked,
+QPushButton#btn_view_result:checked {
+    background: rgba(192,100,0,0.09);
+    border-color: #c06400;
+    color: #9a5000;
+}
+
+/* ── Section header labels ────────────────────────────────────────────── */
+QLabel#label_monitor_title,
+QLabel#label_library_title,
+QLabel#label_inspector_title,
+QLabel#label_property_title {
+    background: #ffffff;
+    color: #5a6878;
+    border-bottom: 1px solid #c8ccd4;
+    font: 700 7.5pt 'Segoe UI';
+    letter-spacing: 1.2px;
+    padding: 0px 4px;
+}
+
+/* ── KPI bar ──────────────────────────────────────────────────────────── */
+QFrame#frame_kpi {
+    background: #ffffff;
+    border-top: 1px solid #c8ccd4;
+}
+
+QLabel[role="kpi-label"] {
+    color: #5a6878;
+    font: 700 7pt 'Segoe UI';
+    letter-spacing: 1.2px;
+    background: transparent;
+}
+QLabel[role="kpi-value"] {
+    color: #1a1c20;
+    font: 700 14pt 'JetBrains Mono';
+    background: transparent;
+}
+QLabel[role="sep"] {
+    background: #c8ccd4;
+    min-width: 1px;
+    max-width: 1px;
+    margin: 6px 0px;
+}
+
+/* ── Status bar ───────────────────────────────────────────────────────── */
+QFrame#frame_status {
+    background: #ffffff;
+    border-top: 1px solid #c8ccd4;
+}
+QLabel#label_status_text,
+QLabel#label_status_image,
+QLabel#label_status_groups {
+    color: #5a6878;
+    font: 8pt 'Segoe UI';
+    background: transparent;
+}

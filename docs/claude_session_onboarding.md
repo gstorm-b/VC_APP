@@ -29,6 +29,13 @@ widget tweak, a typo fix). For anything larger, also read the
 Pick the section that matches the area you are touching. Do **not** read all of
 them.
 
+### Working on architecture / refactoring
+
+- **[architecture_improvement_todo.md](architecture_improvement_todo.md)** —
+  ordered improvement backlog for device, runtime, task, UI, factory, and
+  lifecycle refactors. Read before starting architecture cleanup work so changes
+  follow the staged, non-conflicting sequence.
+
 ### Working on a task widget / task config
 
 - **[task_localize_setting_widget.md](task_localize_setting_widget.md)** —
@@ -70,9 +77,11 @@ them.
 
 ### Adding a themed widget (UI)
 
-- **[design_rules.md](design_rules.md) §15 Themed Form Stylesheets** —
-  required. No inline `setStyleSheet`, no hard-coded colors; everything goes
-  via `resrc/styles/<widget>_{dark,light}.qss` + `ThemeManager`.
+- **[ui_design_rules.md](ui_design_rules.md)** — required, single source of
+  truth for UI/QSS. Structure in `.ui`, style in `.qss`, no inline
+  `setStyleSheet`, no hard-coded colors (use the §5 token palette), theme via
+  `ThemeManager` + `reloadStyleSheet()`. Read §0–§3 before any widget, §4–§6
+  before theming or a custom-painted surface. The §9 checklist is the PR gate.
 
 ---
 

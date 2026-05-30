@@ -48,7 +48,8 @@ for:
    (typically via `task->devicesChanged()` and
    `assignedDevicesOfType(DeviceType::PLC)`).
 2. Calling
-   `device->getAvailableBits()` / `device->getAvailableWords()` to get
+   PLC tag capability interfaces (`IDigitalIoProvider` /
+   `IWordIoProvider`) to get
    the per-type tag lists.
 3. Pushing them into the widget with `setBoolTags(…)` /
    `setNumberTags(…)`.
@@ -154,8 +155,8 @@ connect(ui->signals_map, &SignalsMapWidget::signalMappingChanged,
 });
 
 // 3. Whenever the comm device assignment changes, refresh tag lists.
-const auto bits  = commDevice->getAvailableBits();
-const auto words = commDevice->getAvailableWords();
+const auto bits  = digitalProvider->availableDigitalIoNames();
+const auto words = wordProvider->availableWordIoNames();
 ui->signals_map->setBoolTags(bits);
 ui->signals_map->setNumberTags(words);
 

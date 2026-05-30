@@ -1,17 +1,19 @@
-- Implement UI với yêu cầu sau:
-    - cbb_vision_output_device: dùng để lựa chọn VisionOutputDevice, list được lấy từ method assignedDevicesOfType của TaskLocalization. Nội dung hiển thị của item là tên device. Sau khi ID của device được chọn sẽ thay đổi lưu vào member m_sOutputDeviceId của TaskLocalizeConfigPrivate.
-    - cbb_comm_device: dùng để lựa chọn communication device (type: McDevice, PLC), list được lấy từ method assignedDevicesOfType của TaskLocalization. Nội dung hiển thị của item là tên device. Sau khi ID của device được chọn sẽ thay đổi lưu vào member m_sCommDeviceId của TaskLocalizeConfigPrivate.
-    - list_cameras_map: dùng để setting camera map, camera map là dữ liệu của member m_sCameraNumberMap trong TaskLocalizeConfigPrivate. Hãy promote widget này với widget src/widgets/camera_mapping_widget.h. Refactor CameraMappingWidget theo theme UI đồng nhất của toàn project, lưu ý dùng styesheet gọi qua file qss không set trực tiếp trong code theo như rule đã chỉ đinh từ trước.
-    - list_signals_map: dùng để setting cho các member còn lại trong (ngoại từ m_sOutputDeviceId, m_sCommDeviceId, m_sCameraNumberMap). Hãy thiết kế SignalsMapWidget rồi promote cho widget list_signals_map. item list (Signal tag) cho từng row sẽ được lấy từ method của communication device là getAvailableBits (đối với bool), getAvailableWords(đối với number). Có thể load lại item list khi thay đổi comm device (trường hợp lựa chọn hiện tại không có trong list mới được cập nhật, signal tag sẽ show giá trị cũ + warning style nhưng khi gọi method check empty nó sẽ bị xóa và trở thành empty item để yêu cầu user map lại).
-    - SignalsMapWidget:
-        - Mỗi row sẽ gồm ba cột: Tên signal, Type (Number hoặc Bool), signal tag.
-        - Tên signal không cho phép người dùng thay đổi.
-        - Type không cho phép người dùng thay đổi.
-        - Signal tag là combobox, có completer, cho phép người dùng chọn nhưng không cho phép thay đổi item list.
-        - Có method để insert, append, remove row.
-        - Tách biệt tên của signal và tên display lên widget của signal.
-        - Có signal khi thay đổi để thay đổi dữ liệu khi người dùng đã thao tác xong dữ liệu truyền qua signal sẽ có tên signal (không phải tên display), dữ liệu.
-        - Có method check empty để xem có bất kì signal nào đa bị bỏ trống không.
-        - Với completer ở cột 3, khi show những item đã được chọn bởi row khác sẽ có màu khác bình thường để dễ nhận biết. Trong trường hợp người dùng vẫn chọn vào các item đã được chọn rồi, sẽ hiện một combobox xác nhận chọn item này, sau khi chọn combobox đã chọn item này trước đó sẽ hiển thị empty item và warning type để user nhận biết và map lại.
-    - hãy xác nhận lại các yêu cầu trước khi implement, tìm ra các điểm bất hợp lí và có thể cải thiện tốt hơn của yêu cầu nếu có.
-    - Thiết kế UI với theme đồng nhất đang dùng cho toàn bộ project.
+# Localization Setting Widget
+
+- `cbb_vision_output_device` selects the assigned `VisionOutput` device used by
+  the localization task. The selected device id is written to
+  `TaskLocalizeConfigPrivate::m_deviceBindings` with role `vision_output`.
+- `cbb_comm_device` selects the assigned PLC communication device. The selected
+  device id is written to `TaskLocalizeConfigPrivate::m_deviceBindings` with
+  role `primary_plc`.
+- `listView_cameras_map` owns the logical camera-number mapping. Its mapping is
+  stored in `TaskLocalizeConfigPrivate::m_deviceBindings` using
+  `camera_number` role entries.
+- `listView_signals_map` owns signal-tag mappings for the remaining
+  `TaskLocalizeConfig` signal fields. Available signal tags are loaded from the
+  selected communication device through PLC tag capability interfaces:
+  `IDigitalIoProvider::availableDigitalIoNames()` for boolean rows and
+  `IWordIoProvider::availableWordIoNames()` for number rows.
+- If the selected communication device changes and a previous signal tag is not
+  available anymore, the widget may display the stale value with warning style.
+  A later validation trigger should call `SignalsMapWidget::checkEmpty()`.

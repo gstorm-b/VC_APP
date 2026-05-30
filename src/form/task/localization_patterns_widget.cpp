@@ -3,6 +3,7 @@
 
 #include "form/pattern/pattern_manager_dialog.h"
 #include "form/pattern/pattern_theme.h"
+#include "utils/theme_manager.h"
 #include "form/pattern/add_pattern_wizard.h"
 #include "form/pattern/edit_pattern_wizard.h"
 #include "widgets/qtpropertybrowser/qtvariantproperty.h"
@@ -23,6 +24,7 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QFile>
 #include <QLabel>
 #include <QStackedWidget>
 #include <QFrame>
@@ -179,6 +181,7 @@ LocalizationPatternsWidget::LocalizationPatternsWidget(
 }
 
 LocalizationPatternsWidget::~LocalizationPatternsWidget() {
+    clearPropertyBrowserState();
     delete ui;
 }
 
@@ -188,91 +191,8 @@ void LocalizationPatternsWidget::loadConfigToWidget() {}
 // ── initWidget ───────────────────────────────────────────────────────────────
 
 void LocalizationPatternsWidget::initWidget() {
-    /// TODO: switch stylesheet to qss file
-    setStyleSheet(QString(
-        // ── Root ────────────────────────────────────────────────────────────
-        "QWidget#LocalizationPatternsWidget { background: %1; color: %2; "
-        "  font-family: 'Segoe UI'; }"
-        "QSplitter::handle { background: %3; }"
-        "QScrollBar:vertical { background: %1; width: 8px; }"
-        "QScrollBar::handle:vertical { background: %4; border-radius: 3px; min-height: 20px; }"
-
-        // ── Override .ui-defined frames whose hard-coded #1f2733 palette
-        //     no longer matches the design tokens ──────────────────────────
-        "QFrame#frame_view_header {"
-        "  background: %5; border-radius: 0; border-bottom: 1px solid %3; }"
-        "QFrame#frame_view_header QLabel {"
-        "  color: %2; font: 700 9.5pt 'Segoe UI'; }"
-        "QFrame#frame_view_header QPushButton {"
-        "  color: %6; background: transparent;"
-        "  border: 1px solid transparent; padding: 4px 14px; }"
-        "QFrame#frame_view_header QPushButton:checked {"
-        "  color: white; background: %7; border-bottom: 2px solid %7; }"
-        "QFrame#frame_view_header QPushButton:hover:!checked { background: %8; }"
-
-        "QFrame#frame_kpi { background: %5; border-radius: 0; "
-        "  border-top: 1px solid %3; border-bottom: 1px solid %3; }"
-        "QFrame#frame_kpi QLabel {"
-        "  color: %6; font: 700 8.5pt 'Segoe UI'; letter-spacing: 1px; }"
-        "QFrame#frame_kpi QLabel[role=\"axis\"] {"
-        "  color: %7; font: 700 9pt 'JetBrains Mono'; }"
-        "QFrame#frame_kpi QLabel[role=\"axis-val\"] {"
-        "  color: %2; font: 700 11pt 'JetBrains Mono'; }"
-        "QFrame#frame_kpi QLabel[role=\"kpi-value\"] {"
-        "  color: %2; font: 800 12pt 'JetBrains Mono'; }"
-        "QFrame#frame_kpi QLabel[role=\"kpi-label\"] {"
-        "  color: %6; font: 700 8pt 'Segoe UI'; letter-spacing: 1px; }"
-
-        "QFrame#frame_status { background: %5; border-top: 1px solid %3; }"
-        "QFrame#frame_status QLabel { color: %4; font: 9pt 'Segoe UI'; }"
-
-        // ── Pattern library tree itself ────────────────────────────────────
-        "PatternTreeWidget { background: %1; color: %2; "
-        "  border: none; outline: none; }"
-        "PatternTreeWidget::item { background: transparent; }"
-        "PatternTreeWidget::item:hover { background: %8; }"
-        "PatternTreeWidget::item:selected { "
-        "  background: rgba(43,140,232,28); color: %2; }"
-    ).arg(ptn::BG,    /* %1 */ ptn::TXT,    /* %2 */ ptn::BD,    /* %3 */
-           ptn::TXT2, /* %4 */ ptn::SURF,   /* %5 */ ptn::TXT3,  /* %6 */
-           ptn::ACC,  /* %7 */ ptn::SURF2   /* %8 */));
-
-    if (ui->frame_toolbar) {
-        ui->frame_toolbar->setObjectName("frame_toolbar");   // already set in .ui
-        ui->frame_toolbar->setStyleSheet(QString(
-                                             "QFrame#frame_toolbar { background: %1; border-bottom: 1px solid %2; }"
-                                             "QFrame#frame_toolbar QToolButton {"
-                                             "  color: %3; background: transparent;"
-                                             "  border: 1px solid transparent; padding: 4px 12px; border-radius: 4px;"
-                                             "  font: 600 10pt 'Segoe UI'; }"
-                                             "QFrame#frame_toolbar QToolButton:hover { background: %4; border: 1px solid %5; color: %6; }"
-                                             "QFrame#frame_toolbar QToolButton:pressed { background: %1; }"
-                                             "QFrame#frame_toolbar QToolButton#btn_run_match {"
-                                             "  background: %7; border: 1px solid %7; color: white; }"
-                                             "QFrame#frame_toolbar QToolButton#btn_run_match:hover {"
-                                             "  background: %8; }"
-                                             "QFrame#frame_toolbar QToolButton#btn_run_match:disabled {"
-                                             "  background: %4; color: %9; border-color: %2; }"
-                                             "QFrame#frame_toolbar QLabel { color: %3; font: 10pt 'Segoe UI'; }"
-                                             "QFrame#frame_toolbar QFrame[role=\"separator\"] { background: %2; max-width: 1px; min-width: 1px; }"
-                                             "QFrame#frame_toolbar QComboBox { background: %1; color: %6; "
-                                             "  border: 1px solid %5; border-radius: 4px; padding: 3px 8px; }"
-                                             "QFrame#frame_toolbar QCheckBox { color: %3; font: 10pt 'Segoe UI'; }"
-                                             ).arg(ptn::HD,    /* %1 */ ptn::BD,    /* %2 */ ptn::TXT2,  /* %3 */
-                                                  ptn::SURF2, /* %4 */ ptn::BD2,  /* %5 */ ptn::TXT,    /* %6 */
-                                                  ptn::OK,    /* %7 */ "#3ad88f", /* %8 */ ptn::TXT4    /* %9 */));
-    }
-
-    // Theme the section labels (PATTERN LIBRARY, SELECTED PATTERN, ...)
-    const QString sectionQss = ptn::sectionHeaderStyle();
-    if (ui->label_library_title)    ui->label_library_title->setStyleSheet(sectionQss);
-    if (ui->label_inspector_title)  ui->label_inspector_title->setStyleSheet(sectionQss);
-    if (ui->label_property_title)   ui->label_property_title->setStyleSheet(sectionQss);
-    if (ui->label_pattern_caption) {
-        ui->label_pattern_caption->setStyleSheet(QString(
-                                                     "color: %1; font: 9pt 'Segoe UI'; padding: 2px;"
-                                                     ).arg(ptn::TXT3));
-    }
+    setupThemeReload(QStringLiteral(":/styles/localization_patterns_widget_dark.qss"),
+                     QStringLiteral(":/styles/localization_patterns_widget_light.qss"));
 
     // Refresh the right-pane section title so it matches what the panel shows.
     if (ui->label_property_title) {
@@ -577,6 +497,21 @@ void LocalizationPatternsWidget::wirePropertyBrowser() {
 
 // ── Property browser construction ────────────────────────────────────────────
 
+void LocalizationPatternsWidget::clearPropertyBrowserState() {
+    if (m_variantEditor) {
+        m_variantEditor->clear();
+    }
+
+    if (m_configAdapter) {
+        m_configAdapter->bind(nullptr);
+    }
+
+    m_groupProps.clear();
+    m_groupPropKeys.clear();
+    delete m_groupVariant;
+    m_groupVariant = nullptr;
+}
+
 void LocalizationPatternsWidget::buildGroupProperties() {
     m_groupVariant = m_variantManager->addProperty(
         QtVariantPropertyManager::groupTypeId(), tr("Group Settings"));
@@ -592,23 +527,10 @@ void LocalizationPatternsWidget::buildGroupProperties() {
 void LocalizationPatternsWidget::rebuildPropertyBrowser() {
     if (!m_variantManager || !m_variantEditor || !m_configAdapter) return;
 
-    // 1. Detach everything currently shown in the browser.
-    m_variantEditor->clear();
-
-    // 2. Tear down adapter-owned (pattern-level) properties.  After this the
-    //    adapter has released all QtProperty* it created in the shared
-    //    variant manager — but the manager itself is untouched.
-    m_configAdapter->bind(nullptr);
-
-    // 3. Tear down our own (group-level) properties.  We're the owner of
-    //    these; nobody else will delete them.  Skipping this step causes
-    //    the previous m_groupVariant + its sub-props to leak into the
-    //    shared manager on every rebuild.
-    qDeleteAll(m_groupProps);
-    m_groupProps.clear();
-    m_groupPropKeys.clear();
-    delete m_groupVariant;
-    m_groupVariant = nullptr;
+    // Tear down the current property tree while the shared manager is still
+    // alive. Both the adapter and the group block own only the root groups;
+    // child properties are released by QtProperty when the root is deleted.
+    clearPropertyBrowserState();
 
     // 4. Rebuild group block.
     if (m_boundMatchGroup) {
@@ -1317,13 +1239,6 @@ void LocalizationPatternsWidget::onMatchingCommissionDone(mtc::MatchResult resul
 // ── Status / KPIs ────────────────────────────────────────────────────────────
 
 void LocalizationPatternsWidget::setState(State state, const QString &message) {
-    static const QHash<State, QPair<QString, QString>> kPalette = {
-        { State::Idle,    {"#d6dde6", "#4a5b73"} },
-        { State::Busy,    {"#ffffff", "#2b6cd9"} },
-        { State::Success, {"#ffffff", "#2c8b3f"} },
-        { State::Warning, {"#1a212c", "#f0b400"} },
-        { State::Error,   {"#ffffff", "#c0392b"} },
-    };
     static const QHash<State, QString> kLabel = {
         { State::Idle,    QStringLiteral("● IDLE")    },
         { State::Busy,    QStringLiteral("● BUSY")    },
@@ -1331,16 +1246,21 @@ void LocalizationPatternsWidget::setState(State state, const QString &message) {
         { State::Warning, QStringLiteral("● WARNING") },
         { State::Error,   QStringLiteral("● ERROR")   },
     };
+    static const QHash<State, QString> kRole = {
+        { State::Idle,    QStringLiteral("idle")    },
+        { State::Busy,    QStringLiteral("busy")    },
+        { State::Success, QStringLiteral("success") },
+        { State::Warning, QStringLiteral("warning") },
+        { State::Error,   QStringLiteral("error")   },
+    };
 
-    const auto pair = kPalette.value(state, {"#d6dde6", "#4a5b73"});
     ui->label_state_pill->setText(kLabel.value(state));
-    ui->label_state_pill->setStyleSheet(pillStyle(pair.first, pair.second));
+    ui->label_state_pill->setProperty("pillState", kRole.value(state, QStringLiteral("idle")));
+    ui->label_state_pill->style()->unpolish(ui->label_state_pill);
+    ui->label_state_pill->style()->polish(ui->label_state_pill);
+    ui->label_state_pill->update();
 
-    if (!message.isEmpty()) {
-        ui->label_status_text->setText(message);
-    } else {
-        ui->label_status_text->setText(tr("Ready"));
-    }
+    ui->label_status_text->setText(message.isEmpty() ? tr("Ready") : message);
 }
 
 void LocalizationPatternsWidget::updateGroupsCount() {
@@ -1434,17 +1354,13 @@ void LocalizationPatternsWidget::buildResultTable() {
 
     // Section header
     auto *hd = new QLabel(tr("MATCH RESULTS"));
-    hd->setStyleSheet(QString(
-        "background: %1; color: %2; "
-        "font: 700 8pt 'Segoe UI'; letter-spacing: 1.2px; "
-        "padding: 4px 10px; border-bottom: 1px solid %3; "
-        "border-top: 1px solid %3;"
-    ).arg(ptn::HD, ptn::TXT3, ptn::BD));
+    hd->setObjectName(QStringLiteral("resultSectionHeader"));
     hd->setMinimumHeight(22);
     layoutMon->addWidget(hd);
 
     // Table
     m_resultTable = new QTableWidget(0, 7, ui->pane_monitor);
+    m_resultTable->setObjectName(QStringLiteral("patternResultTable"));
     QStringList headers = {tr("#"), tr("Pat #"), tr("Pattern Name"),
                             tr("Score"), tr("X"), tr("Y"), tr("Angle") /*, tr("OK")*/ };
     m_resultTable->setHorizontalHeaderLabels(headers);
@@ -1464,19 +1380,7 @@ void LocalizationPatternsWidget::buildResultTable() {
     for (int i = 0; i < 7; ++i)
         if (widths[i] > 0) m_resultTable->setColumnWidth(i, widths[i]);
 
-    m_resultTable->setStyleSheet(QString(
-        "QTableWidget { background: %1; color: %2; gridline-color: %3; "
-        "  border: none; outline: none; "
-        "  font: 9.5pt 'JetBrains Mono'; }"
-        "QTableWidget::item { padding: 4px 8px; border-bottom: 1px solid %3; }"
-        "QTableWidget::item:selected { "
-        "  background: rgba(43,140,232,28); color: %2; }"
-        "QHeaderView::section { background: %4; color: %5; "
-        "  border: none; border-bottom: 1px solid %3; "
-        "  padding: 4px 8px; font: 700 8pt 'Segoe UI'; "
-        "  letter-spacing: 0.6px; text-transform: uppercase; }"
-    ).arg(ptn::BG,    /* %1 */ ptn::TXT,  /* %2 */ ptn::BD,
-           ptn::SURF, /* %4 */ ptn::TXT3 /* %5 */));
+    // Styled via QSS by objectName "patternResultTable" in per-form QSS file.
 
     layoutMon->addWidget(m_resultTable);
 }

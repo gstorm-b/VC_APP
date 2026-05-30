@@ -21,6 +21,18 @@ package "vc::model" {
     Source_Shared
   }
 
+  enum TaskState {
+    Idle
+    CommissionStarting
+    Commission
+    RuntimeStarting
+    Ready
+    RunningCycle
+    Recovering
+    Faulted
+    Stopping
+  }
+
   abstract class ITaskConfig {
     +taskType() : TaskType
     +toJson() : QJsonObject
@@ -31,6 +43,7 @@ package "vc::model" {
   abstract class ITask <<QObject>> {
     +taskType() : TaskType
     +isValid() : bool
+    +taskState() : TaskState
     +assignDevice(deviceId)
     +unassignDevice(deviceId)
     +assignedDevicesOfType(type)
@@ -54,14 +67,40 @@ package "vc::model" {
     +bMatchingBusy : QString
     +bMatchingDetected : QString
     +bMatchingLowArea : QString
-    +sCameraNumberMap : QMap<int, QString>
-    +sCommDeviceId : QString
-    +sOutputDeviceId : QString
+    +deviceBindings : TaskDeviceBindings
+  }
+
+  enum TaskDeviceRole {
+    Unknown
+    PrimaryPlc
+    VisionOutput
+    CameraNumber
+  }
+
+  class TaskDeviceBinding {
+    +role() : TaskDeviceRole
+    +deviceId() : QString
+    +cameraNumber() : int
+    +toJson() : QJsonObject
+    +fromJson(obj) : bool
+  }
+
+  class TaskDeviceBindings {
+    +primaryPlcDeviceId() : QString
+    +setPrimaryPlcDeviceId(deviceId)
+    +visionOutputDeviceId() : QString
+    +setVisionOutputDeviceId(deviceId)
+    +cameraNumberMap() : QMap<int, QString>
+    +setCameraNumberMap(mapping)
+    +cameraDeviceId(cameraNumber) : QString
+    +toJson() : QJsonArray
+    +fromJson(value) : bool
   }
 
   class TaskLocalization <<QObject>> {
     +taskType() : LocalizationTask
     +isReachLimitOfDeviceType(type) : bool
+    +beginRuntime(mergeToTaskThread=false)
     +setTaskLocalizeConfig(cfg)
     +taskLocalizeConfig() : TaskLocalizeConfig
     +patternManager() : PatternGroupManager*
@@ -71,6 +110,49 @@ package "vc::model" {
     +executeLocalization()
     +setCameraNumber(number)
     +setPatternNumber(number)
+  }
+
+  class LocalizationRuntimeController <<QObject>> {
+    +configure(config)
+    +setActiveCameraNumber(cameraNumber)
+    +setup(task) : SetupResult
+    +execute()
+    +handlePlcValues(values)
+    --
+    +runtimeRecovering(message)
+    +runtimeReady(message)
+    +runtimeFault(message)
+  }
+
+  enum LocalizationRecoveryAction {
+    Ignore
+    RetryScheduled
+    EscalateFault
+  }
+
+  class LocalizationRecoveryPolicy {
+    +roleName : QString
+    +maxRetries : int
+    +retryIntervalMs : int
+    +connectTimeoutMs : int
+    +retryOnConnectFailed : bool
+    +retryOnLostConnected : bool
+  }
+
+  class LocalizationSignalMapper {
+    +configure(config)
+    +signalNameForTag(tag) : QString
+    +mapValues(values) : QList<LocalizationSignalEvent>
+  }
+
+  class LocalizationSignalEvent {
+    +sourceTag : QString
+    +name : QString
+    +value : QVariant
+  }
+
+  class LocalizationPipeline {
+    +runMatch(group, image) : MatchResult
   }
 
   class CameraMapEntry <<Q_GADGET>>
@@ -106,10 +188,20 @@ ITask *-- TaskRunner
 ITask --> IDevice : assignedDeviceIds resolve via Project/DeviceManager
 ITask --> CameraSourceType
 ITask --> TaskType
+ITask --> TaskState
 
 TaskLocalization *-- TaskLocalizeConfig : m_config
+TaskLocalizeConfig *-- TaskDeviceBindings : deviceBindings
+TaskDeviceBindings o-- "0..*" TaskDeviceBinding
+TaskDeviceBinding --> TaskDeviceRole
 TaskLocalization *-- PatternGroupManager : m_patternManager
-TaskLocalization *-- ImageMatcher : m_matcher
+TaskLocalization *-- LocalizationRuntimeController : m_runtimeController
+TaskLocalization *-- LocalizationPipeline : m_pipeline
+LocalizationRuntimeController *-- LocalizationSignalMapper : m_signalMapper
+LocalizationRuntimeController *-- LocalizationRecoveryPolicy : camera/plc/output policies
+LocalizationRuntimeController ..> LocalizationRecoveryAction : policy decision
+LocalizationSignalMapper ..> LocalizationSignalEvent : creates
+LocalizationPipeline ..> ImageMatcher : local matcher
 TaskLocalization --> MatchResult : m_lastMatchResult
 TaskLocalization --> CameraDevice : selected/next camera
 TaskLocalization --> PlcDevice : plcDevice()
@@ -117,22 +209,44 @@ TaskLocalization ..> CameraRunner : typed runner access
 TaskLocalization ..> PlcRunner : typed runner access
 TaskLocalization ..> VisionOutputRunner : via task runner
 TaskLocalization ..> VisionOutputRequest : send match result
+LocalizationRuntimeController ..> PlcRunner : connects valueChanged
+LocalizationRuntimeController ..> TaskRunner : validates registered runners
+LocalizationRuntimeController ..> LocalizationPipeline : production-cycle hook
 
 PatternGroupManager o-- "0..*" MatchGroup
 MatchGroup o-- "0..*" MatchPattern
+LocalizationPipeline ..> MatchGroup
+LocalizationPipeline ..> MatchPattern
 ImageMatcher ..> MatchGroup
 ImageMatcher ..> MatchPattern
 
-TaskLocalizeConfig --> CameraMapEntry : logical camera number to device id
-TaskLocalizeConfig --> PlcDevice : sCommDeviceId
-TaskLocalizeConfig --> VisionOutputDevice : sOutputDeviceId
+TaskDeviceBindings --> CameraDevice : camera_number role
+TaskDeviceBindings --> PlcDevice : primary_plc role
+TaskDeviceBindings --> VisionOutputDevice : vision_output role
 
 note right of TaskLocalization
+  TaskLocalization now keeps persistent config,
+  pattern ownership, and lifecycle entry points.
+  Runtime setup and PLC signal translation are
+  delegated to LocalizationRuntimeController.
+  A50 adds explicit taskState transitions around
+  commission, runtime start, cycle execution,
+  recovery, fault, and stopping.
+end note
+
+note right of LocalizationRuntimeController
+  Runtime reconnect/fault behavior is delegated to
+  explicit recovery policies per device role.
+  Recovery/fault signals now feed the task state machine.
+end note
+
+note right of LocalizationSignalMapper
   Signal map direction:
   PLC tag -> logical task signal name.
 
-  onCommDeviceValueChanged() translates device values
-  and emits signalChanged(name, value).
+  Unmapped tags are logged and skipped by a
+  range-style pass, so one unmapped tag cannot
+  block the PLC value thread.
 end note
 
 note bottom of TaskLocalization
@@ -142,4 +256,3 @@ note bottom of TaskLocalization
 end note
 
 @enduml
-

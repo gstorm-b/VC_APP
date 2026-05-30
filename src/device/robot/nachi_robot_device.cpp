@@ -25,14 +25,6 @@ bool NachiRobotDevice::pushRequest(IRequest *request) {
     return false;
 }
 
-QStringList NachiRobotDevice::getAvailableBits() {
-    return {};
-}
-
-QStringList NachiRobotDevice::getAvailableWords() {
-    return {};
-}
-
 void NachiRobotDevice::deviceTerminate() {
     deviceDisconnect();
 }

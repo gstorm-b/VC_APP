@@ -25,14 +25,6 @@ bool KawasakiRobotDevice::pushRequest(IRequest *request) {
     return false;
 }
 
-QStringList KawasakiRobotDevice::getAvailableBits() {
-    return {};
-}
-
-QStringList KawasakiRobotDevice::getAvailableWords() {
-    return {};
-}
-
 void KawasakiRobotDevice::deviceTerminate() {
     deviceDisconnect();
 }

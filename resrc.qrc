@@ -8,6 +8,14 @@
         <file alias="styles/camera_mapping_widget_light.qss">resrc/styles/camera_mapping_widget_light.qss</file>
         <file alias="styles/signals_monitor_widget_dark.qss">resrc/styles/signals_monitor_widget_dark.qss</file>
         <file alias="styles/signals_monitor_widget_light.qss">resrc/styles/signals_monitor_widget_light.qss</file>
+        <file alias="styles/mitsubishi_mc_device_widget_dark.qss">resrc/styles/mitsubishi_mc_device_widget_dark.qss</file>
+        <file alias="styles/mitsubishi_mc_device_widget_light.qss">resrc/styles/mitsubishi_mc_device_widget_light.qss</file>
+        <file alias="styles/localization_task_widget_dark.qss">resrc/styles/localization_task_widget_dark.qss</file>
+        <file alias="styles/localization_task_widget_light.qss">resrc/styles/localization_task_widget_light.qss</file>
+        <file alias="styles/localization_patterns_widget_dark.qss">resrc/styles/localization_patterns_widget_dark.qss</file>
+        <file alias="styles/localization_patterns_widget_light.qss">resrc/styles/localization_patterns_widget_light.qss</file>
+        <file alias="styles/vision_tcpip_device_widget_dark.qss">resrc/styles/vision_tcpip_device_widget_dark.qss</file>
+        <file alias="styles/vision_tcpip_device_widget_light.qss">resrc/styles/vision_tcpip_device_widget_light.qss</file>
         <file>resrc/icon/dashboard.svg</file>
         <file>resrc/icon/dashboard_dark.svg</file>
         <file>resrc/icon/edit_file.svg</file>

@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ncr_picking — Theme Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; background: #111; color: #eee; }
+
+  /* ── Tab bar ─────────────────────────────────────────────── */
+  .tab-bar {
+    display: flex; gap: 4px; padding: 12px 16px 0;
+    background: #0a0a0a; border-bottom: 1px solid #333;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .tab {
+    padding: 7px 18px; border-radius: 6px 6px 0 0; cursor: pointer;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+    border: 1px solid transparent; border-bottom: none;
+    transition: background 0.15s;
+  }
+  .tab.active  { background: #1e1e1e; border-color: #444; color: #fff; }
+  .tab:not(.active) { background: #1a1a1a; color: #888; }
+  .tab:not(.active):hover { background: #222; color: #bbb; }
+
+  /* ── Page layout ──────────────────────────────────────────── */
+  .page { display: none; padding: 20px 16px; }
+  .page.active { display: block; }
+
+  .style-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: #666; margin-bottom: 12px;
+  }
+
+  .variants { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .variant-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; margin-bottom: 8px; padding: 4px 8px;
+    border-radius: 3px; display: inline-block;
+  }
+  .variant-title.dark-label  { background: #222; color: #888; }
+  .variant-title.light-label { background: #ddd; color: #555; }
+
+  /* ── Mock Qt Window ───────────────────────────────────────── */
+  .qt-window {
+    border-radius: 6px; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    border: 1px solid var(--border);
+    background: var(--bg-window);
+    color: var(--text-primary);
+  }
+
+  /* Title bar */
+  .title-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+  }
+  .title-bar-controls { display: flex; gap: 6px; }
+  .tb-btn {
+    width: 11px; height: 11px; border-radius: 50%;
+  }
+  .tb-close   { background: #e74c3c; }
+  .tb-min     { background: #f39c12; }
+  .tb-max     { background: #27ae60; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex; align-items: center; gap: 6px; padding: 5px 8px;
+    background: var(--bg-surface); border-bottom: 1px solid var(--border);
+  }
+  .tb-action {
+    padding: 4px 10px; border-radius: 3px; font-size: 11px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated); color: var(--text-primary);
+  }
+  .tb-action.primary {
+    background: var(--accent-primary); color: #fff; border-color: var(--accent-primary);
+    font-weight: 600;
+  }
+  .tb-action.primary:hover { background: var(--accent-bright); }
+
+  /* Body layout */
+  .win-body { display: flex; height: 320px; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 140px; flex-shrink: 0;
+    background: var(--bg-surface); border-right: 1px solid var(--border);
+    padding: 6px 0; overflow-y: auto;
+  }
+  .sidebar-section {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--text-muted);
+    padding: 8px 10px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 10px; cursor: pointer; font-size: 12px;
+    color: var(--text-primary);
+  }
+  .sidebar-item:hover { background: var(--bg-elevated); }
+  .sidebar-item.selected {
+    background: var(--selection-bg); color: var(--accent-bright);
+  }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot.cam    { background: #4a9eff; }
+  .dot.plc    { background: #f0a040; }
+  .dot.vision { background: #60cc80; }
+  .dot.robot  { background: #c080e0; }
+
+  /* Main content */
+  .main-content {
+    flex: 1; padding: 10px 12px; overflow-y: auto;
+    background: var(--bg-window);
+  }
+
+  .section-head {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--text-muted); margin-bottom: 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Form rows */
+  .form-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .form-label { width: 90px; font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+  .form-input {
+    flex: 1; padding: 4px 7px; border-radius: 3px; font-size: 11px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    color: var(--text-primary); outline: none;
+  }
+  .form-input:focus { border-color: var(--accent-primary); }
+  .form-combo {
+    flex: 1; padding: 4px 7px; border-radius: 3px; font-size: 11px;
+    background: var(--bg-input); border: 1px solid var(--border);
+    color: var(--text-primary); appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 7px center;
+    padding-right: 22px;
+  }
+
+  /* Status cards */
+  .status-row { display: flex; gap: 6px; margin-bottom: 10px; }
+  .status-card {
+    flex: 1; padding: 6px 8px; border-radius: 4px;
+    border-left: 3px solid; font-size: 11px;
+  }
+  .status-card .s-title { font-weight: 700; margin-bottom: 2px; }
+  .status-card .s-val   { font-size: 10px; opacity: 0.8; }
+  .s-error   { border-color: var(--state-error);   background: color-mix(in srgb, var(--state-error) 12%, var(--bg-surface)); }
+  .s-warning { border-color: var(--state-warning); background: color-mix(in srgb, var(--state-warning) 12%, var(--bg-surface)); }
+  .s-success { border-color: var(--state-success); background: color-mix(in srgb, var(--state-success) 12%, var(--bg-surface)); }
+  .s-info    { border-color: var(--state-info);    background: color-mix(in srgb, var(--state-info) 12%, var(--bg-surface)); }
+  .s-error   .s-title { color: var(--state-error); }
+  .s-warning .s-title { color: var(--state-warning); }
+  .s-success .s-title { color: var(--state-success); }
+  .s-info    .s-title { color: var(--state-info); }
+
+  /* Image preview panel */
+  .img-panel {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: center;
+    height: 70px; position: relative; overflow: hidden;
+  }
+  .img-panel-label {
+    font-size: 10px; color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+  .crosshair {
+    position: absolute; opacity: 0.35;
+    width: 40px; height: 40px;
+    border: 1px solid var(--accent-primary);
+    border-radius: 50%;
+  }
+  .crosshair::before, .crosshair::after {
+    content: ''; position: absolute;
+    background: var(--accent-primary);
+  }
+  .crosshair::before { width: 1px; height: 100%; left: 50%; top: 0; }
+  .crosshair::after  { width: 100%; height: 1px; top: 50%; left: 0; }
+
+  /* Confidence bar */
+  .conf-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .conf-bar-bg {
+    flex: 1; height: 6px; border-radius: 3px;
+    background: var(--bg-elevated);
+  }
+  .conf-bar-fill { height: 100%; border-radius: 3px; }
+  .conf-label { font-size: 10px; color: var(--text-muted); width: 28px; text-align: right; }
+
+  /* Status bar */
+  .status-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 3px 10px; background: var(--accent-primary);
+    color: #fff; font-size: 10px;
+  }
+  .status-bar.idle { background: var(--bg-elevated); color: var(--text-muted); border-top: 1px solid var(--border); }
+
+  /* Token swatch strip */
+  .token-strip { display: flex; gap: 2px; margin-top: 10px; border-radius: 4px; overflow: hidden; }
+  .token-swatch {
+    flex: 1; height: 20px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .token-swatch span {
+    font-size: 8px; font-weight: 700; text-shadow: 0 0 3px rgba(0,0,0,0.8);
+    letter-spacing: 0.3px; color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+  }
+
+  /* ── Tab bar scroll for 10+ tabs ─────────────────────────── */
+  .tab-bar { flex-wrap: wrap; }
+
+  /* ══════════════════════════════════════════════════════════
+     HYBRID — Graphite Vision BG + Navy Ops Accent
+  ══════════════════════════════════════════════════════════ */
+  .hybrid-dark {
+    --bg-window:      #1a1c20;   /* Graphite Vision */
+    --bg-surface:     #22252a;
+    --bg-elevated:    #2c3038;
+    --bg-input:       #2c3038;
+    --border:         #3a3f48;
+    --text-primary:   #e0e4ea;
+    --text-muted:     #7a8898;
+    --accent-primary: #e87c00;   /* Navy Ops orange */
+    --accent-bright:  #ffa040;
+    --selection-bg:   #3d2e10;   /* orange-tinted selection */
+    --state-error:    #ff5252;
+    --state-warning:  #ffb020;
+    --state-success:  #40c870;
+    --state-info:     #40a8e0;
+  }
+  .hybrid-light {
+    --bg-window:      #f2f3f5;   /* Graphite Vision */
+    --bg-surface:     #ffffff;
+    --bg-elevated:    #e8eaee;
+    --bg-input:       #ffffff;
+    --border:         #c8ccd4;
+    --text-primary:   #1a1c20;
+    --text-muted:     #5a6878;
+    --accent-primary: #c06400;   /* Navy Ops orange light */
+    --accent-bright:  #e08020;
+    --selection-bg:   #fde8c0;   /* warm orange tint */
+    --state-error:    #c0282a;
+    --state-warning:  #9a6800;
+    --state-success:  #1a7a40;
+    --state-info:     #0060a0;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 6 — Steel Blue
+  ══════════════════════════════════════════════════════════ */
+  .steel-dark {
+    --bg-window:   #0f1923; --bg-surface:   #172030;
+    --bg-elevated: #1e293f; --bg-input:     #1e293f;
+    --border:      #2a3d5a; --text-primary:  #c8d8e8;
+    --text-muted:  #5878a0; --accent-primary: #4488cc;
+    --accent-bright: #66aaee; --selection-bg: #1a3a6a;
+    --state-error: #ff4444; --state-warning: #ffaa22;
+    --state-success: #44cc88; --state-info: #44aaff;
+  }
+  .steel-light {
+    --bg-window:   #eef2f7; --bg-surface:   #f8fafc;
+    --bg-elevated: #e4ecf4; --bg-input:     #ffffff;
+    --border:      #b8cce0; --text-primary:  #0f1923;
+    --text-muted:  #3a5878; --accent-primary: #2266aa;
+    --accent-bright: #1a5599; --selection-bg: #cce0f5;
+    --state-error: #cc2222; --state-warning: #996600;
+    --state-success: #226644; --state-info: #1155aa;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 7 — Terminal Green
+  ══════════════════════════════════════════════════════════ */
+  .terminal-dark {
+    --bg-window:   #0a0f0a; --bg-surface:   #0e140e;
+    --bg-elevated: #141c14; --bg-input:     #1a241a;
+    --border:      #243824; --text-primary:  #90d890;
+    --text-muted:  #4a7a4a; --accent-primary: #40e040;
+    --accent-bright: #60f060; --selection-bg: #1a3a1a;
+    --state-error: #ff4444; --state-warning: #e8c040;
+    --state-success: #40e040; --state-info: #40c8e0;
+  }
+  .terminal-light {
+    --bg-window:   #f2f8f2; --bg-surface:   #ffffff;
+    --bg-elevated: #e8f4e8; --bg-input:     #ffffff;
+    --border:      #c0d8c0; --text-primary:  #0a1a0a;
+    --text-muted:  #3a6a3a; --accent-primary: #1a8a1a;
+    --accent-bright: #148814; --selection-bg: #c0e8c0;
+    --state-error: #aa2020; --state-warning: #886000;
+    --state-success: #1a7a1a; --state-info: #107888;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 8 — Carbon Gold
+  ══════════════════════════════════════════════════════════ */
+  .carbon-dark {
+    --bg-window:   #161614; --bg-surface:   #1e1e1a;
+    --bg-elevated: #282820; --bg-input:     #282820;
+    --border:      #383830; --text-primary:  #e0d8c0;
+    --text-muted:  #807060; --accent-primary: #c8a020;
+    --accent-bright: #e0c040; --selection-bg: #3a3010;
+    --state-error: #e05050; --state-warning: #e0a020;
+    --state-success: #60b860; --state-info: #6080c0;
+  }
+  .carbon-light {
+    --bg-window:   #f8f6f0; --bg-surface:   #fffef8;
+    --bg-elevated: #f0ece0; --bg-input:     #ffffff;
+    --border:      #d0c8a8; --text-primary:  #201c10;
+    --text-muted:  #706040; --accent-primary: #8a6800;
+    --accent-bright: #a07800; --selection-bg: #f0e090;
+    --state-error: #a02020; --state-warning: #7a5000;
+    --state-success: #206020; --state-info: #204880;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 9 — Oxide Red
+  ══════════════════════════════════════════════════════════ */
+  .oxide-dark {
+    --bg-window:   #1a1414; --bg-surface:   #221818;
+    --bg-elevated: #2c2020; --bg-input:     #2c2020;
+    --border:      #442828; --text-primary:  #e8d8d8;
+    --text-muted:  #907070; --accent-primary: #cc3030;
+    --accent-bright: #e84040; --selection-bg: #4a1818;
+    --state-error: #ff4444; --state-warning: #ffaa20;
+    --state-success: #40c870; --state-info: #4090cc;
+  }
+  .oxide-light {
+    --bg-window:   #f8f2f2; --bg-surface:   #ffffff;
+    --bg-elevated: #f0e8e8; --bg-input:     #ffffff;
+    --border:      #d8c0c0; --text-primary:  #1a0808;
+    --text-muted:  #805050; --accent-primary: #aa2020;
+    --accent-bright: #cc2828; --selection-bg: #f5c0c0;
+    --state-error: #bb1010; --state-warning: #885500;
+    --state-success: #1a6830; --state-info: #1a5888;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 10 — Arctic
+  ══════════════════════════════════════════════════════════ */
+  .arctic-dark {
+    --bg-window:   #101820; --bg-surface:   #181f28;
+    --bg-elevated: #222a34; --bg-input:     #222a34;
+    --border:      #2e3a48; --text-primary:  #d4e8f8;
+    --text-muted:  #5878a0; --accent-primary: #00c8e8;
+    --accent-bright: #20e0f8; --selection-bg: #003d50;
+    --state-error: #ff4444; --state-warning: #ffb820;
+    --state-success: #40d890; --state-info: #00c8e8;
+  }
+  .arctic-light {
+    --bg-window:   #f4f8fc; --bg-surface:   #ffffff;
+    --bg-elevated: #e8f0f8; --bg-input:     #ffffff;
+    --border:      #c0d4e8; --text-primary:  #101820;
+    --text-muted:  #406080; --accent-primary: #0088aa;
+    --accent-bright: #007a9a; --selection-bg: #c0eaf8;
+    --state-error: #cc2222; --state-warning: #997700;
+    --state-success: #1a8050; --state-info: #0088aa;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 1 — Slate Pro
+  ══════════════════════════════════════════════════════════ */
+  .slate-dark {
+    --bg-window:   #1e1e1e; --bg-surface:   #252526;
+    --bg-elevated: #2d2d2d; --bg-input:     #3c3c3c;
+    --border:      #3e3e3e; --text-primary:  #d4d4d4;
+    --text-muted:  #7a8a9a; --accent-primary: #007acc;
+    --accent-bright: #2b8ce8; --selection-bg: #094771;
+    --state-error: #f14c4c; --state-warning: #e5a935;
+    --state-success: #4ec97a; --state-info: #3794ff;
+  }
+  .slate-light {
+    --bg-window:   #f5f5f5; --bg-surface:   #ffffff;
+    --bg-elevated: #ebebeb; --bg-input:     #ffffff;
+    --border:      #d0d0d0; --text-primary:  #1a1a1a;
+    --text-muted:  #5a6a7a; --accent-primary: #0078d4;
+    --accent-bright: #0068c8; --selection-bg: #cce4f7;
+    --state-error: #c42b2b; --state-warning: #b07d10;
+    --state-success: #1d8a4e; --state-info: #0064c8;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 2 — Navy Ops
+  ══════════════════════════════════════════════════════════ */
+  .navy-dark {
+    --bg-window:   #0d1b2a; --bg-surface:   #142233;
+    --bg-elevated: #1c2e42; --bg-input:     #1c2e42;
+    --border:      #2a4060; --text-primary:  #ccd8e8;
+    --text-muted:  #6a8aaa; --accent-primary: #e87c00;
+    --accent-bright: #ffa040; --selection-bg: #2a5080;
+    --state-error: #ff5252; --state-warning: #ffb020;
+    --state-success: #40c870; --state-info: #40a8e0;
+  }
+  .navy-light {
+    --bg-window:   #e8edf2; --bg-surface:   #f0f4f8;
+    --bg-elevated: #ffffff; --bg-input:     #ffffff;
+    --border:      #b8c8d8; --text-primary:  #0d1b2a;
+    --text-muted:  #4a6a8a; --accent-primary: #c06400;
+    --accent-bright: #e08020; --selection-bg: #b8d8f0;
+    --state-error: #c0282a; --state-warning: #9a6800;
+    --state-success: #1a7a40; --state-info: #0060a0;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 3 — Graphite Vision
+  ══════════════════════════════════════════════════════════ */
+  .graphite-dark {
+    --bg-window:   #1a1c20; --bg-surface:   #22252a;
+    --bg-elevated: #2c3038; --bg-input:     #2c3038;
+    --border:      #3a3f48; --text-primary:  #e0e4ea;
+    --text-muted:  #7a8898; --accent-primary: #00bcd4;
+    --accent-bright: #26d8ec; --selection-bg: #00606e;
+    --state-error: #ef5350; --state-warning: #ffc107;
+    --state-success: #66bb6a; --state-info: #42a5f5;
+  }
+  .graphite-light {
+    --bg-window:   #f2f3f5; --bg-surface:   #ffffff;
+    --bg-elevated: #e8eaee; --bg-input:     #ffffff;
+    --border:      #c8ccd4; --text-primary:  #1a1c20;
+    --text-muted:  #5a6878; --accent-primary: #0097a7;
+    --accent-bright: #00acc1; --selection-bg: #b2ebf2;
+    --state-error: #b71c1c; --state-warning: #f57f17;
+    --state-success: #2e7d32; --state-info: #1565c0;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 4 — Monochrome Steel
+  ══════════════════════════════════════════════════════════ */
+  .mono-dark {
+    --bg-window:   #1c1c1c; --bg-surface:   #242424;
+    --bg-elevated: #2e2e2e; --bg-input:     #383838;
+    --border:      #404040; --text-primary:  #d8d8d8;
+    --text-muted:  #787878; --accent-primary: #a0b4c8;
+    --accent-bright: #c0d0e0; --selection-bg: #404858;
+    --state-error: #e05050; --state-warning: #d4a030;
+    --state-success: #50b870; --state-info: #6090b8;
+  }
+  .mono-light {
+    --bg-window:   #f0f0f0; --bg-surface:   #fafafa;
+    --bg-elevated: #e4e4e4; --bg-input:     #ffffff;
+    --border:      #c0c0c0; --text-primary:  #1c1c1c;
+    --text-muted:  #585858; --accent-primary: #4a6a88;
+    --accent-bright: #6080a0; --selection-bg: #c8d8e8;
+    --state-error: #a82020; --state-warning: #8a6010;
+    --state-success: #1e7040; --state-info: #2a5a88;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STYLE 5 — Dark Amber
+  ══════════════════════════════════════════════════════════ */
+  .amber-dark {
+    --bg-window:   #141410; --bg-surface:   #1c1c16;
+    --bg-elevated: #26261e; --bg-input:     #30302a;
+    --border:      #3a3828; --text-primary:  #d8c890;
+    --text-muted:  #8a8060; --accent-primary: #e8a020;
+    --accent-bright: #f0c040; --selection-bg: #4a3800;
+    --state-error: #e04040; --state-warning: #e8c040;
+    --state-success: #60c060; --state-info: #60a8c0;
+  }
+  .amber-light {
+    --bg-window:   #f5f3ee; --bg-surface:   #eeeade;
+    --bg-elevated: #e8e2d4; --bg-input:     #fff8ec;
+    --border:      #c8c0a8; --text-primary:  #2a2410;
+    --text-muted:  #6a6040; --accent-primary: #9a6000;
+    --accent-bright: #b87800; --selection-bg: #f0d890;
+    --state-error: #a01818; --state-warning: #9a7800;
+    --state-success: #1e7020; --state-info: #206888;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Tab bar ──────────────────────────────────────────────── -->
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab(0)">1 · Slate Pro</div>
+  <div class="tab"        onclick="showTab(1)">2 · Navy Ops</div>
+  <div class="tab"        onclick="showTab(2)">3 · Graphite Vision</div>
+  <div class="tab"        onclick="showTab(3)">4 · Monochrome Steel</div>
+  <div class="tab"        onclick="showTab(4)">5 · Dark Amber</div>
+  <div class="tab"        onclick="showTab(5)">6 · Steel Blue</div>
+  <div class="tab"        onclick="showTab(6)">7 · Terminal Green</div>
+  <div class="tab"        onclick="showTab(7)">8 · Carbon Gold</div>
+  <div class="tab"        onclick="showTab(8)">9 · Oxide Red</div>
+  <div class="tab"        onclick="showTab(9)">10 · Arctic</div>
+  <div class="tab"        onclick="showTab(10)" style="border-color:#e87c00;color:#e87c00">★ Hybrid</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 0 — Slate Pro
+══════════════════════════════════════════════════════════════ -->
+<div class="page active" id="p0">
+  <p class="style-label">Style 1 — Slate Pro &nbsp;·&nbsp; VS Code / DaVinci Resolve-inspired &nbsp;·&nbsp; Neutral developer tool</p>
+  <div class="variants">
+    <!-- DARK -->
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window slate-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#1e1e1e"><span>window</span></div>
+          <div class="token-swatch" style="background:#252526"><span>surface</span></div>
+          <div class="token-swatch" style="background:#2d2d2d"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#007acc"><span>accent</span></div>
+          <div class="token-swatch" style="background:#f14c4c"><span>error</span></div>
+          <div class="token-swatch" style="background:#e5a935"><span>warn</span></div>
+          <div class="token-swatch" style="background:#4ec97a"><span>ok</span></div>
+          <div class="token-swatch" style="background:#3794ff"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- LIGHT -->
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window slate-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f5f5f5"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#ebebeb"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#0078d4"><span>accent</span></div>
+          <div class="token-swatch" style="background:#c42b2b"><span>error</span></div>
+          <div class="token-swatch" style="background:#b07d10"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1d8a4e"><span>ok</span></div>
+          <div class="token-swatch" style="background:#0064c8"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /variants -->
+</div><!-- /page 0 -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 1 — Navy Ops
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p1">
+  <p class="style-label">Style 2 — Navy Ops &nbsp;·&nbsp; Siemens TIA Portal / Rockwell FactoryTalk-inspired &nbsp;·&nbsp; Industrial HMI / SCADA</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window navy-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#0d1b2a"><span>window</span></div>
+          <div class="token-swatch" style="background:#142233"><span>surface</span></div>
+          <div class="token-swatch" style="background:#1c2e42"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#e87c00"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ff5252"><span>error</span></div>
+          <div class="token-swatch" style="background:#ffb020"><span>warn</span></div>
+          <div class="token-swatch" style="background:#40c870"><span>ok</span></div>
+          <div class="token-swatch" style="background:#40a8e0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window navy-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#e8edf2"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#f0f4f8"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#c06400"><span>accent</span></div>
+          <div class="token-swatch" style="background:#c0282a"><span>error</span></div>
+          <div class="token-swatch" style="background:#9a6800"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1a7a40"><span>ok</span></div>
+          <div class="token-swatch" style="background:#0060a0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page 1 -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 2 — Graphite Vision
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p2">
+  <p class="style-label">Style 3 — Graphite Vision &nbsp;·&nbsp; Halcon MVTec / Cognex VisionPro-inspired &nbsp;·&nbsp; Machine vision scientific tool</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window graphite-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#1a1c20"><span>window</span></div>
+          <div class="token-swatch" style="background:#22252a"><span>surface</span></div>
+          <div class="token-swatch" style="background:#2c3038"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#00bcd4"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ef5350"><span>error</span></div>
+          <div class="token-swatch" style="background:#ffc107"><span>warn</span></div>
+          <div class="token-swatch" style="background:#66bb6a"><span>ok</span></div>
+          <div class="token-swatch" style="background:#42a5f5"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window graphite-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f2f3f5"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e8eaee"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#0097a7"><span>accent</span></div>
+          <div class="token-swatch" style="background:#b71c1c"><span>error</span></div>
+          <div class="token-swatch" style="background:#f57f17"><span>warn</span></div>
+          <div class="token-swatch" style="background:#2e7d32"><span>ok</span></div>
+          <div class="token-swatch" style="background:#1565c0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page 2 -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 3 — Monochrome Steel
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p3">
+  <p class="style-label">Style 4 — Monochrome Steel &nbsp;·&nbsp; DaVinci Resolve / Broadcast tool-inspired &nbsp;·&nbsp; Zero distraction, data-first</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window mono-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#1c1c1c"><span>window</span></div>
+          <div class="token-swatch" style="background:#242424"><span>surface</span></div>
+          <div class="token-swatch" style="background:#2e2e2e"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#a0b4c8"><span>accent</span></div>
+          <div class="token-swatch" style="background:#e05050"><span>error</span></div>
+          <div class="token-swatch" style="background:#d4a030"><span>warn</span></div>
+          <div class="token-swatch" style="background:#50b870"><span>ok</span></div>
+          <div class="token-swatch" style="background:#6090b8"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window mono-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f0f0f0"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#fafafa"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e4e4e4"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#4a6a88"><span>accent</span></div>
+          <div class="token-swatch" style="background:#a82020"><span>error</span></div>
+          <div class="token-swatch" style="background:#8a6010"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1e7040"><span>ok</span></div>
+          <div class="token-swatch" style="background:#2a5a88"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page 3 -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 4 — Dark Amber
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p4">
+  <p class="style-label">Style 5 — Dark Amber &nbsp;·&nbsp; Fanuc CNC / Terminal retro-industrial-inspired &nbsp;·&nbsp; Warm phosphor, operator panel feel</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window amber-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#141410"><span>window</span></div>
+          <div class="token-swatch" style="background:#1c1c16"><span>surface</span></div>
+          <div class="token-swatch" style="background:#26261e"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#e8a020"><span>accent</span></div>
+          <div class="token-swatch" style="background:#e04040"><span>error</span></div>
+          <div class="token-swatch" style="background:#e8c040"><span>warn</span></div>
+          <div class="token-swatch" style="background:#60c060"><span>ok</span></div>
+          <div class="token-swatch" style="background:#60a8c0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window amber-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f5f3ee"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#eeeade"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e8e2d4"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#9a6000"><span>accent</span></div>
+          <div class="token-swatch" style="background:#a01818"><span>error</span></div>
+          <div class="token-swatch" style="background:#9a7800"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1e7020"><span>ok</span></div>
+          <div class="token-swatch" style="background:#206888"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page 4 -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 5 — Steel Blue
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p5">
+  <p class="style-label">Style 6 — Steel Blue &nbsp;·&nbsp; ABB RobotStudio / Beckhoff TwinCAT-inspired &nbsp;·&nbsp; Automation engineering software</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window steel-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#0f1923"><span>window</span></div>
+          <div class="token-swatch" style="background:#172030"><span>surface</span></div>
+          <div class="token-swatch" style="background:#1e293f"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#4488cc"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ff4444"><span>error</span></div>
+          <div class="token-swatch" style="background:#ffaa22"><span>warn</span></div>
+          <div class="token-swatch" style="background:#44cc88"><span>ok</span></div>
+          <div class="token-swatch" style="background:#44aaff"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window steel-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#eef2f7"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#f8fafc"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e4ecf4"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#2266aa"><span>accent</span></div>
+          <div class="token-swatch" style="background:#cc2222"><span>error</span></div>
+          <div class="token-swatch" style="background:#996600"><span>warn</span></div>
+          <div class="token-swatch" style="background:#226644"><span>ok</span></div>
+          <div class="token-swatch" style="background:#1155aa"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 6 — Terminal Green
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p6">
+  <p class="style-label">Style 7 — Terminal Green &nbsp;·&nbsp; Tektronix oscilloscope / phosphor monitor-inspired &nbsp;·&nbsp; Scientific test equipment retro</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window terminal-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#0a0f0a"><span>window</span></div>
+          <div class="token-swatch" style="background:#0e140e"><span>surface</span></div>
+          <div class="token-swatch" style="background:#141c14"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#40e040"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ff4444"><span>error</span></div>
+          <div class="token-swatch" style="background:#e8c040"><span>warn</span></div>
+          <div class="token-swatch" style="background:#40e040"><span>ok</span></div>
+          <div class="token-swatch" style="background:#40c8e0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window terminal-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f2f8f2"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e8f4e8"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#1a8a1a"><span>accent</span></div>
+          <div class="token-swatch" style="background:#aa2020"><span>error</span></div>
+          <div class="token-swatch" style="background:#886000"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1a7a1a"><span>ok</span></div>
+          <div class="token-swatch" style="background:#107888"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 7 — Carbon Gold
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p7">
+  <p class="style-label">Style 8 — Carbon Gold &nbsp;·&nbsp; Siemens NX / CATIA aerospace-inspired &nbsp;·&nbsp; Premium precision engineering tool</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window carbon-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#161614"><span>window</span></div>
+          <div class="token-swatch" style="background:#1e1e1a"><span>surface</span></div>
+          <div class="token-swatch" style="background:#282820"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#c8a020"><span>accent</span></div>
+          <div class="token-swatch" style="background:#e05050"><span>error</span></div>
+          <div class="token-swatch" style="background:#e0a020"><span>warn</span></div>
+          <div class="token-swatch" style="background:#60b860"><span>ok</span></div>
+          <div class="token-swatch" style="background:#6080c0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window carbon-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f8f6f0"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#fffef8"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#f0ece0"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#8a6800"><span>accent</span></div>
+          <div class="token-swatch" style="background:#a02020"><span>error</span></div>
+          <div class="token-swatch" style="background:#7a5000"><span>warn</span></div>
+          <div class="token-swatch" style="background:#206020"><span>ok</span></div>
+          <div class="token-swatch" style="background:#204880"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 8 — Oxide Red
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p8">
+  <p class="style-label">Style 9 — Oxide Red &nbsp;·&nbsp; Schneider Electric EcoStruxure / safety-critical systems-inspired &nbsp;·&nbsp; High-visibility danger-aware</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window oxide-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#1a1414"><span>window</span></div>
+          <div class="token-swatch" style="background:#221818"><span>surface</span></div>
+          <div class="token-swatch" style="background:#2c2020"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#cc3030"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ff4444"><span>error</span></div>
+          <div class="token-swatch" style="background:#ffaa20"><span>warn</span></div>
+          <div class="token-swatch" style="background:#40c870"><span>ok</span></div>
+          <div class="token-swatch" style="background:#4090cc"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window oxide-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f8f2f2"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#f0e8e8"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#aa2020"><span>accent</span></div>
+          <div class="token-swatch" style="background:#bb1010"><span>error</span></div>
+          <div class="token-swatch" style="background:#885500"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1a6830"><span>ok</span></div>
+          <div class="token-swatch" style="background:#1a5888"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 9 — Arctic
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p9">
+  <p class="style-label">Style 10 — Arctic &nbsp;·&nbsp; Keyence IV Series / Omron Sysmac Studio-inspired &nbsp;·&nbsp; Clinical precision, clean sensor configurator</p>
+  <div class="variants">
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window arctic-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#101820"><span>window</span></div>
+          <div class="token-swatch" style="background:#181f28"><span>surface</span></div>
+          <div class="token-swatch" style="background:#222a34"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#00c8e8"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ff4444"><span>error</span></div>
+          <div class="token-swatch" style="background:#ffb820"><span>warn</span></div>
+          <div class="token-swatch" style="background:#40d890"><span>ok</span></div>
+          <div class="token-swatch" style="background:#00c8e8"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window arctic-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f4f8fc"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e8f0f8"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#0088aa"><span>accent</span></div>
+          <div class="token-swatch" style="background:#cc2222"><span>error</span></div>
+          <div class="token-swatch" style="background:#997700"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1a8050"><span>ok</span></div>
+          <div class="token-swatch" style="background:#0088aa"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PAGE 10 — Hybrid: Graphite Vision BG + Navy Ops Accent
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="p10">
+  <p class="style-label">
+    ★ Hybrid — Graphite Vision background &nbsp;+&nbsp; Navy Ops accent
+    &nbsp;·&nbsp; Graphite charcoal (#1a1c20) &nbsp;·&nbsp; Siemens orange (#e87c00)
+  </p>
+
+  <!-- comparison row: show both source styles for reference -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;padding:10px 12px;background:#111;border-radius:6px;font-size:11px;color:#888">
+    <span style="flex:1">
+      <b style="color:#aaa">Background from</b> — Graphite Vision:
+      <span style="display:inline-flex;gap:3px;vertical-align:middle;margin-left:4px">
+        <span style="background:#1a1c20;width:14px;height:14px;display:inline-block;border-radius:2px;border:1px solid #555"></span>
+        <span style="background:#22252a;width:14px;height:14px;display:inline-block;border-radius:2px;border:1px solid #555"></span>
+        <span style="background:#2c3038;width:14px;height:14px;display:inline-block;border-radius:2px;border:1px solid #555"></span>
+        <span style="background:#3a3f48;width:14px;height:14px;display:inline-block;border-radius:2px;border:1px solid #555"></span>
+      </span>
+      cool graphite, slight blue-gray tint
+    </span>
+    <span style="flex:1">
+      <b style="color:#aaa">Accent from</b> — Navy Ops:
+      <span style="display:inline-flex;gap:3px;vertical-align:middle;margin-left:4px">
+        <span style="background:#e87c00;width:14px;height:14px;display:inline-block;border-radius:2px"></span>
+        <span style="background:#ffa040;width:14px;height:14px;display:inline-block;border-radius:2px"></span>
+      </span>
+      Siemens orange, high-visibility industrial
+    </span>
+  </div>
+
+  <div class="variants">
+    <!-- DARK -->
+    <div>
+      <div class="variant-title dark-label">● DARK</div>
+      <div class="qt-window hybrid-dark">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.5">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="form-row">
+              <span class="form-label">Gain</span>
+              <input class="form-input" value="1.0">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern C</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:34%;background:var(--state-error)"></div></div><span class="conf-label">34%</span></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#1a1c20"><span>window</span></div>
+          <div class="token-swatch" style="background:#22252a"><span>surface</span></div>
+          <div class="token-swatch" style="background:#2c3038"><span>elevated</span></div>
+          <div class="token-swatch" style="background:#3a3f48"><span>border</span></div>
+          <div class="token-swatch" style="background:#e87c00"><span>accent</span></div>
+          <div class="token-swatch" style="background:#ffa040"><span>bright</span></div>
+          <div class="token-swatch" style="background:#ff5252"><span>error</span></div>
+          <div class="token-swatch" style="background:#ffb020"><span>warn</span></div>
+          <div class="token-swatch" style="background:#40c870"><span>ok</span></div>
+          <div class="token-swatch" style="background:#40a8e0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- LIGHT -->
+    <div>
+      <div class="variant-title light-label">○ LIGHT</div>
+      <div class="qt-window hybrid-light">
+        <div class="title-bar">
+          <div class="title-bar-controls"><span class="tb-btn tb-close"></span><span class="tb-btn tb-min"></span><span class="tb-btn tb-max"></span></div>
+          <span>NCR Picking — Localization Task</span>
+          <span style="font-size:10px;opacity:0.4">v2.1.0</span>
+        </div>
+        <div class="toolbar">
+          <button class="tb-action primary">▶ Run Task</button>
+          <button class="tb-action">⏹ Stop</button>
+          <button class="tb-action">⚙ Settings</button>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:var(--state-success)">● Connected</span>
+        </div>
+        <div class="win-body">
+          <div class="sidebar">
+            <div class="sidebar-section">Devices</div>
+            <div class="sidebar-item selected"><span class="dot cam"></span>Camera 1</div>
+            <div class="sidebar-item"><span class="dot cam"></span>Camera 2</div>
+            <div class="sidebar-item"><span class="dot plc"></span>PLC Main</div>
+            <div class="sidebar-item"><span class="dot vision"></span>Vision Out</div>
+            <div class="sidebar-item"><span class="dot robot"></span>Robot Arm</div>
+            <div class="sidebar-section" style="margin-top:6px">Tasks</div>
+            <div class="sidebar-item">Localization</div>
+            <div class="sidebar-item">Calibration</div>
+          </div>
+          <div class="main-content">
+            <div class="status-row">
+              <div class="status-card s-success"><div class="s-title">✓ Localized</div><div class="s-val">Δ 0.3 mm</div></div>
+              <div class="status-card s-warning"><div class="s-title">⚠ Drift</div><div class="s-val">X: +1.2 px</div></div>
+              <div class="status-card s-error"><div class="s-title">✗ PLC Timeout</div><div class="s-val">400 ms ago</div></div>
+              <div class="status-card s-info"><div class="s-title">ℹ Queue</div><div class="s-val">3 pending</div></div>
+            </div>
+            <div class="img-panel">
+              <div class="crosshair"></div>
+              <span class="img-panel-label">Camera Feed — 1920×1080</span>
+            </div>
+            <div class="section-head">Camera Settings</div>
+            <div class="form-row">
+              <span class="form-label">Device</span>
+              <select class="form-combo"><option>Camera 1 (USB3)</option><option>Camera 2</option></select>
+            </div>
+            <div class="form-row">
+              <span class="form-label">Exposure (µs)</span>
+              <input class="form-input" value="4800">
+            </div>
+            <div class="form-row">
+              <span class="form-label">Gain</span>
+              <input class="form-input" value="1.0">
+            </div>
+            <div class="section-head" style="margin-top:8px">Confidence</div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern A</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:87%;background:var(--state-success)"></div></div><span class="conf-label">87%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern B</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:62%;background:var(--state-warning)"></div></div><span class="conf-label">62%</span></div>
+            <div class="conf-row"><span style="font-size:10px;width:60px;color:var(--text-muted)">Pattern C</span><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:34%;background:var(--state-error)"></div></div><span class="conf-label">34%</span></div>
+          </div>
+        </div>
+        <div class="status-bar idle">
+          <span>Task Running · 00:02:14</span><span>FPS: 30 · Latency: 12 ms</span>
+        </div>
+        <div class="token-strip">
+          <div class="token-swatch" style="background:#f2f3f5"><span style="color:#555">window</span></div>
+          <div class="token-swatch" style="background:#ffffff"><span style="color:#555">surface</span></div>
+          <div class="token-swatch" style="background:#e8eaee"><span style="color:#555">elevated</span></div>
+          <div class="token-swatch" style="background:#c8ccd4"><span style="color:#555">border</span></div>
+          <div class="token-swatch" style="background:#c06400"><span>accent</span></div>
+          <div class="token-swatch" style="background:#e08020"><span>bright</span></div>
+          <div class="token-swatch" style="background:#c0282a"><span>error</span></div>
+          <div class="token-swatch" style="background:#9a6800"><span>warn</span></div>
+          <div class="token-swatch" style="background:#1a7a40"><span>ok</span></div>
+          <div class="token-swatch" style="background:#0060a0"><span>info</span></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /variants -->
+</div><!-- /page 10 -->
+
+<script>
+function showTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j)  => t.classList.toggle('active', i===j));
+  document.querySelectorAll('.page').forEach((p,j) => p.classList.toggle('active', i===j));
+}
+</script>
+</body>
+</html>

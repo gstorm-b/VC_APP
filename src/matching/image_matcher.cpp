@@ -302,7 +302,7 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
                           false, 20, 0.4, DEFAULT_COLOR_BLUE, DEFAULT_COLOR_RED);
 
         if (obj.hasCollision()) {
-            std::cout << "Has collision";
+            // std::cout << "Has collision";
             obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_RED);
         } else {
             obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_GREEN);

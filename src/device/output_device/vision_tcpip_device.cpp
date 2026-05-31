@@ -233,6 +233,7 @@ void VisionTcpipDevice::onMainNewConnection() {
         LOG_DEV_INFO << "VisionTcpipDevice main client connected from"
                      << m_mainClient->peerAddress().toString();
         syncRuntimeState();
+        emit mainClientStateChanged(true);
     }
 }
 
@@ -243,6 +244,7 @@ void VisionTcpipDevice::onMainClientDisconnected() {
     m_mainClient = nullptr;
     m_mainRxBuffer.clear();
     syncRuntimeState();
+    emit mainClientStateChanged(false);
 }
 
 void VisionTcpipDevice::onMainReadyRead() {

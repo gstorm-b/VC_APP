@@ -1,6 +1,9 @@
 #include "vision_tcpip_device_widget.h"
 #include "ui_vision_tcpip_device_widget.h"
 
+#include <QDoubleSpinBox>
+#include <QHeaderView>
+
 static QtVariantProperty* addPropertyToBrowser(const QMetaObject &meta, QMetaProperty &prop, QVariant &value,
                                                QtVariantPropertyManager *manager, QtTreePropertyBrowser *browser) {
 
@@ -147,11 +150,19 @@ QString VisionTcpipDeviceWidget::deviceId() {
 }
 
 void VisionTcpipDeviceWidget::loadConfigToDevice() {
-    // do nothing
+    if (!m_output_device) return;
+    m_output_device->setVisionTcpipConfig(m_config);
 }
 
 void VisionTcpipDeviceWidget::loadConfigToWidget() {
-    // do nothing
+    if (!m_output_device) return;
+    m_config = m_output_device->visionTcpipConfig();
+
+    m_populating_browser = true;
+    ui->ledit_ip->setText(m_config.m_listenAddress);
+    ui->spb_port_data->setValue(m_config.m_mainPort);
+    ui->spb_port_heartbeat->setValue(m_config.m_heartbeatPort);
+    m_populating_browser = false;
 }
 
 void VisionTcpipDeviceWidget::initWidget() {
@@ -173,14 +184,36 @@ void VisionTcpipDeviceWidget::initWidget() {
             LOG_DEV_ERR << "VisionTcpipDeviceWidget: no runner provided - control disabled";
         }
 
-        m_config = m_output_device->visionTcpipConfig();
-
+        loadConfigToWidget();
         populateBrowser();
 
         connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
                 this, &VisionTcpipDeviceWidget::onPropertyValueChanged);
+
+        connect(m_output_device, &vc::device::VisionTcpipDevice::mainClientStateChanged,
+                this, &VisionTcpipDeviceWidget::onMainClientStateChanged,
+                Qt::QueuedConnection);
     }
 
+    connect(ui->btn_connect, &QPushButton::clicked,
+            this, &VisionTcpipDeviceWidget::onConnectClicked);
+
+    // ── Config input fields ───────────────────────────────────────────────
+    connect(ui->ledit_ip,          &QLineEdit::editingFinished,
+            this, &VisionTcpipDeviceWidget::onFieldConfigChanged);
+    connect(ui->spb_port_data,     qOverload<int>(&QSpinBox::valueChanged),
+            this, &VisionTcpipDeviceWidget::onFieldConfigChanged);
+    connect(ui->spb_port_heartbeat,qOverload<int>(&QSpinBox::valueChanged),
+            this, &VisionTcpipDeviceWidget::onFieldConfigChanged);
+
+    // ── Send Result section ────────────────────────────────────────────────
+    ui->tbl_positions->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    ui->tbl_positions->verticalHeader()->setDefaultSectionSize(28);
+    addPositionRow();
+
+    connect(ui->btn_add_row,    &QPushButton::clicked, this, &VisionTcpipDeviceWidget::onAddRow);
+    connect(ui->btn_remove_row, &QPushButton::clicked, this, &VisionTcpipDeviceWidget::onRemoveRow);
+    connect(ui->btn_send_result,&QPushButton::clicked, this, &VisionTcpipDeviceWidget::onSendResult);
 
     updateConnectionVisual(m_device && m_device->isDeviceConnected()
                                ? vc::device::ConnectStatus::Connected
@@ -239,16 +272,30 @@ void VisionTcpipDeviceWidget::refreshConfig() {
     }
 }
 
+void VisionTcpipDeviceWidget::onFieldConfigChanged() {
+    if (m_populating_browser) return;
+    m_config.m_listenAddress  = ui->ledit_ip->text().trimmed();
+    m_config.m_mainPort       = ui->spb_port_data->value();
+    m_config.m_heartbeatPort  = ui->spb_port_heartbeat->value();
+    saveConfig();
+    populateBrowser();
+}
+
+void VisionTcpipDeviceWidget::onConnectClicked() {
+    if (!m_runner) return;
+    if (m_device && m_device->isDeviceConnected()) {
+        m_runner->requestDisconnect();
+    } else {
+        m_runner->requestConnect();
+    }
+}
+
 void VisionTcpipDeviceWidget::onConnectionStateChanged(vc::device::ConnectStatus state) {
     updateConnectionVisual(state);
     populateBrowser();
-    switch (state) {
-    case vc::device::ConnectStatus::Disconnected:
-
-        break;
-    default:
-        break;
-    }
+    const bool mainConnected = m_output_device
+                               && m_output_device->runtimeState().mainClientConnected;
+    updateSendSection(mainConnected);
 }
 
 void VisionTcpipDeviceWidget::populateBrowser() {
@@ -278,12 +325,84 @@ void VisionTcpipDeviceWidget::populateBrowser() {
     m_variantEditor->blockSignals(false);
 }
 
+void VisionTcpipDeviceWidget::onMainClientStateChanged(bool connected) {
+    updateSendSection(connected);
+}
+
+void VisionTcpipDeviceWidget::updateSendSection(bool mainClientConnected) {
+    ui->btn_send_result->setEnabled(mainClientConnected);
+    ui->lbl_send_hint->setText(mainClientConnected
+                               ? tr("Client connected — ready to send")
+                               : tr("No client connected"));
+    const QByteArray state = mainClientConnected ? "ready" : "idle";
+    ui->lbl_send_hint->setProperty("sendState", state);
+    ui->lbl_send_hint->style()->unpolish(ui->lbl_send_hint);
+    ui->lbl_send_hint->style()->polish(ui->lbl_send_hint);
+}
+
+void VisionTcpipDeviceWidget::addPositionRow(double x, double y, double z, double r) {
+    auto *tbl = ui->tbl_positions;
+    const int row = tbl->rowCount();
+    tbl->insertRow(row);
+
+    const double vals[4] = {x, y, z, r};
+    for (int col = 0; col < 4; ++col) {
+        auto *spb = new QDoubleSpinBox(tbl);
+        spb->setRange(-99999.0, 99999.0);
+        spb->setDecimals(3);
+        spb->setValue(vals[col]);
+        spb->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        spb->setFrame(false);
+        tbl->setCellWidget(row, col, spb);
+    }
+}
+
+void VisionTcpipDeviceWidget::onAddRow() {
+    if (ui->tbl_positions->rowCount() < 20) {
+        addPositionRow();
+    }
+}
+
+void VisionTcpipDeviceWidget::onRemoveRow() {
+    const int row = ui->tbl_positions->currentRow();
+    if (row >= 0) {
+        ui->tbl_positions->removeRow(row);
+    } else if (ui->tbl_positions->rowCount() > 0) {
+        ui->tbl_positions->removeRow(ui->tbl_positions->rowCount() - 1);
+    }
+}
+
+void VisionTcpipDeviceWidget::onSendResult() {
+    if (!m_runner || !m_output_device || !m_output_device->isMainClientConnected()) {
+        return;
+    }
+    QVector<vc::device::VisionOutputPosition> positions;
+    auto *tbl = ui->tbl_positions;
+    for (int row = 0; row < tbl->rowCount(); ++row) {
+        vc::device::VisionOutputPosition pos;
+        auto *sx = qobject_cast<QDoubleSpinBox*>(tbl->cellWidget(row, 0));
+        auto *sy = qobject_cast<QDoubleSpinBox*>(tbl->cellWidget(row, 1));
+        auto *sz = qobject_cast<QDoubleSpinBox*>(tbl->cellWidget(row, 2));
+        auto *sr = qobject_cast<QDoubleSpinBox*>(tbl->cellWidget(row, 3));
+        if (sx) pos.x = sx->value();
+        if (sy) pos.y = sy->value();
+        if (sz) pos.z = sz->value();
+        if (sr) pos.r = sr->value();
+        positions.append(pos);
+    }
+    m_runner->requestSendResult(positions);
+}
+
 void VisionTcpipDeviceWidget::updateConnectionVisual(vc::device::ConnectStatus status) {
     const bool connected = status == vc::device::ConnectStatus::Connected;
     const QByteArray state = connected ? "connected" : "disconnected";
 
-    ui->lbl_conn_state->setText(connected ? tr("CONNECTED") : tr("DISCONNECTED"));
-    ui->btn_connect->setText(connected ? tr("Disconnect") : tr("Connect"));
+    ui->lbl_conn_state->setText(connected ? tr("LISTENING") : tr("STOPPED"));
+    ui->btn_connect->setText(connected ? tr("Stop") : tr("Start Listening"));
+
+    ui->ledit_ip->setEnabled(!connected);
+    ui->spb_port_data->setEnabled(!connected);
+    ui->spb_port_heartbeat->setEnabled(!connected);
 
     for (QWidget *w : {static_cast<QWidget*>(ui->lbl_conn_dot),
                        static_cast<QWidget*>(ui->lbl_conn_state),

@@ -40,7 +40,13 @@ package "Task UI" {
     +createDeviceWidget(device, runner, dock, parent) : QWidget*
   }
 
-  class LocalizationDashboardWidget <<ITaskWidget>>
+  class LocalizationDashboardWidget <<ITaskWidget>> {
+    -refreshTaskContext()
+    -refreshTaskState()
+    -refreshSignalMonitor()
+    -updateCycleResult(result)
+    -appendTaskLog(entry)
+  }
 
   class LocalizationPatternsWidget <<ITaskWidget>> {
     -wireManagerSignals()
@@ -108,6 +114,8 @@ package "Calibration UI" {
 
 package "Models and devices" {
   class "vc::model::TaskLocalization" as TaskLocalization
+  class "vc::model::LocalizationRuntimeController::CycleResult" as CycleResult
+  class "vc::model::LocalizationRuntimeController::TaskLogEntry" as TaskLogEntry
   enum "vc::model::TaskState" as TaskState
   class "mtc::PatternGroupManager" as PatternGroupManager
   class "vc::device::CameraDevice" as CameraDevice
@@ -138,6 +146,11 @@ DeviceWidgetFactory ..> VisionTcpipDeviceWidget : VisionTCPIP
 
 LocalizationTaskWidget --> TaskLocalization
 LocalizationTaskWidget --> TaskState : state header + READY lamp
+LocalizationDashboardWidget --> TaskLocalization : read-only runtime view
+LocalizationDashboardWidget --> TaskState : task state display
+LocalizationDashboardWidget ..> CycleResult : last image/KPI/result table
+LocalizationDashboardWidget ..> TaskLogEntry : task-local recent log
+LocalizationDashboardWidget *-- SignalsMonitorWidget : PLC/task signal monitor
 LocalizationPatternsWidget --> TaskLocalization
 LocalizationPatternsWidget --> PatternGroupManager
 LocalizationPatternsWidget --> AddPatternWizard
@@ -181,12 +194,23 @@ note right of LocalizationSettingWidget
   A40 uses explicit PLC tag capabilities
   instead of assuming every device exposes
   getAvailableBits()/getAvailableWords().
+
+  Localization signals now include nActivePatternGroup,
+  bTaskFault, and nFaultCode.
 end note
 
 note right of LocalizationTaskWidget
   A50 displays explicit task state in the task header.
   READY lamp now reflects TaskState rather than
   inferred "has assigned devices" status.
+end note
+
+note right of LocalizationDashboardWidget
+  Dashboard v1 is a read-only operator runtime page.
+  It shows assigned devices, active camera/pattern group,
+  fault code, signal monitor, last match image, KPIs,
+  result table, and a bounded task-local log monitor.
+  It does not expose start/stop/reset/manual trigger controls.
 end note
 
 @enduml

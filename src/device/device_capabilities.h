@@ -22,6 +22,13 @@ public:
     ~IPlcTagProvider() override = default;
 };
 
+class IPlcIoWriter {
+public:
+    virtual ~IPlcIoWriter() = default;
+    virtual bool writeDigitalIoByName(const QString &tag, bool value) = 0;
+    virtual bool writeWordIoByName(const QString &tag, qint16 value) = 0;
+};
+
 class IImageSourceDevice {
 public:
     virtual ~IImageSourceDevice() = default;

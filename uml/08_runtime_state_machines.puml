@@ -1,0 +1,79 @@
+@startuml runtime_state_machines
+title vc::runtime - Runtime State Machines
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam StateBackgroundColor #EEF5FF
+skinparam StateBorderColor #2B4C7E
+
+state "TaskRunner::Phase" as task_runner_phase {
+  [*] --> RunnerIdle
+  RunnerIdle --> RunnerCommission : enterCommission()
+  RunnerCommission --> RunnerRuntime : enterRuntime()
+  RunnerIdle --> RunnerRuntime : enterRuntime()
+  RunnerRuntime --> RunnerIdle : enterIdle()
+  RunnerCommission --> RunnerIdle : enterIdle()
+}
+
+note right of task_runner_phase
+  Commission: each device has its own HighPriority thread.
+  Runtime, default: per-device threads stay alive and the task runtime
+  thread owns LocalizationRuntimeController as coordinator.
+  Runtime, merge mode: devices are moved into m_runtimeThread.
+end note
+
+state "TaskLocalization::TaskState" as task_localization_state {
+  [*] --> TaskIdle
+  TaskIdle --> CommissionStarting : beginCommission()
+  CommissionStarting --> Commission : runners attached
+  Commission --> RuntimeStarting : beginRuntime()
+  RuntimeStarting --> Ready : runtime setup valid
+  Ready --> RunningCycle : runtimeCycleStarted()
+  RunningCycle --> Ready : runtimeReady()
+  Ready --> Recovering : runtimeRecovering()
+  RunningCycle --> Recovering : runtimeRecovering()
+  Recovering --> Ready : runtimeReady()
+  TaskIdle --> Faulted : runtime start or setup failed
+  Commission --> Faulted : runtimeFault()
+  RuntimeStarting --> Faulted : runtimeFault()
+  Ready --> Faulted : runtimeFault()
+  RunningCycle --> Faulted : runtimeFault()
+  Recovering --> Faulted : runtimeFault()
+  CommissionStarting --> Stopping : endCommission()
+  Commission --> Stopping : endCommission()
+  RuntimeStarting --> Stopping : endRuntime() or stopAll()
+  Ready --> Stopping : endRuntime() or stopAll()
+  RunningCycle --> Stopping : endRuntime() or stopAll()
+  Recovering --> Stopping : endRuntime() or stopAll()
+  Faulted --> Stopping : stopAll()
+  Stopping --> TaskIdle : TaskRunner::enterIdle()
+}
+
+state "LocalizationRuntimeController::CycleState" as localization_cycle_state {
+  [*] --> NotReady
+  NotReady --> ReadyForTrigger : setup valid and roles healthy
+  NotReady --> CycleFaulted : setup invalid
+  ReadyForTrigger --> Running : trigger rising edge
+  ReadyForTrigger --> CycleFaulted : invalid active pattern or calibration
+  Running --> WaitingTriggerReset : cycle finished and trigger still true
+  Running --> ReadyForTrigger : cycle finished and trigger false
+  Running --> RecoveringCycle : device lost or command timeout
+  WaitingTriggerReset --> ReadyForTrigger : trigger falling edge and no fault
+  WaitingTriggerReset --> RecoveringCycle : trigger falling edge with fault
+  RecoveringCycle --> ReadyForTrigger : required roles healthy
+  RecoveringCycle --> CycleFaulted : retry limit exceeded
+  CycleFaulted --> NotReady : runtime teardown or setup reset
+}
+
+note right of localization_cycle_state
+  Running cycles are identified by cycleId.
+  Async matching results are accepted only when the cycleId matches
+  the active runtime cycle.
+
+  A held trigger does not start another cycle until the signal returns
+  to false and the controller reaches ReadyForTrigger again.
+end note
+
+@enduml

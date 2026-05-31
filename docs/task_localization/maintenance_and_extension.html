@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintenance And Extension Guide</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f2f3f5;
+  --surface: #ffffff;
+  --text: #1a1c20;
+  --muted: #5a6878;
+  --border: #c8ccd4;
+  --accent: #c06400;
+  --code-bg: #e8eaee;
+  --table-head: #f5ede0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 "Segoe UI", Arial, sans-serif;
+}
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 28px 56px;
+}
+nav {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+nav a,
+nav strong {
+  margin-right: 16px;
+}
+article {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 28px;
+}
+h1, h2, h3 {
+  line-height: 1.25;
+  margin: 1.4em 0 0.55em;
+}
+h1 {
+  margin-top: 0;
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.45rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.1em;
+}
+h3 { font-size: 1.12rem; }
+p { margin: 0.65em 0; }
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.92em;
+}
+pre {
+  overflow-x: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+}
+ul, ol { padding-left: 1.45rem; }
+li { margin: 0.28em 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: top;
+}
+th {
+  background: var(--table-head);
+  text-align: left;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+</style>
+</head>
+<body>
+<div class="page">
+<nav><a href="README.html">Overview</a><a href="task_localization_api.html">task localization api</a><a href="runtime_controller_api.html">runtime controller api</a><a href="plc_signal_contract.html">plc signal contract</a><strong>maintenance and extension</strong></nav>
+<article>
+<div class="meta">Generated from Markdown documentation.</div>
+<h1 id="maintenance-and-extension-guide">Maintenance And Extension Guide</h1>
+<p>This guide describes how to safely change or extend localization runtime code.</p>
+<h2 id="required-project-rules">Required Project Rules</h2>
+<ul>
+<li>Source comments, identifiers, logs, and committed docs are English.</li>
+<li>Keep UI structure in <code>.ui</code>, behavior in <code>.cpp</code>, styling in <code>.qss</code>.</li>
+<li>Update <code>uml/</code> when changing architecture or code organization.</li>
+<li>Do not add backward-compatibility shims unless explicitly requested.</li>
+<li>Do not call device methods directly across runtime threads; use runners.</li>
+</ul>
+<p>See:</p>
+<ul>
+<li><code>docs/design_rules.md</code></li>
+<li><code>docs/ui_design_rules.md</code></li>
+<li><code>docs/claude_session_onboarding.md</code></li>
+</ul>
+<h2 id="adding-a-plc-signal">Adding A PLC Signal</h2>
+<p>Touchpoints:</p>
+<ol>
+<li>Add a field to <code>TaskLocalizeConfigPrivate</code> in
+<code>src/model/task_localization_config.h</code>.</li>
+<li>Add the property macro to <code>TaskLocalizeConfig</code>.</li>
+<li>Add JSON save/load keys in <code>toJson()</code> and <code>fromJson()</code>.</li>
+<li>Add the logical signal name to <code>localization_signal_mapper.cpp</code>.</li>
+<li>Add the row to <code>localization_setting_widget.cpp</code>.</li>
+<li>Add the monitor row to <code>localization_dashboard_widget.cpp</code> if it is
+operator-visible.</li>
+<li>Publish the signal from <code>LocalizationRuntimeController</code> if it is an output.</li>
+<li>Add or update tests in <code>tests/architecture_contract_test/main.cpp</code>.</li>
+<li>Update docs in this folder and relevant UML if architecture changes.</li>
+</ol>
+<p>Do not parse visible UI text. Signal names are stable logical API names.</p>
+<h2 id="adding-a-fault-code">Adding A Fault Code</h2>
+<p>Touchpoints:</p>
+<ol>
+<li>Add the enum value in <code>src/model/localization_fault_code.h</code>.</li>
+<li>Add the name mapping in <code>localizationFaultCodeName()</code>.</li>
+<li>Reserve and document a stable numeric value in
+<a href="plc_signal_contract.html">plc_signal_contract.md</a>.</li>
+<li>Add or update controller logic that publishes the new code.</li>
+<li>Add or update tests that assert the numeric value is stable.</li>
+<li>Update dashboard display if the fault needs special operator handling.</li>
+</ol>
+<p>Never renumber existing fault codes. PLC integrations depend on numeric
+stability.</p>
+<h2 id="adding-a-runtime-device-role">Adding A Runtime Device Role</h2>
+<p>Use the existing role pattern:</p>
+<ol>
+<li>Add the binding to <code>TaskDeviceBindings</code>.</li>
+<li>Add config UI support in the setting widget.</li>
+<li>Extend <code>LocalizationRuntimeController::RuntimeContext</code>.</li>
+<li>Snapshot the role in <code>TaskLocalization::buildRuntimeContext()</code>.</li>
+<li>Add a role recovery context and policy in <code>LocalizationRuntimeController</code>.</li>
+<li>Bind runner signals with queued connections.</li>
+<li>Request device actions through the runner, not the device.</li>
+<li>Add fake-device tests.</li>
+<li>Update UML.</li>
+</ol>
+<p>The controller must remain task-independent. If it needs data from the task,
+snapshot that data in <code>RuntimeContext</code>.</p>
+<h2 id="changing-runtime-matching">Changing Runtime Matching</h2>
+<p>Current contract:</p>
+<ul>
+<li>The controller emits <code>runtimeMatchingRequested(cycleId, group, image)</code>.</li>
+<li>The matching worker runs <code>LocalizationPipeline::runMatch(...)</code>.</li>
+<li>The result returns through <code>onRuntimeMatchingFinished(cycleId, result)</code>.</li>
+<li>The controller ignores stale cycle ids.</li>
+</ul>
+<p>When changing this flow:</p>
+<ul>
+<li>Preserve cycle-id stale-result protection.</li>
+<li>Keep matching off the controller thread.</li>
+<li>Keep <code>cv::Mat</code> arguments cloned when crossing asynchronous boundaries.</li>
+<li>Update contract tests for late result, abort, and fault cases.</li>
+<li>Update UML and this documentation.</li>
+</ul>
+<h2 id="changing-camera-switching">Changing Camera Switching</h2>
+<p>Current contract:</p>
+<ul>
+<li><code>TaskLocalization::setCameraNumber()</code> validates logical number and assigned
+camera type only.</li>
+<li>The controller owns runtime camera switching.</li>
+<li>Switching is rejected while <code>Running</code>.</li>
+<li>Switching uses <code>CameraRunner::requestDisconnect()</code> and
+<code>CameraRunner::requestConnect()</code>.</li>
+<li>Calibration is validated from the runtime snapshot.</li>
+</ul>
+<p>Do not reintroduce direct calls to <code>CameraDevice::deviceConnect()</code> or
+<code>CameraDevice::deviceDisconnect()</code> in <code>TaskLocalization</code>.</p>
+<h2 id="changing-output-coordinates">Changing Output Coordinates</h2>
+<p>VisionOutput payloads use world coordinates:</p>
+<ul>
+<li>image point: <code>MatchedObject::point_Center</code></li>
+<li>image angle: <code>MatchedObject::point_angle</code></li>
+<li>world point: <code>calib::Calibrator::imageToRobot(...)</code></li>
+<li>world angle: <code>calib::Calibrator::rotateImageToRobot(...)</code></li>
+</ul>
+<p>If the coordinate contract changes:</p>
+<ol>
+<li>Update <code>buildVisionOutputPositions()</code>.</li>
+<li>Update dashboard result table semantics.</li>
+<li>Update PLC/robot integration docs.</li>
+<li>Add tests for conversion and skipped-result reasons.</li>
+</ol>
+<h2 id="testing-guidance">Testing Guidance</h2>
+<p>Existing focused coverage lives in <code>tests/architecture_contract_test/main.cpp</code>.</p>
+<p>Keep fake-device tests for runtime behavior whenever possible:</p>
+<ul>
+<li>fake PLC captures <code>IPlcIoWriter</code> writes</li>
+<li>fake camera emits success/failure grabs</li>
+<li>fake VisionOutput captures sent positions and can fail sends</li>
+</ul>
+<p>Required behavior coverage:</p>
+<ul>
+<li>Rising trigger starts one cycle.</li>
+<li>Held trigger does not start another cycle.</li>
+<li>Trigger reset clears <code>bMatchingFinished</code> and restores ready.</li>
+<li>Grab timeout publishes <code>CameraGrabTimeout</code>.</li>
+<li>VisionOutput send failure publishes <code>VisionOutputSendFailed</code>.</li>
+<li>Invalid pattern publishes <code>PatternInvalid</code>.</li>
+<li>Invalid calibration publishes <code>CalibrationInvalid</code>.</li>
+<li>Camera change while running is rejected.</li>
+<li>Lost device during running aborts with the correct role fault.</li>
+</ul>
+<h2 id="documentation-and-uml-checklist">Documentation And UML Checklist</h2>
+<p>For every localization runtime change, check:</p>
+<ul>
+<li><code>docs/task_localization.md</code></li>
+<li><code>docs/task_localization_implementation_plan.md</code></li>
+<li>files in <code>docs/task_localization/</code></li>
+<li><code>uml/03_runtime_threading.puml</code></li>
+<li><code>uml/04_localization_task.puml</code></li>
+</ul>
+<p>If a change does not affect diagrams, say so in the task summary.</p>
+
+</article>
+</div>
+</body>
+</html>

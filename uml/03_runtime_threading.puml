@@ -36,18 +36,36 @@ package "vc::model" {
     +setupTask()
     +executeLocalization()
     +startCommissionMatching(group, image)
+    -buildRuntimeContext() : RuntimeContext
+    -queueSetActiveCameraNumber(number)
+    -queueHandlePlcValues(values)
   }
 
   class LocalizationRuntimeController <<QObject>> {
     +configure(config)
     +setActiveCameraNumber(cameraNumber)
-    +setup(task) : SetupResult
+    +setActivePatternGroupNumber(patternGroupNumber)
+    +setup(context) : SetupResult
     +execute()
     +handlePlcValues(values)
+    +onRuntimeMatchingFinished(cycleId, result)
     --
+    +runtimeMatchingRequested(cycleId, group, image)
+    +cycleResultUpdated(result)
+    +taskLogAppended(entry)
+    +runtimeCycleStarted(message)
     +runtimeRecovering(message)
     +runtimeReady(message)
     +runtimeFault(message)
+  }
+
+  class RuntimeContext {
+    +config : TaskLocalizeConfig
+    +primaryPlcRunner : PlcRunner*
+    +visionOutputRunner : VisionOutputRunner*
+    +cameraRunners : QMap<int, CameraRunner*>
+    +patternGroups : QMap<int, MatchGroup>
+    +cameraCalibrators : QMap<int, Calibrator>
   }
 
   enum LocalizationRecoveryAction {
@@ -185,11 +203,16 @@ package "vc::runtime" {
   class PlcRunner <<QObject>> {
     +requestConnect()
     +requestDisconnect()
+    +requestWriteDigitalIo(tag, value)
+    +requestWriteWordIo(tag, value)
   }
 
   class VisionOutputRunner <<QObject>> {
     +requestConnect()
     +requestDisconnect()
+    +requestSendResult(positions)
+    --
+    +resultRequestFinished(ok, message)
   }
 }
 
@@ -203,6 +226,10 @@ package "vc::device" {
   abstract class PlcDevice <<QObject>>
   abstract class VisionOutputDevice <<QObject>>
   abstract class RobotDevice <<QObject>>
+  interface IPlcIoWriter {
+    +writeDigitalIoByName(tag, value) : bool
+    +writeWordIoByName(tag, value) : bool
+  }
 }
 
 ITask <|-- TaskLocalization
@@ -212,9 +239,15 @@ TaskLocalization *-- LocalizationRuntimeController : runtime orchestration
 TaskLocalization *-- LocalizationPipeline : matching pipeline
 LocalizationRuntimeController *-- LocalizationSignalMapper : PLC tag mapping
 LocalizationRuntimeController *-- LocalizationRecoveryPolicy : per-role policies
+LocalizationRuntimeController *-- RuntimeContext : immutable runtime snapshot
 LocalizationRuntimeController ..> LocalizationRecoveryAction : retry decision
 LocalizationRuntimeController ..> PlcRunner : connect valueChanged
-LocalizationRuntimeController ..> LocalizationPipeline : execute hook
+LocalizationRuntimeController ..> PlcRunner : queued PLC output writes
+LocalizationRuntimeController ..> CameraRunner : queued single-shot request
+LocalizationRuntimeController ..> VisionOutputRunner : queued result request
+LocalizationRuntimeController ..> LocalizationPipeline : via matching worker signal
+TaskLocalization ..> LocalizationRuntimeController : queued task-to-controller calls
+TaskLocalization ..> LocalizationPipeline : matching worker owns runMatch()
 TaskRunner *-- "0..*" IDeviceRunner : m_runners[deviceId]
 TaskRunner *-- "1" QThread : m_runtimeThread
 TaskRunner --> Phase : currentPhase
@@ -239,6 +272,7 @@ CameraRunner --> CameraDevice
 CameraRunner ..> DeviceCommand : routes request* methods
 CameraRunner ..> DeviceCommandResult : busy/invalid/final result
 PlcRunner --> PlcDevice
+PlcRunner ..> IPlcIoWriter : optional write capability
 VisionOutputRunner --> VisionOutputDevice
 
 TaskRunner ..> CameraRunner : Camera devices
@@ -263,22 +297,6 @@ note right of CameraRunner
   Active command timeout emits Failed(TimedOut).
 end note
 
-state "TaskRunner::Phase" as task_phase {
-  [*] --> Idle
-  Idle --> Commission : enterCommission()
-  Commission --> Runtime : enterRuntime()
-  Idle --> Runtime : enterRuntime()
-  Runtime --> Idle : enterIdle()
-  Commission --> Idle : enterIdle()
-}
-
-note bottom of task_phase
-  Commission: each device has its own HighPriority thread.
-  Runtime, default: per-device threads stay alive and the task runtime
-  thread acts as coordinator.
-  Runtime, merge mode: devices are moved into m_runtimeThread.
-end note
-
 note right of LocalizationRuntimeController
   Phase 2 separates runtime-only setup from TaskLocalization:
   role validation, PLC runner signal wiring, PLC tag mapping,
@@ -291,33 +309,26 @@ note right of LocalizationRuntimeController
 
   A50 surfaces runtimeRecovering/runtimeReady/runtimeFault so
   TaskLocalization can keep an explicit task-level state machine.
-end note
 
-state "TaskLocalization::TaskState" as task_state {
-  [*] --> Idle
-  Idle --> CommissionStarting : beginCommission()
-  CommissionStarting --> Commission : runners attached
-  Commission --> RuntimeStarting : beginRuntime()
-  RuntimeStarting --> Ready : runtime setup valid
-  Ready --> RunningCycle : executeLocalization()
-  RunningCycle --> Ready : cycle complete
-  Ready --> Recovering : runtimeRecovering()
-  RunningCycle --> Recovering : runtimeRecovering()
-  Recovering --> Ready : runtimeReady()
-  Idle --> Faulted : runtime start/setup failed
-  Commission --> Faulted : runtimeFault()
-  RuntimeStarting --> Faulted : runtimeFault()
-  Ready --> Faulted : runtimeFault()
-  RunningCycle --> Faulted : runtimeFault()
-  Recovering --> Faulted : runtimeFault()
-  CommissionStarting --> Stopping : endCommission()
-  Commission --> Stopping : endCommission()
-  RuntimeStarting --> Stopping : endRuntime()/stopAll()
-  Ready --> Stopping : endRuntime()/stopAll()
-  RunningCycle --> Stopping : endRuntime()/stopAll()
-  Recovering --> Stopping : endRuntime()/stopAll()
-  Faulted --> Stopping : stopAll()
-  Stopping --> Idle : TaskRunner::enterIdle()
-}
+  Localization runtime now publishes cycle result and task-local log
+  events for the dashboard, plus runtimeCycleStarted for the async
+  RunningCycle transition.
+
+  Current implementation keeps per-device threads and uses queued
+  runner APIs. The controller object is moved into TaskRunner::m_runtimeThread
+  during runtime and is not parented to TaskLocalization while moved.
+
+  TaskLocalization builds RuntimeContext before setup, then invokes setup(),
+  execute(), PLC-value handling, and active camera/pattern changes through
+  queued controller calls.
+
+  Runtime matching is async: the controller emits runtimeMatchingRequested(),
+  the TaskLocalization matching worker runs LocalizationPipeline::runMatch(),
+  and the result returns through onRuntimeMatchingFinished(cycleId, result).
+
+  Lifecycle state machines are documented separately in
+  08_runtime_state_machines.puml to keep this class/threading diagram
+  valid as a single PlantUML diagram type.
+end note
 
 @enduml

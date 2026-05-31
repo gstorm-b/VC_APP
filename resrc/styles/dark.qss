@@ -463,6 +463,179 @@ QPushButton#patternDeleteBtn:hover   { background-color: #c0282a; }
 QPushButton#patternDeleteBtn:pressed { background-color: #922015; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   StatusLamp — Dark theme
+   Read-only state indicator for operator dashboards.
+   Severity communicated by left 4 px border + state label colour.
+   ═══════════════════════════════════════════════════════════════════ */
+
+StatusLamp {
+    background-color: #22252a;
+    border-top:    1px solid #3a3f48;
+    border-right:  1px solid #3a3f48;
+    border-bottom: 1px solid #3a3f48;
+    border-left:   4px solid #3a3f48;
+    border-radius: 4px;
+}
+StatusLamp[status="ok"]      { border-left-color: #40c870; }
+StatusLamp[status="warning"] { border-left-color: #ffb020; }
+StatusLamp[status="error"]   { border-left-color: #ff5252; }
+StatusLamp[status="off"]     { border-left-color: #3a3f48; }
+
+StatusLamp QLabel#lbl_lamp_name {
+    color: #7a8898;
+    font-size: 9px;
+    font-weight: 700;
+    background: transparent;
+}
+StatusLamp QLabel#lbl_lamp_state {
+    font-size: 13px;
+    font-weight: 700;
+    background: transparent;
+}
+StatusLamp[status="ok"]      QLabel#lbl_lamp_state { color: #40c870; }
+StatusLamp[status="warning"] QLabel#lbl_lamp_state { color: #ffb020; }
+StatusLamp[status="error"]   QLabel#lbl_lamp_state { color: #ff5252; }
+StatusLamp[status="off"]     QLabel#lbl_lamp_state { color: #4e5562; }
+
+/* ── Dashboard section panels ────────────────────────────────── */
+
+QFrame#frame_task_context,
+QFrame#frame_fault {
+    background-color: #22252a;
+    border: 1px solid #3a3f48;
+    border-radius: 4px;
+}
+
+/* Section header labels */
+QLabel#lbl_section_task_context,
+QLabel#lbl_section_fault,
+QLabel#lbl_section_signal_monitor,
+QLabel#lbl_section_task_log,
+QLabel#lbl_section_match_view,
+QLabel#lbl_section_result {
+    color: #7a8898;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+/* Caption / value pairs inside task context & fault panels */
+QFrame#frame_task_context QLabel,
+QFrame#frame_fault QLabel {
+    background: transparent;
+}
+QLabel#lbl_caption_vision_device,
+QLabel#lbl_caption_plc_device,
+QLabel#lbl_caption_camera,
+QLabel#lbl_caption_pattern_group,
+QLabel#lbl_caption_fault_flag,
+QLabel#lbl_caption_fault_code { color: #7a8898; }
+
+QLabel#lbl_val_vision_device,
+QLabel#lbl_val_plc_device,
+QLabel#lbl_val_camera,
+QLabel#lbl_val_pattern_group { color: #e0e4ea; font-weight: 600; }
+
+QLabel#lbl_val_fault_flag,
+QLabel#lbl_val_fault_code { color: #e0e4ea; font-weight: 600; }
+
+/* Fault panel — active state (bTaskFault = true) */
+QFrame#frame_fault[active="true"] {
+    border-color: #ff5252;
+    background-color: rgba(255, 82, 82, 0.07);
+}
+QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_flag,
+QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_code { color: #ff5252; }
+
+/* KPI cards */
+QFrame#frame_kpi_detected,
+QFrame#frame_kpi_sent,
+QFrame#frame_kpi_cycle_time,
+QFrame#frame_kpi_low_area {
+    background-color: #22252a;
+    border: 1px solid #3a3f48;
+    border-radius: 4px;
+}
+QFrame#frame_kpi_detected   QLabel:first-child,
+QFrame#frame_kpi_sent       QLabel:first-child,
+QFrame#frame_kpi_cycle_time QLabel:first-child,
+QFrame#frame_kpi_low_area   QLabel:first-child { color: #7a8898; font-size: 10px; }
+
+QLabel#lbl_kpi_detected_val,
+QLabel#lbl_kpi_sent_val,
+QLabel#lbl_kpi_cycle_time_val,
+QLabel#lbl_kpi_low_area_val {
+    color: #e0e4ea;
+    font-size: 20px;
+    font-weight: 750;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TaskEventLogWidget — Dark theme
+   Industrial operator event/alarm log.
+   Severity is communicated by the left accent bar colour + level text.
+   Row background stays neutral so selection highlight reads clearly.
+   ═══════════════════════════════════════════════════════════════════ */
+
+TaskEventLogWidget {
+    background-color: #1a1c20;
+    border: 1px solid #3a3f48;
+    border-radius: 4px;
+    outline: none;
+}
+TaskEventLogWidget::item {
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid #252830;
+    background: transparent;
+}
+TaskEventLogWidget::item:selected { background-color: #2c3038; }
+TaskEventLogWidget::item:hover:!selected { background-color: #22252a; }
+
+/* Item wrapper — transparent; severity shown by bar + text only */
+TaskEventItemWidget { background: transparent; }
+
+/* ── Left severity bar ───────────────────────────────────────── */
+QFrame#taskEventBar { border-radius: 0px; }
+
+TaskEventItemWidget[severity="info"]    QFrame#taskEventBar { background-color: #e87c00; }
+TaskEventItemWidget[severity="warning"] QFrame#taskEventBar { background-color: #ffb020; }
+TaskEventItemWidget[severity="error"]   QFrame#taskEventBar { background-color: #ff5252; }
+TaskEventItemWidget[severity="success"] QFrame#taskEventBar { background-color: #40c870; }
+
+/* ── Timestamp ───────────────────────────────────────────────── */
+QLabel#taskEventTime {
+    color: #7a8898;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+/* ── Level badge ─────────────────────────────────────────────── */
+TaskEventItemWidget[severity="info"]    QLabel#taskEventLevel { color: #e87c00; }
+TaskEventItemWidget[severity="warning"] QLabel#taskEventLevel { color: #ffb020; }
+TaskEventItemWidget[severity="error"]   QLabel#taskEventLevel { color: #ff5252; }
+TaskEventItemWidget[severity="success"] QLabel#taskEventLevel { color: #40c870; }
+
+QLabel#taskEventLevel {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* ── Source tag ──────────────────────────────────────────────── */
+QLabel#taskEventSource {
+    color: #4e5562;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* ── Message text ────────────────────────────────────────────── */
+QLabel#taskEventMsg { color: #e0e4ea; font-size: 11px; }
+
+TaskEventItemWidget[severity="error"]   QLabel#taskEventMsg { color: #f0c0c0; }
+TaskEventItemWidget[severity="warning"] QLabel#taskEventMsg { color: #e0d0a0; }
+
+/* ═══════════════════════════════════════════════════════════════════
    Qt Advanced Docking System — Dark theme
    ADS internal stylesheet disabled via CDockManager::setStyleSheet("").
    All ads-- rules are owned here using §5 tokens.

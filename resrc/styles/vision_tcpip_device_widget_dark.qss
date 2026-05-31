@@ -93,3 +93,89 @@ QPushButton#btn_connect[connectionState="connected"] {
 }
 QPushButton#btn_connect[connectionState="connected"]:hover   { border-color: #ff5252; }
 QPushButton#btn_connect[connectionState="connected"]:pressed { background-color: rgba(255, 82, 82, 0.22); }
+
+/* ── Send result card ────────────────────────────────────────── */
+
+QFrame#frame_send_result {
+    background-color: #22252a;
+    border: 1px solid #3a3f48;
+    border-radius: 8px;
+}
+
+QLabel#lbl_send_title {
+    color: #7a8898;
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+QLabel#lbl_send_hint {
+    font: 9pt "Segoe UI";
+}
+QLabel#lbl_send_hint[sendState="ready"] { color: #40c870; }
+QLabel#lbl_send_hint[sendState="idle"]  { color: #4a5260; }
+
+/* ── Send section buttons (+ Row / - Row) ────────────────────── */
+
+QPushButton#btn_add_row,
+QPushButton#btn_remove_row {
+    background-color: transparent;
+    color: #7a8898;
+    border: 1px solid #3a3f48;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font: 9pt "Segoe UI";
+}
+QPushButton#btn_add_row:hover,
+QPushButton#btn_remove_row:hover {
+    background-color: #2c3038;
+    color: #e0e4ea;
+}
+QPushButton#btn_add_row:pressed,
+QPushButton#btn_remove_row:pressed { background-color: #1a1c20; }
+
+/* ── Send Result primary button ──────────────────────────────── */
+
+QPushButton#btn_send_result {
+    background-color: #e87c00;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 22px;
+    font: 700 10pt "Segoe UI";
+}
+QPushButton#btn_send_result:hover   { background-color: #ffa040; }
+QPushButton#btn_send_result:pressed { background-color: #b05a00; }
+QPushButton#btn_send_result:disabled {
+    background-color: #2c3038;
+    color: #4a5260;
+}
+
+/* ── Position table ──────────────────────────────────────────── */
+
+QTableWidget#tbl_positions {
+    background-color: #1a1c20;
+    color: #e0e4ea;
+    border: 1px solid #3a3f48;
+    border-radius: 4px;
+    gridline-color: #3a3f48;
+    selection-background-color: #3d2e10;
+}
+QTableWidget#tbl_positions QHeaderView::section {
+    background-color: #22252a;
+    color: #7a8898;
+    font: 700 8pt "Segoe UI";
+    letter-spacing: 1px;
+    border: none;
+    border-bottom: 1px solid #3a3f48;
+    padding: 4px;
+}
+QTableWidget#tbl_positions QDoubleSpinBox {
+    background-color: transparent;
+    color: #e0e4ea;
+    border: none;
+    font: 10pt "JetBrains Mono";
+    padding: 2px 4px;
+}
+QTableWidget#tbl_positions QDoubleSpinBox:focus {
+    background-color: #3d2e10;
+}

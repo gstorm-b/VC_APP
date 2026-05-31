@@ -21,6 +21,7 @@ class TaskLocalization : public ITask {
 
 public:
     explicit TaskLocalization(QString name, QString id = "", QObject* parent = nullptr);
+    ~TaskLocalization() override;
 
     TaskType taskType()  const override {
         return TaskType::LocalizationTask;
@@ -32,6 +33,8 @@ public:
 
     bool isReachLimitOfDeviceType(vc::device::DeviceType t) const override;
     void beginRuntime(bool mergeToTaskThread = false) override;
+    void endRuntime() override;
+    void stopAll() override;
 
     void setTaskLocalizeConfig(const TaskLocalizeConfig &cfg);
 
@@ -76,19 +79,29 @@ private slots:
     void onSignalChangeCameraNumber(QVariant value);
     void onSignalChangePatternNumber(QVariant value);
 
-    void waitReconnectCameraHandle(device::ConnectStatus status);
-    void selectedCameraConnectStatusChanged(device::ConnectStatus status);
+    void onRuntimeCycleStarted(const QString &message);
     void onRuntimeRecovering(const QString &message);
     void onRuntimeReady(const QString &message);
     void onRuntimeFault(const QString &message);
 
 private:
-    void wireMatchingCommissionSignals();
+    void createRuntimeController();
+    void destroyRuntimeController();
+    void wireRuntimeControllerSignals();
+    void wireMatchingWorkerSignals();
+    LocalizationRuntimeController::RuntimeContext buildRuntimeContext() const;
+    LocalizationRuntimeController::SetupResult setupRuntimeController();
+    void queueConfigureRuntimeController();
+    void queueSetActiveCameraNumber(int number);
+    void queueSetActivePatternGroupNumber(int number);
+    void queueHandlePlcValues(const QMap<QString, QVariant> &values);
 
 signals:
     void startPLCRequest();
     void startCameraRequest();
     void commissionMatchingFinished(mtc::MatchResult result);
+    void cycleResultUpdated(vc::model::LocalizationRuntimeController::CycleResult result);
+    void taskLogAppended(vc::model::LocalizationRuntimeController::TaskLogEntry entry);
     void cameraChanged(QString name);
     void patternChanged(QString name);
 
@@ -102,6 +115,7 @@ private:
     vc::runtime::CameraRunner *cameraRunner(const QString &deviceId) const;
     vc::runtime::PlcRunner    *plcRunner(const QString &deviceId)    const;
     QThread *matchingRunner{nullptr};
+    QObject *m_matchingWorker{nullptr};
 
 public:
     const int limit_comm_device = 1;
@@ -120,11 +134,6 @@ private:
     // commission has confirmed which deviceId plays each role.
     QString m_plcDeviceId;
 
-    int m_currentCamNumber;
-    int m_curentPatternNumber;
-    std::shared_ptr<device::CameraDevice> m_selectedCamera;
-    std::shared_ptr<device::CameraDevice> m_nextConnectCamera;
-
     mtc::MatchResult m_lastMatchResult;
     QString m_lastVisionOutput;
 
@@ -136,5 +145,9 @@ private:
 
 }
 
+
+Q_DECLARE_METATYPE(mtc::MatchResult)
+Q_DECLARE_METATYPE(cv::Mat)
+Q_DECLARE_METATYPE(std::shared_ptr<mtc::MatchGroup>)
 
 #endif // TASK_LOCALIZATION_H

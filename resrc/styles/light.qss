@@ -466,6 +466,172 @@ QPushButton#patternDeleteBtn:hover   { background-color: #922015; }
 QPushButton#patternDeleteBtn:pressed { background-color: #6e1010; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   StatusLamp — Light theme
+   ═══════════════════════════════════════════════════════════════════ */
+
+StatusLamp {
+    background-color: #ffffff;
+    border-top:    1px solid #c8ccd4;
+    border-right:  1px solid #c8ccd4;
+    border-bottom: 1px solid #c8ccd4;
+    border-left:   4px solid #c8ccd4;
+    border-radius: 4px;
+}
+StatusLamp[status="ok"]      { border-left-color: #1a7a40; }
+StatusLamp[status="warning"] { border-left-color: #9a6800; }
+StatusLamp[status="error"]   { border-left-color: #c0282a; }
+StatusLamp[status="off"]     { border-left-color: #c8ccd4; }
+
+StatusLamp QLabel#lbl_lamp_name {
+    color: #5a6878;
+    font-size: 9px;
+    font-weight: 700;
+    background: transparent;
+}
+StatusLamp QLabel#lbl_lamp_state {
+    font-size: 13px;
+    font-weight: 700;
+    background: transparent;
+}
+StatusLamp[status="ok"]      QLabel#lbl_lamp_state { color: #1a7a40; }
+StatusLamp[status="warning"] QLabel#lbl_lamp_state { color: #9a6800; }
+StatusLamp[status="error"]   QLabel#lbl_lamp_state { color: #c0282a; }
+StatusLamp[status="off"]     QLabel#lbl_lamp_state { color: #a8adb8; }
+
+/* ── Dashboard section panels ────────────────────────────────── */
+
+QFrame#frame_task_context,
+QFrame#frame_fault {
+    background-color: #ffffff;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+}
+
+/* Section header labels */
+QLabel#lbl_section_task_context,
+QLabel#lbl_section_fault,
+QLabel#lbl_section_signal_monitor,
+QLabel#lbl_section_task_log,
+QLabel#lbl_section_match_view,
+QLabel#lbl_section_result {
+    color: #5a6878;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+/* Caption / value pairs */
+QFrame#frame_task_context QLabel,
+QFrame#frame_fault QLabel { background: transparent; }
+
+QLabel#lbl_caption_vision_device,
+QLabel#lbl_caption_plc_device,
+QLabel#lbl_caption_camera,
+QLabel#lbl_caption_pattern_group,
+QLabel#lbl_caption_fault_flag,
+QLabel#lbl_caption_fault_code { color: #5a6878; }
+
+QLabel#lbl_val_vision_device,
+QLabel#lbl_val_plc_device,
+QLabel#lbl_val_camera,
+QLabel#lbl_val_pattern_group { color: #1a1c20; font-weight: 600; }
+
+QLabel#lbl_val_fault_flag,
+QLabel#lbl_val_fault_code { color: #1a1c20; font-weight: 600; }
+
+/* Fault panel — active state */
+QFrame#frame_fault[active="true"] {
+    border-color: #c0282a;
+    background-color: rgba(192, 40, 42, 0.05);
+}
+QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_flag,
+QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_code { color: #c0282a; }
+
+/* KPI cards */
+QFrame#frame_kpi_detected,
+QFrame#frame_kpi_sent,
+QFrame#frame_kpi_cycle_time,
+QFrame#frame_kpi_low_area {
+    background-color: #ffffff;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+}
+QFrame#frame_kpi_detected   QLabel:first-child,
+QFrame#frame_kpi_sent       QLabel:first-child,
+QFrame#frame_kpi_cycle_time QLabel:first-child,
+QFrame#frame_kpi_low_area   QLabel:first-child { color: #5a6878; font-size: 10px; }
+
+QLabel#lbl_kpi_detected_val,
+QLabel#lbl_kpi_sent_val,
+QLabel#lbl_kpi_cycle_time_val,
+QLabel#lbl_kpi_low_area_val {
+    color: #1a1c20;
+    font-size: 20px;
+    font-weight: 750;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TaskEventLogWidget — Light theme
+   ═══════════════════════════════════════════════════════════════════ */
+
+TaskEventLogWidget {
+    background-color: #ffffff;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+    outline: none;
+}
+TaskEventLogWidget::item {
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid #edf0f3;
+    background: transparent;
+}
+TaskEventLogWidget::item:selected { background-color: #e8eaee; }
+TaskEventLogWidget::item:hover:!selected { background-color: #f5f6f8; }
+
+TaskEventItemWidget { background: transparent; }
+
+/* ── Left severity bar ───────────────────────────────────────── */
+QFrame#taskEventBar { border-radius: 0px; }
+
+TaskEventItemWidget[severity="info"]    QFrame#taskEventBar { background-color: #c06400; }
+TaskEventItemWidget[severity="warning"] QFrame#taskEventBar { background-color: #9a6800; }
+TaskEventItemWidget[severity="error"]   QFrame#taskEventBar { background-color: #c0282a; }
+TaskEventItemWidget[severity="success"] QFrame#taskEventBar { background-color: #1a7a40; }
+
+/* ── Timestamp ───────────────────────────────────────────────── */
+QLabel#taskEventTime {
+    color: #5a6878;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+/* ── Level badge ─────────────────────────────────────────────── */
+TaskEventItemWidget[severity="info"]    QLabel#taskEventLevel { color: #c06400; }
+TaskEventItemWidget[severity="warning"] QLabel#taskEventLevel { color: #9a6800; }
+TaskEventItemWidget[severity="error"]   QLabel#taskEventLevel { color: #c0282a; }
+TaskEventItemWidget[severity="success"] QLabel#taskEventLevel { color: #1a7a40; }
+
+QLabel#taskEventLevel {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* ── Source tag ──────────────────────────────────────────────── */
+QLabel#taskEventSource {
+    color: #a8adb8;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* ── Message text ────────────────────────────────────────────── */
+QLabel#taskEventMsg { color: #1a1c20; font-size: 11px; }
+
+TaskEventItemWidget[severity="error"]   QLabel#taskEventMsg { color: #7a1010; }
+TaskEventItemWidget[severity="warning"] QLabel#taskEventMsg { color: #5a3800; }
+
+/* ═══════════════════════════════════════════════════════════════════
    Qt Advanced Docking System — Light theme
    ADS internal stylesheet disabled via CDockManager::setStyleSheet("").
    All ads-- rules are owned here using §5 tokens.

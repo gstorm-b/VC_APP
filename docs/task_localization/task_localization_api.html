@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskLocalization API</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f2f3f5;
+  --surface: #ffffff;
+  --text: #1a1c20;
+  --muted: #5a6878;
+  --border: #c8ccd4;
+  --accent: #c06400;
+  --code-bg: #e8eaee;
+  --table-head: #f5ede0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 "Segoe UI", Arial, sans-serif;
+}
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 28px 56px;
+}
+nav {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+nav a,
+nav strong {
+  margin-right: 16px;
+}
+article {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 28px;
+}
+h1, h2, h3 {
+  line-height: 1.25;
+  margin: 1.4em 0 0.55em;
+}
+h1 {
+  margin-top: 0;
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.45rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.1em;
+}
+h3 { font-size: 1.12rem; }
+p { margin: 0.65em 0; }
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.92em;
+}
+pre {
+  overflow-x: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+}
+ul, ol { padding-left: 1.45rem; }
+li { margin: 0.28em 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: top;
+}
+th {
+  background: var(--table-head);
+  text-align: left;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+</style>
+</head>
+<body>
+<div class="page">
+<nav><a href="README.html">Overview</a><strong>task localization api</strong><a href="runtime_controller_api.html">runtime controller api</a><a href="plc_signal_contract.html">plc signal contract</a><a href="maintenance_and_extension.html">maintenance and extension</a></nav>
+<article>
+<div class="meta">Generated from Markdown documentation.</div>
+<h1 id="tasklocalization-api">TaskLocalization API</h1>
+<p><code>TaskLocalization</code> is the facade between the project/task framework and the
+localization runtime implementation.</p>
+<p>Source:</p>
+<ul>
+<li><code>src/model/task_localization.h</code></li>
+<li><code>src/model/task_localization.cpp</code></li>
+</ul>
+<h2 id="responsibility">Responsibility</h2>
+<p><code>TaskLocalization</code> owns:</p>
+<ul>
+<li>The task identity and base <code>ITask</code> lifecycle.</li>
+<li>Persistent <code>TaskLocalizeConfig</code>.</li>
+<li>Assigned-device limits for PLC, VisionOutput, and Camera devices.</li>
+<li>Pattern group persistence through <code>PatternGroupManager</code>.</li>
+<li>Pattern image BLOB export/import for <code>ProjectRepository</code>.</li>
+<li>The <code>LocalizationPipeline</code> instance used by commission and runtime matching.</li>
+<li>The matching worker thread.</li>
+<li>Creation, destruction, and signal wiring of <code>LocalizationRuntimeController</code>.</li>
+</ul>
+<p><code>TaskLocalization</code> does not own runtime device I/O details. Runtime device
+connect, disconnect, single-shot, PLC writes, and vision-output sends are routed
+through the runtime controller and device runners.</p>
+<h2 id="public-surface">Public Surface</h2>
+<h3 id="lifecycle">Lifecycle</h3>
+<pre><code class="language-cpp">void beginRuntime(bool mergeToTaskThread = false) override;
+void endRuntime() override;
+void stopAll() override;
+</code></pre>
+<p><code>beginRuntime(false)</code> is the supported runtime mode for localization. If
+<code>mergeToTaskThread</code> is passed as true, localization logs a warning and keeps
+per-device threads.</p>
+<p>Runtime startup order:</p>
+<ol>
+<li>Transition task state to <code>RuntimeStarting</code>.</li>
+<li>Sync task runners with assigned devices.</li>
+<li>Enter <code>TaskRunner</code> runtime in per-device-thread mode.</li>
+<li>Create the runtime controller if needed.</li>
+<li>Move the controller to <code>TaskRunner::runtimeThread()</code>.</li>
+<li>Build <code>RuntimeContext</code>.</li>
+<li>Setup the controller using a blocking queued call when needed.</li>
+<li>Enter <code>Ready</code> only after runtime setup succeeds and required roles become
+healthy.</li>
+</ol>
+<p><code>endRuntime()</code> and <code>stopAll()</code> destroy the runtime controller before entering
+idle, then recreate a fresh controller in the task thread for the next session.</p>
+<h3 id="configuration">Configuration</h3>
+<pre><code class="language-cpp">void setTaskLocalizeConfig(const TaskLocalizeConfig &amp;cfg);
+TaskLocalizeConfig taskLocalizeConfig() const;
+</code></pre>
+<p><code>setTaskLocalizeConfig()</code> updates the persistent config and queues
+<code>LocalizationRuntimeController::configure()</code> when a controller exists.</p>
+<p><code>TaskLocalizeConfig</code> contains PLC tag names and device role bindings. See
+<a href="plc_signal_contract.html">plc_signal_contract.md</a>.</p>
+<h3 id="pattern-management">Pattern Management</h3>
+<pre><code class="language-cpp">mtc::PatternGroupManager *patternManager() const;
+void startCommissionMatching(std::shared_ptr&lt;mtc::MatchGroup&gt; group,
+                             cv::Mat &amp;image);
+</code></pre>
+<p>Commission matching is asynchronous. <code>startCommissionMatching()</code> clones the
+image and emits <code>startCommissionMatchingRequest(...)</code>. The matching worker runs
+<code>LocalizationPipeline::runMatch(...)</code> and emits <code>commissionMatchingFinished</code>.</p>
+<p>Runtime matching uses the same worker thread but is initiated by the runtime
+controller through <code>runtimeMatchingRequested(...)</code>.</p>
+<h3 id="runtime-commands">Runtime Commands</h3>
+<pre><code class="language-cpp">public slots:
+    void setupTask();
+    void executeLocalization();
+    void setCameraNumber(int number);
+    void setPatternNumber(int number);
+</code></pre>
+<p><code>setupTask()</code> builds the runtime context and calls controller setup.</p>
+<p><code>executeLocalization()</code> queues <code>LocalizationRuntimeController::execute()</code>.
+Manual execution is accepted only when the task is in <code>Ready</code> or
+<code>RunningCycle</code>.</p>
+<p><code>setCameraNumber()</code> only validates that the logical camera number maps to an
+assigned camera device. It does not call <code>CameraDevice::deviceConnect()</code> or
+<code>CameraDevice::deviceDisconnect()</code>. The accepted request is queued to
+<code>LocalizationRuntimeController::setActiveCameraNumber()</code>.</p>
+<p><code>setPatternNumber()</code> queues
+<code>LocalizationRuntimeController::setActivePatternGroupNumber()</code>.</p>
+<h3 id="signals">Signals</h3>
+<pre><code class="language-cpp">void commissionMatchingFinished(mtc::MatchResult result);
+void cycleResultUpdated(LocalizationRuntimeController::CycleResult result);
+void taskLogAppended(LocalizationRuntimeController::TaskLogEntry entry);
+</code></pre>
+<p><code>cycleResultUpdated</code> drives dashboard result views. <code>taskLogAppended</code> is a
+task-scoped operator log stream.</p>
+<p><code>TaskLocalization</code> also forwards controller signal changes through the base
+<code>ITask::signalChanged</code> signal.</p>
+<h2 id="runtimecontext-construction">RuntimeContext Construction</h2>
+<p><code>TaskLocalization::buildRuntimeContext()</code> snapshots everything the runtime
+controller needs:</p>
+<ul>
+<li>copied <code>TaskLocalizeConfig</code></li>
+<li>primary PLC device id and <code>PlcRunner</code></li>
+<li>vision-output device id and <code>VisionOutputRunner</code></li>
+<li>camera number to device id map</li>
+<li>camera number to <code>CameraRunner</code> map</li>
+<li>camera number to camera calibrator map</li>
+<li>pattern group snapshots</li>
+<li>active camera number</li>
+<li>active pattern group number</li>
+</ul>
+<p>The controller must not call back into <code>TaskLocalization</code> to resolve runtime
+data after setup.</p>
+<h2 id="threading-model">Threading Model</h2>
+<p>During runtime:</p>
+<ul>
+<li><code>TaskLocalization</code> stays in the task/object owner thread.</li>
+<li><code>LocalizationRuntimeController</code> lives in <code>TaskRunner::runtimeThread()</code>.</li>
+<li>Camera, PLC, and VisionOutput devices stay on their per-device threads.</li>
+<li>Matching runs on <code>TaskLocalization::matchingRunner</code>.</li>
+</ul>
+<p>All task-to-controller runtime calls must be queued. Controller-to-task
+notifications are Qt signals connected as queued connections.</p>
+<h2 id="persistence-api">Persistence API</h2>
+<pre><code class="language-cpp">QJsonObject toJson() const override;
+bool fromJson(const QJsonObject &amp;obj) override;
+QMap&lt;QString, cv::Mat&gt; getTaskImageMap() override;
+bool loadTaskImageMap(QMap&lt;QString, cv::Mat&gt; &amp;mapping) override;
+</code></pre>
+<p>JSON persistence is delegated:</p>
+<ul>
+<li>Base task state and config are handled by <code>ITask</code>.</li>
+<li>Pattern library schema is handled by <code>PatternGroupManager</code>.</li>
+<li>Pattern images are stored separately as BLOBs by <code>ProjectRepository</code>.</li>
+</ul>
+<p>Pattern image keys use the stable format:</p>
+<pre><code class="language-text">g{groupNumber}_p{patternNumber}
+</code></pre>
+<p>Do not key image storage by group or pattern name; names are user-editable.</p>
+<h2 id="maintenance-notes">Maintenance Notes</h2>
+<ul>
+<li>Do not add runtime calls from <code>TaskLocalization</code> directly to concrete devices.
+Route through runners and the controller.</li>
+<li>Do not let <code>LocalizationRuntimeController</code> call <code>TaskLocalization</code> methods.
+Add fields to <code>RuntimeContext</code> if the controller needs more runtime data.</li>
+<li>If a new task-facing runtime signal is added, wire it through both controller
+and dashboard/settings as needed.</li>
+<li>If lifecycle or ownership changes, update <code>uml/03_runtime_threading.puml</code> and
+<code>uml/04_localization_task.puml</code>.</li>
+</ul>
+
+</article>
+</div>
+</body>
+</html>

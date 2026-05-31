@@ -31,8 +31,9 @@ struct SignalRowSpec {
 constexpr SignalRowSpec kSignalRows[] = {
     // Number signals
     { "nActiveCamera",      SignalsMapWidget::Type::Number },
-    { "nActivePattern",     SignalsMapWidget::Type::Number },
+    { "nActivePatternGroup", SignalsMapWidget::Type::Number },
     { "nDetectedNumber",    SignalsMapWidget::Type::Number },
+    { "nFaultCode",         SignalsMapWidget::Type::Number },
     // Bool signals
     { "bCameraValid",       SignalsMapWidget::Type::Bool },
     { "bPatternValid",      SignalsMapWidget::Type::Bool },
@@ -42,6 +43,7 @@ constexpr SignalRowSpec kSignalRows[] = {
     { "bMatchingBusy",      SignalsMapWidget::Type::Bool },
     { "bMatchingDetected",  SignalsMapWidget::Type::Bool },
     { "bMatchingLowArea",   SignalsMapWidget::Type::Bool },
+    { "bTaskFault",         SignalsMapWidget::Type::Bool },
 };
 
 // Resolve the display name registered via Q_CLASSINFO("<name>_name", "…") on

@@ -3,9 +3,43 @@
 #include "mc_request.h"
 
 #include <memory>
+#include <QRegularExpression>
 #include <QThread>
 
 namespace vc::device {
+
+namespace {
+
+bool parseMcTag(const QString &tag, QChar expectedPrefix, int *address)
+{
+    if (!address) {
+        return false;
+    }
+
+    static const QRegularExpression re(QStringLiteral("^([MD])(\\d+)$"),
+                                       QRegularExpression::CaseInsensitiveOption);
+    const auto match = re.match(tag.trimmed());
+    if (!match.hasMatch()) {
+        return false;
+    }
+
+    const QChar prefix = match.captured(1).at(0).toUpper();
+    if (prefix != expectedPrefix) {
+        return false;
+    }
+
+    bool ok = false;
+    const int parsed = match.captured(2).toInt(&ok, 10);
+    if (!ok || parsed < 0) {
+        return false;
+    }
+
+    *address = parsed;
+    return true;
+}
+
+} // namespace
+
 McProtocolDevice::McProtocolDevice(QString id, QString name, QObject* parent)
     : PlcDevice(id, name, parent) {
 
@@ -100,6 +134,42 @@ QStringList McProtocolDevice::availableDigitalIoNames() const {
 
 QStringList McProtocolDevice::availableWordIoNames() const {
     return m_d_device_names;
+}
+
+bool McProtocolDevice::writeDigitalIoByName(const QString &tag, bool value)
+{
+    int address = 0;
+    if (!parseMcTag(tag, QLatin1Char('M'), &address)) {
+        LOG_DEV_ERR << "McProtocolDevice: invalid digital IO tag" << tag;
+        return false;
+    }
+
+    MCRequest request(MCRequest::WriteBit, 'M', address, 1);
+    if (!request.isValid()) {
+        LOG_DEV_ERR << "McProtocolDevice: invalid digital IO write request" << tag;
+        return false;
+    }
+
+    request.buildWriteData_Bit_Device(value ? 0x01 : 0x00);
+    return pushRequest(&request);
+}
+
+bool McProtocolDevice::writeWordIoByName(const QString &tag, qint16 value)
+{
+    int address = 0;
+    if (!parseMcTag(tag, QLatin1Char('D'), &address)) {
+        LOG_DEV_ERR << "McProtocolDevice: invalid word IO tag" << tag;
+        return false;
+    }
+
+    MCRequest request(MCRequest::WriteWord, 'D', address, 1);
+    if (!request.isValid()) {
+        LOG_DEV_ERR << "McProtocolDevice: invalid word IO write request" << tag;
+        return false;
+    }
+
+    request.buildWriteData_Word_Device_Word(value);
+    return pushRequest(&request);
 }
 
 bool McProtocolDevice::pushRequest(IRequest *request) {

@@ -2,6 +2,7 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QScopedPointer>
 
 #include <memory>
 
@@ -16,6 +17,7 @@
 #include "device/robot/nachi_robot_device.h"
 #include "model/localization_signal_mapper.h"
 #include "model/localization_recovery_policy.h"
+#include "model/localization_fault_code.h"
 #include "model/task_factory.h"
 #include "model/task_localization.h"
 #include "model/task_state_machine.h"
@@ -163,6 +165,339 @@ DeviceCommandResult findResultByCommandId(const QSignalSpy &spy, const QString &
     return DeviceCommandResult();
 }
 
+class FakeCameraDevice : public CameraDevice {
+public:
+    explicit FakeCameraDevice(const QString &id, const QString &name)
+        : CameraDevice(id, name)
+    {
+        m_frame = cv::Mat(32, 32, CV_8UC1, cv::Scalar(128));
+    }
+
+    bool deviceConnect() override
+    {
+        setConnectionStatus(ConnectStatus::Connected);
+        return true;
+    }
+
+    bool deviceDisconnect() override
+    {
+        setConnectionStatus(ConnectStatus::Disconnected);
+        return true;
+    }
+
+    bool isDeviceConnected() const override
+    {
+        return connectStatus() == ConnectStatus::Connected;
+    }
+
+    void deviceTerminate() override {}
+    CameraType cameraType() const override { return CameraType::BaslerGigE; }
+    bool hasIOPort() const override { return false; }
+    bool isRgbCamera() const override { return false; }
+    void setGrabTimeout(int) override {}
+    bool setExposure(double) override { return true; }
+    bool setGain(double) override { return true; }
+    void setBacklightControl(bool) override {}
+    bool readIO(QString) override { return false; }
+    bool writeIO(QString, bool) override { return false; }
+    bool applyParametersChange() override
+    {
+        emit parametersApplied(true);
+        return true;
+    }
+
+    GrabResult grabSingleShot() override
+    {
+        GrabResult result;
+        result.isGrabSuccess = grabSucceeds;
+        result.msg = grabSucceeds ? QStringLiteral("fake grab ok")
+                                  : QStringLiteral("fake grab timeout");
+        if (grabSucceeds) {
+            result.frame = m_frame.clone();
+        }
+        emit grabFinished(result);
+        return result;
+    }
+
+    bool startAutoContinuousShot() override { return true; }
+    void stopAutoContinousShot() override {}
+    bool startContinuousShot() override { return true; }
+    void stopContinuousShot() override {}
+    GrabResult softwareTriggerShot() override { return grabSingleShot(); }
+
+    void setDeviceConfig(IDeviceCfg *cfg) override
+    {
+        if (auto *cameraCfg = dynamic_cast<CameraCfg *>(cfg)) {
+            m_config.setCalibrator(cameraCfg->calibrator());
+        }
+        delete cfg;
+        emit configChanged();
+    }
+
+    IDeviceCfg *deviceConfig() override
+    {
+        return new BaslerGigeCfg(m_config);
+    }
+
+    void setCalibrator(const calib::Calibrator &calibrator)
+    {
+        m_config.setCalibrator(calibrator);
+    }
+
+    bool grabSucceeds{true};
+
+private:
+    BaslerGigeCfg m_config;
+    cv::Mat m_frame;
+};
+
+class FakePlcDevice : public PlcDevice, public IPlcIoWriter {
+public:
+    explicit FakePlcDevice(const QString &id, const QString &name)
+        : PlcDevice(id, name)
+    {
+    }
+
+    bool deviceConnect() override
+    {
+        setConnectionStatus(ConnectStatus::Connected);
+        return true;
+    }
+
+    bool deviceDisconnect() override
+    {
+        setConnectionStatus(ConnectStatus::Disconnected);
+        return true;
+    }
+
+    bool isDeviceConnected() const override
+    {
+        return connectStatus() == ConnectStatus::Connected;
+    }
+
+    void deviceTerminate() override {}
+    PlcType plcType() const override { return PlcType::MitsubishiMc; }
+    bool pushRequest(IRequest *) override { return false; }
+
+    bool writeDigitalIoByName(const QString &tag, bool value) override
+    {
+        digitalWrites.insert(tag, value);
+        return true;
+    }
+
+    bool writeWordIoByName(const QString &tag, qint16 value) override
+    {
+        wordWrites.insert(tag, value);
+        return true;
+    }
+
+    QMap<QString, bool> digitalWrites;
+    QMap<QString, qint16> wordWrites;
+};
+
+class FakeVisionOutputDevice : public VisionOutputDevice {
+public:
+    explicit FakeVisionOutputDevice(const QString &id, const QString &name)
+        : VisionOutputDevice(id, name)
+    {
+    }
+
+    bool deviceConnect() override
+    {
+        setConnectionStatus(ConnectStatus::Connected);
+        return true;
+    }
+
+    bool deviceDisconnect() override
+    {
+        setConnectionStatus(ConnectStatus::Disconnected);
+        return true;
+    }
+
+    bool isDeviceConnected() const override
+    {
+        return connectStatus() == ConnectStatus::Connected;
+    }
+
+    void deviceTerminate() override {}
+    VisionOutputType visionOutputType() const override
+    {
+        return VisionOutputType::VisionTCPIP;
+    }
+
+    bool pushRequest(IRequest *request) override
+    {
+        auto *outputRequest = dynamic_cast<VisionOutputRequest *>(request);
+        if (outputRequest) {
+            capturedPositions = outputRequest->positions();
+        }
+        requestCount += 1;
+        return sendSucceeds;
+    }
+
+    bool sendSucceeds{true};
+    int requestCount{0};
+    QVector<VisionOutputPosition> capturedPositions;
+};
+
+struct LocalizationRuntimeFixture {
+    QScopedPointer<FakePlcDevice> plc;
+    QScopedPointer<FakeCameraDevice> camera1;
+    QScopedPointer<FakeCameraDevice> camera2;
+    QScopedPointer<FakeVisionOutputDevice> visionOutput;
+    QScopedPointer<PlcRunner> plcRunner;
+    QScopedPointer<CameraRunner> cameraRunner1;
+    QScopedPointer<CameraRunner> cameraRunner2;
+    QScopedPointer<VisionOutputRunner> visionOutputRunner;
+    LocalizationRuntimeController controller;
+
+    LocalizationRuntimeFixture()
+    {
+        plc.reset(new FakePlcDevice(QStringLiteral("plc1"), QStringLiteral("PLC")));
+        camera1.reset(new FakeCameraDevice(QStringLiteral("cam1"), QStringLiteral("Camera 1")));
+        camera2.reset(new FakeCameraDevice(QStringLiteral("cam2"), QStringLiteral("Camera 2")));
+        visionOutput.reset(new FakeVisionOutputDevice(QStringLiteral("vout1"),
+                                                      QStringLiteral("Vision Output")));
+
+        const calib::Calibrator calibrator = makeCalibrator();
+        camera1->setCalibrator(calibrator);
+        camera2->setCalibrator(calibrator);
+
+        plcRunner.reset(new PlcRunner(plc.data()));
+        cameraRunner1.reset(new CameraRunner(camera1.data()));
+        cameraRunner2.reset(new CameraRunner(camera2.data()));
+        visionOutputRunner.reset(new VisionOutputRunner(visionOutput.data()));
+
+        startRunner(plcRunner.data());
+        startRunner(cameraRunner1.data());
+        startRunner(cameraRunner2.data());
+        startRunner(visionOutputRunner.data());
+    }
+
+    ~LocalizationRuntimeFixture()
+    {
+        stopRunner(visionOutputRunner.data());
+        stopRunner(cameraRunner2.data());
+        stopRunner(cameraRunner1.data());
+        stopRunner(plcRunner.data());
+    }
+
+    LocalizationRuntimeController::RuntimeContext context(bool calibrated = true) const
+    {
+        LocalizationRuntimeController::RuntimeContext ctx;
+        ctx.config = config();
+        ctx.primaryPlcDeviceId = plc->id();
+        ctx.visionOutputDeviceId = visionOutput->id();
+        ctx.primaryPlcRunner = plcRunner.data();
+        ctx.visionOutputRunner = visionOutputRunner.data();
+        ctx.cameraDeviceIds.insert(1, camera1->id());
+        ctx.cameraDeviceIds.insert(2, camera2->id());
+        ctx.cameraRunners.insert(1, cameraRunner1.data());
+        ctx.cameraRunners.insert(2, cameraRunner2.data());
+        if (calibrated) {
+            ctx.cameraCalibrators.insert(1, makeCalibrator());
+            ctx.cameraCalibrators.insert(2, makeCalibrator());
+        }
+        ctx.patternGroups.insert(1, makePatternGroup());
+        ctx.activeCameraNumber = 1;
+        ctx.activePatternGroupNumber = 1;
+        return ctx;
+    }
+
+    static TaskLocalizeConfig config()
+    {
+        TaskLocalizeConfig cfg;
+        cfg.setbExecuteTrigger(QStringLiteral("M10"));
+        cfg.setbTaskReady(QStringLiteral("M11"));
+        cfg.setbMatchingBusy(QStringLiteral("M12"));
+        cfg.setbMatchingFinished(QStringLiteral("M13"));
+        cfg.setbMatchingDetected(QStringLiteral("M14"));
+        cfg.setbMatchingLowArea(QStringLiteral("M15"));
+        cfg.setbCameraValid(QStringLiteral("M16"));
+        cfg.setbPatternValid(QStringLiteral("M17"));
+        cfg.setbTaskFault(QStringLiteral("M18"));
+        cfg.setnActiveCamera(QStringLiteral("D100"));
+        cfg.setnActivePatternGroup(QStringLiteral("D101"));
+        cfg.setnDetectedNumber(QStringLiteral("D102"));
+        cfg.setnFaultCode(QStringLiteral("D103"));
+        return cfg;
+    }
+
+    static calib::Calibrator makeCalibrator()
+    {
+        calib::Calibrator calibrator;
+        calibrator.addCorrespondences(
+            {cv::Point2f(0.0f, 0.0f),
+             cv::Point2f(100.0f, 0.0f),
+             cv::Point2f(0.0f, 100.0f),
+             cv::Point2f(100.0f, 100.0f)},
+            {cv::Point3f(0.0f, 0.0f, 0.0f),
+             cv::Point3f(100.0f, 0.0f, 0.0f),
+             cv::Point3f(0.0f, 100.0f, 0.0f),
+             cv::Point3f(100.0f, 100.0f, 0.0f)});
+        calibrator.calibrate();
+        return calibrator;
+    }
+
+    static std::shared_ptr<mtc::MatchGroup> makePatternGroup()
+    {
+        auto group = std::make_shared<mtc::MatchGroup>(L"Group 1", 1);
+        mtc::MatchPatternConfig pattern;
+        pattern.m_patternName = L"Pattern 1";
+        pattern.m_patternIndex = 1;
+        pattern.m_rawImage = cv::Mat(8, 8, CV_8UC1, cv::Scalar(255));
+        group->addPattern(pattern);
+        return group;
+    }
+
+    static mtc::MatchResult makeMatchResult()
+    {
+        mtc::MatchResult result;
+        mtc::MatchedObject object;
+        object.pattern_name = L"Pattern 1";
+        object.pattern_index = 1;
+        object.matched_Score = 0.95;
+        object.point_Center = cv::Point2f(20.0f, 30.0f);
+        object.point_angle = 10.0;
+        result.Objects.push_back(object);
+        result.totalPossiblePicking = 1;
+        result.ExecutionTime = 4.2;
+        result.Image = cv::Mat(32, 32, CV_8UC3, cv::Scalar(0, 255, 0));
+        return result;
+    }
+
+private:
+    static void startRunner(IDeviceRunner *runner)
+    {
+        runner->start();
+        runner->attach();
+    }
+
+    static void stopRunner(IDeviceRunner *runner)
+    {
+        if (!runner) {
+            return;
+        }
+        if (runner->isAttached()) {
+            runner->detach(nullptr);
+        }
+        if (runner->isRunning()) {
+            runner->stop();
+        }
+    }
+};
+
+QVariant lastSignalValue(const QSignalSpy &spy, const QString &signalName)
+{
+    for (int i = spy.size() - 1; i >= 0; --i) {
+        const QList<QVariant> args = spy.at(i);
+        if (args.size() >= 2 && args.at(0).toString() == signalName) {
+            return args.at(1);
+        }
+    }
+    return {};
+}
+
 } // namespace
 
 class TaskLocalizationProbe : public TaskLocalization {
@@ -265,6 +600,9 @@ private slots:
     void test_task_localize_config_round_trips_device_bindings()
     {
         TaskLocalizeConfig cfg;
+        cfg.setnActivePatternGroup(QStringLiteral("D101"));
+        cfg.setnFaultCode(QStringLiteral("D102"));
+        cfg.setbTaskFault(QStringLiteral("M105"));
         cfg.d->m_deviceBindings.setPrimaryPlcDeviceId(QStringLiteral("plc1"));
         cfg.d->m_deviceBindings.setVisionOutputDeviceId(QStringLiteral("vout1"));
         cfg.d->m_deviceBindings.setCameraNumberMap({
@@ -274,6 +612,9 @@ private slots:
 
         TaskLocalizeConfig restored;
         QVERIFY(restored.fromJson(cfg.toJson()));
+        QCOMPARE(restored.nActivePatternGroup(), QStringLiteral("D101"));
+        QCOMPARE(restored.nFaultCode(), QStringLiteral("D102"));
+        QCOMPARE(restored.bTaskFault(), QStringLiteral("M105"));
         QCOMPARE(restored.d->m_deviceBindings.primaryPlcDeviceId(),
                  QStringLiteral("plc1"));
         QCOMPARE(restored.d->m_deviceBindings.visionOutputDeviceId(),
@@ -288,22 +629,50 @@ private slots:
     {
         TaskLocalizeConfig cfg;
         cfg.setnActiveCamera(QStringLiteral("D100"));
+        cfg.setnActivePatternGroup(QStringLiteral("D101"));
+        cfg.setnFaultCode(QStringLiteral("D102"));
         cfg.setbExecuteTrigger(QStringLiteral("M10"));
+        cfg.setbTaskFault(QStringLiteral("M11"));
 
         LocalizationSignalMapper mapper;
         mapper.configure(cfg);
 
         const QList<LocalizationSignalEvent> events = mapper.mapValues({
             {QStringLiteral("D100"), 2},
+            {QStringLiteral("D101"), 4},
+            {QStringLiteral("D102"), 102},
             {QStringLiteral("M10"), true},
+            {QStringLiteral("M11"), true},
             {QStringLiteral("M999"), false}
         });
 
-        QCOMPARE(events.size(), 2);
+        QCOMPARE(events.size(), 5);
         QCOMPARE(events.at(0).name, QStringLiteral("nActiveCamera"));
         QCOMPARE(events.at(0).value.toInt(), 2);
-        QCOMPARE(events.at(1).name, QStringLiteral("bExecuteTrigger"));
-        QCOMPARE(events.at(1).value.toBool(), true);
+        QCOMPARE(events.at(1).name, QStringLiteral("nActivePatternGroup"));
+        QCOMPARE(events.at(1).value.toInt(), 4);
+        QCOMPARE(events.at(2).name, QStringLiteral("nFaultCode"));
+        QCOMPARE(events.at(2).value.toInt(), 102);
+        QCOMPARE(events.at(3).name, QStringLiteral("bExecuteTrigger"));
+        QCOMPARE(events.at(3).value.toBool(), true);
+        QCOMPARE(events.at(4).name, QStringLiteral("bTaskFault"));
+        QCOMPARE(events.at(4).value.toBool(), true);
+        QCOMPARE(mapper.tagForSignalName(QStringLiteral("nFaultCode")),
+                 QStringLiteral("D102"));
+    }
+
+    void test_localization_fault_code_values_are_stable()
+    {
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::None), 0);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::CameraLost), 100);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::CameraConnectFailed), 101);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::CameraGrabTimeout), 102);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::VisionOutputLost), 200);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::VisionOutputSendFailed), 201);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::PlcLost), 300);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::PatternInvalid), 400);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::CalibrationInvalid), 401);
+        QCOMPARE(localizationFaultCodeValue(LocalizationFaultCode::InternalError), 500);
     }
 
     void test_task_factory_restores_localization_task()
@@ -364,6 +733,7 @@ private slots:
         QVERIFY(dynamic_cast<IPlcTagProvider *>(plc.get()) != nullptr);
         QVERIFY(dynamic_cast<IDigitalIoProvider *>(plc.get()) != nullptr);
         QVERIFY(dynamic_cast<IWordIoProvider *>(plc.get()) != nullptr);
+        QVERIFY(dynamic_cast<IPlcIoWriter *>(plc.get()) != nullptr);
         QVERIFY(dynamic_cast<IResultOutputDevice *>(output.get()) != nullptr);
 
         QVERIFY(dynamic_cast<IPlcTagProvider *>(camera.get()) == nullptr);
@@ -678,6 +1048,7 @@ private slots:
     void test_task_localization_runtime_signals_drive_recovering_and_faulted_states()
     {
         TaskLocalizationProbe task(QStringLiteral("Task Runtime Probe"));
+        QVERIFY(task.findChild<LocalizationRuntimeController *>() == nullptr);
         QVERIFY(task.transitionTaskState(TaskState::CommissionStarting,
                                          QStringLiteral("test setup")));
         QVERIFY(task.transitionTaskState(TaskState::Commission,
@@ -687,29 +1058,182 @@ private slots:
         QVERIFY(task.transitionTaskState(TaskState::Ready,
                                          QStringLiteral("test setup")));
 
-        auto *controller = task.findChild<LocalizationRuntimeController *>();
-        QVERIFY(controller != nullptr);
-
-        QVERIFY(QMetaObject::invokeMethod(controller,
-                                          "runtimeRecovering",
+        QVERIFY(QMetaObject::invokeMethod(&task,
+                                          "onRuntimeRecovering",
                                           Qt::DirectConnection,
                                           Q_ARG(QString, QStringLiteral("recovering"))));
         QCOMPARE(task.taskState(), TaskState::Recovering);
 
-        QVERIFY(QMetaObject::invokeMethod(controller,
-                                          "runtimeReady",
+        QVERIFY(QMetaObject::invokeMethod(&task,
+                                          "onRuntimeReady",
                                           Qt::DirectConnection,
                                           Q_ARG(QString, QStringLiteral("ready"))));
         QCOMPARE(task.taskState(), TaskState::Ready);
 
-        QVERIFY(QMetaObject::invokeMethod(controller,
-                                          "runtimeFault",
+        QVERIFY(QMetaObject::invokeMethod(&task,
+                                          "onRuntimeFault",
                                           Qt::DirectConnection,
                                           Q_ARG(QString, QStringLiteral("fault"))));
         QCOMPARE(task.taskState(), TaskState::Faulted);
 
         task.stopAll();
         QCOMPARE(task.taskState(), TaskState::Idle);
+    }
+
+    void test_localization_runtime_trigger_cycle_uses_matching_worker_contract()
+    {
+        qRegisterMetaType<std::shared_ptr<mtc::MatchGroup>>("std::shared_ptr<mtc::MatchGroup>");
+        qRegisterMetaType<cv::Mat>("cv::Mat");
+
+        LocalizationRuntimeFixture fixture;
+        QSignalSpy signalSpy(&fixture.controller, &LocalizationRuntimeController::signalChanged);
+        QSignalSpy cycleSpy(&fixture.controller, &LocalizationRuntimeController::cycleResultUpdated);
+        int matchingCount = 0;
+        int lastCycleId = 0;
+        QObject::connect(&fixture.controller,
+                         &LocalizationRuntimeController::runtimeMatchingRequested,
+                         &fixture.controller,
+                         [&](int cycleId, std::shared_ptr<mtc::MatchGroup>, cv::Mat) {
+            matchingCount += 1;
+            lastCycleId = cycleId;
+        });
+        QVERIFY(signalSpy.isValid());
+        QVERIFY(cycleSpy.isValid());
+
+        const auto setup = fixture.controller.setup(fixture.context());
+        QVERIFY2(setup.valid, qPrintable(setup.errors.join(QStringLiteral("; "))));
+        QTRY_COMPARE_WITH_TIMEOUT(lastSignalValue(signalSpy, QStringLiteral("bTaskReady")).toBool(),
+                                  true,
+                                  1000);
+
+        fixture.controller.handlePlcValues({{QStringLiteral("M10"), true}});
+        QTRY_COMPARE_WITH_TIMEOUT(matchingCount, 1, 1000);
+
+        fixture.controller.onRuntimeMatchingFinished(
+            lastCycleId,
+            LocalizationRuntimeFixture::makeMatchResult());
+
+        QTRY_COMPARE_WITH_TIMEOUT(cycleSpy.count(), 1, 1000);
+        auto result = qvariant_cast<LocalizationRuntimeController::CycleResult>(
+            cycleSpy.takeFirst().at(0));
+        QCOMPARE(result.faulted, false);
+        QCOMPARE(result.detectedNumber, 1);
+        QCOMPARE(result.sentNumber, 1);
+        QTRY_COMPARE_WITH_TIMEOUT(fixture.visionOutput->requestCount, 1, 1000);
+
+        fixture.controller.handlePlcValues({{QStringLiteral("M10"), true}});
+        QTest::qWait(50);
+        QCOMPARE(matchingCount, 1);
+
+        fixture.controller.handlePlcValues({{QStringLiteral("M10"), false}});
+        QTRY_COMPARE_WITH_TIMEOUT(lastSignalValue(signalSpy, QStringLiteral("bTaskReady")).toBool(),
+                                  true,
+                                  1000);
+        QCOMPARE(lastSignalValue(signalSpy, QStringLiteral("bMatchingFinished")).toBool(), false);
+    }
+
+    void test_localization_runtime_grab_timeout_faults_without_vision_output()
+    {
+        LocalizationRuntimeFixture fixture;
+        fixture.camera1->grabSucceeds = false;
+        QSignalSpy cycleSpy(&fixture.controller, &LocalizationRuntimeController::cycleResultUpdated);
+        QSignalSpy signalSpy(&fixture.controller, &LocalizationRuntimeController::signalChanged);
+        QVERIFY(cycleSpy.isValid());
+        QVERIFY(signalSpy.isValid());
+
+        const auto setup = fixture.controller.setup(fixture.context());
+        QVERIFY2(setup.valid, qPrintable(setup.errors.join(QStringLiteral("; "))));
+        QTRY_COMPARE_WITH_TIMEOUT(lastSignalValue(signalSpy, QStringLiteral("bTaskReady")).toBool(),
+                                  true,
+                                  1000);
+
+        fixture.controller.handlePlcValues({{QStringLiteral("M10"), true}});
+        QTRY_COMPARE_WITH_TIMEOUT(cycleSpy.count(), 1, 1000);
+
+        auto result = qvariant_cast<LocalizationRuntimeController::CycleResult>(
+            cycleSpy.takeFirst().at(0));
+        QCOMPARE(result.faulted, true);
+        QCOMPARE(result.faultCode, LocalizationFaultCode::CameraGrabTimeout);
+        QCOMPARE(fixture.visionOutput->requestCount, 0);
+        QCOMPARE(lastSignalValue(signalSpy, QStringLiteral("nFaultCode")).toInt(), 102);
+    }
+
+    void test_localization_runtime_vision_output_failure_faults_cycle()
+    {
+        qRegisterMetaType<std::shared_ptr<mtc::MatchGroup>>("std::shared_ptr<mtc::MatchGroup>");
+        qRegisterMetaType<cv::Mat>("cv::Mat");
+
+        LocalizationRuntimeFixture fixture;
+        fixture.visionOutput->sendSucceeds = false;
+        QSignalSpy cycleSpy(&fixture.controller, &LocalizationRuntimeController::cycleResultUpdated);
+        QSignalSpy signalSpy(&fixture.controller, &LocalizationRuntimeController::signalChanged);
+        int matchingCount = 0;
+        int lastCycleId = 0;
+        QObject::connect(&fixture.controller,
+                         &LocalizationRuntimeController::runtimeMatchingRequested,
+                         &fixture.controller,
+                         [&](int cycleId, std::shared_ptr<mtc::MatchGroup>, cv::Mat) {
+            matchingCount += 1;
+            lastCycleId = cycleId;
+        });
+        QVERIFY(cycleSpy.isValid());
+        QVERIFY(signalSpy.isValid());
+
+        const auto setup = fixture.controller.setup(fixture.context());
+        QVERIFY2(setup.valid, qPrintable(setup.errors.join(QStringLiteral("; "))));
+        QTRY_COMPARE_WITH_TIMEOUT(lastSignalValue(signalSpy, QStringLiteral("bTaskReady")).toBool(),
+                                  true,
+                                  1000);
+
+        fixture.controller.handlePlcValues({{QStringLiteral("M10"), true}});
+        QTRY_COMPARE_WITH_TIMEOUT(matchingCount, 1, 1000);
+
+        fixture.controller.onRuntimeMatchingFinished(
+            lastCycleId,
+            LocalizationRuntimeFixture::makeMatchResult());
+
+        QTRY_COMPARE_WITH_TIMEOUT(cycleSpy.count(), 1, 1000);
+        auto result = qvariant_cast<LocalizationRuntimeController::CycleResult>(
+            cycleSpy.takeFirst().at(0));
+        QCOMPARE(result.faulted, true);
+        QCOMPARE(result.faultCode, LocalizationFaultCode::VisionOutputSendFailed);
+        QCOMPARE(lastSignalValue(signalSpy, QStringLiteral("nFaultCode")).toInt(), 201);
+    }
+
+    void test_localization_runtime_rejects_camera_change_while_running()
+    {
+        qRegisterMetaType<std::shared_ptr<mtc::MatchGroup>>("std::shared_ptr<mtc::MatchGroup>");
+        qRegisterMetaType<cv::Mat>("cv::Mat");
+
+        LocalizationRuntimeFixture fixture;
+        QSignalSpy signalSpy(&fixture.controller, &LocalizationRuntimeController::signalChanged);
+        int matchingCount = 0;
+        int lastCycleId = 0;
+        QObject::connect(&fixture.controller,
+                         &LocalizationRuntimeController::runtimeMatchingRequested,
+                         &fixture.controller,
+                         [&](int cycleId, std::shared_ptr<mtc::MatchGroup>, cv::Mat) {
+            matchingCount += 1;
+            lastCycleId = cycleId;
+        });
+        QVERIFY(signalSpy.isValid());
+
+        const auto setup = fixture.controller.setup(fixture.context());
+        QVERIFY2(setup.valid, qPrintable(setup.errors.join(QStringLiteral("; "))));
+        QTRY_COMPARE_WITH_TIMEOUT(lastSignalValue(signalSpy, QStringLiteral("bTaskReady")).toBool(),
+                                  true,
+                                  1000);
+
+        fixture.controller.handlePlcValues({{QStringLiteral("M10"), true}});
+        QTRY_COMPARE_WITH_TIMEOUT(matchingCount, 1, 1000);
+
+        fixture.controller.setActiveCameraNumber(2);
+        QTest::qWait(50);
+        QCOMPARE(lastSignalValue(signalSpy, QStringLiteral("nActiveCamera")).toInt(), 0);
+
+        fixture.controller.onRuntimeMatchingFinished(
+            lastCycleId,
+            LocalizationRuntimeFixture::makeMatchResult());
     }
 };
 

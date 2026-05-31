@@ -19,7 +19,9 @@ public:
 
     // number signals
     QString m_nActiveCamera;
-    QString m_nActivePattern;
+    QString m_nActivePatternGroup;
+    QString m_nDetectedNumber;
+    QString m_nFaultCode;
 
     // bool signals
     QString m_bCameraValid;
@@ -31,7 +33,7 @@ public:
     QString m_bMatchingBusy;
     QString m_bMatchingDetected;
     QString m_bMatchingLowArea;
-    QString m_nDetectedNumber;
+    QString m_bTaskFault;
 
     TaskDeviceBindings m_deviceBindings;
 };
@@ -40,7 +42,9 @@ class TaskLocalizeConfig : public ITaskConfig {
     Q_GADGET
 
     P_PROPERTY_STRING_READWRITE(QString, nActiveCamera, "Camera selection")
-    P_PROPERTY_STRING_READWRITE(QString, nActivePattern, "Pattern selection")
+    P_PROPERTY_STRING_READWRITE(QString, nActivePatternGroup, "Pattern group selection")
+    P_PROPERTY_STRING_READWRITE(QString, nDetectedNumber, "Detected number")
+    P_PROPERTY_STRING_READWRITE(QString, nFaultCode, "Fault code")
 
     P_PROPERTY_STRING_READWRITE(QString, bCameraValid, "Camera ready")
     P_PROPERTY_STRING_READWRITE(QString, bPatternValid, "Pattern ready")
@@ -51,7 +55,7 @@ class TaskLocalizeConfig : public ITaskConfig {
     P_PROPERTY_STRING_READWRITE(QString, bMatchingBusy, "Busy")
     P_PROPERTY_STRING_READWRITE(QString, bMatchingDetected, "Detected")
     P_PROPERTY_STRING_READWRITE(QString, bMatchingLowArea, "Low Area")
-    P_PROPERTY_STRING_READWRITE(QString, nDetectedNumber, "Detected number")
+    P_PROPERTY_STRING_READWRITE(QString, bTaskFault, "Task fault")
 
 public:
     explicit TaskLocalizeConfig()
@@ -67,9 +71,10 @@ public:
 
     QJsonObject toJson() const override {
         QJsonObject obj;
-        obj["nActiveCamera"]     = d->m_nActiveCamera;
-        obj["nActivePattern"]    = d->m_nActivePattern;
-        obj["nDetectedNumber"]   = d->m_nDetectedNumber;
+        obj["nActiveCamera"]       = d->m_nActiveCamera;
+        obj["nActivePatternGroup"] = d->m_nActivePatternGroup;
+        obj["nDetectedNumber"]     = d->m_nDetectedNumber;
+        obj["nFaultCode"]          = d->m_nFaultCode;
 
         obj["bCameraValid"]      = d->m_bCameraValid;
         obj["bPatternValid"]     = d->m_bPatternValid;
@@ -79,6 +84,7 @@ public:
         obj["bMatchingBusy"]     = d->m_bMatchingBusy;
         obj["bMatchingDetected"] = d->m_bMatchingDetected;
         obj["bMatchingLowArea"]  = d->m_bMatchingLowArea;
+        obj["bTaskFault"]        = d->m_bTaskFault;
 
         obj["deviceBindings"] = d->m_deviceBindings.toJson();
 
@@ -91,9 +97,10 @@ public:
             return false;
         }
 
-        d->m_nActiveCamera      = obj["nActiveCamera"].toString("");
-        d->m_nActivePattern     = obj["nActivePattern"].toString("");
-        d->m_nDetectedNumber    = obj["nDetectedNumber"].toString("");
+        d->m_nActiveCamera       = obj["nActiveCamera"].toString("");
+        d->m_nActivePatternGroup = obj["nActivePatternGroup"].toString("");
+        d->m_nDetectedNumber     = obj["nDetectedNumber"].toString("");
+        d->m_nFaultCode          = obj["nFaultCode"].toString("");
 
         d->m_bCameraValid       = obj["bCameraValid"].toString("");
         d->m_bPatternValid      = obj["bPatternValid"].toString("");
@@ -103,6 +110,7 @@ public:
         d->m_bMatchingBusy      = obj["bMatchingBusy"].toString("");
         d->m_bMatchingDetected  = obj["bMatchingDetected"].toString("");
         d->m_bMatchingLowArea   = obj["bMatchingLowArea"].toString("");
+        d->m_bTaskFault         = obj["bTaskFault"].toString("");
 
         if (!d->m_deviceBindings.fromJson(obj["deviceBindings"])) {
             return false;

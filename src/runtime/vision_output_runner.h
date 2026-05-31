@@ -3,6 +3,9 @@
 
 #include "runtime/device_runner.h"
 #include "device/output_device/vision_output_device.h"
+#include "device/output_device/vision_output_request.h"
+
+#include <QMetaObject>
 
 
 namespace vc::runtime {
@@ -23,8 +26,21 @@ public:
     // ── Commission actions (safe from any thread) ─────────────────────────────
     void requestConnect()    { if (!m_busy) { m_busy = true; emit sig_connect();    } }
     void requestDisconnect() { if (!m_busy) { m_busy = true; emit sig_disconnect(); } }
+    void requestSendResult(const QVector<vc::device::VisionOutputPosition> &positions)
+    {
+        const QVector<vc::device::VisionOutputPosition> payload = positions;
+        QMetaObject::invokeMethod(m_device, [this, payload]() {
+            vc::device::VisionOutputRequest request(payload);
+            const bool ok = m_device->pushRequest(&request);
+            emit resultRequestFinished(
+                ok,
+                ok ? QStringLiteral("Vision output result sent.")
+                   : QStringLiteral("Vision output result send failed."));
+        }, Qt::QueuedConnection);
+    }
 
 signals:
+    void resultRequestFinished(bool ok, QString message);
 
     // ── Internal queued triggers ──────────────────────────────────────────────
     void sig_connect();

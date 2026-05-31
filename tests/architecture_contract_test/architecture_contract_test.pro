@@ -104,6 +104,7 @@ HEADERS += \
     $$ROOT_DIR/src/model/camera_map_entry.h \
     $$ROOT_DIR/src/model/itask.h \
     $$ROOT_DIR/src/model/itask_config.h \
+    $$ROOT_DIR/src/model/localization_fault_code.h \
     $$ROOT_DIR/src/model/localization_pipeline.h \
     $$ROOT_DIR/src/model/localization_recovery_policy.h \
     $$ROOT_DIR/src/model/localization_runtime_controller.h \

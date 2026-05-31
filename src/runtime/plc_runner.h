@@ -2,6 +2,7 @@
 #define PLC_RUNNER_H
 
 #include "runtime/device_runner.h"
+#include "device/device_capabilities.h"
 #include "device/plc/plc_device.h"
 
 namespace vc::runtime {
@@ -40,6 +41,14 @@ public:
     // ── Commission actions (safe from any thread) ─────────────────────────────
     void requestConnect()    { if (!m_busy) { m_busy = true; emit sig_connect();    } }
     void requestDisconnect() { if (!m_busy) { m_busy = true; emit sig_disconnect(); } }
+    void requestWriteDigitalIo(const QString &tag, bool value)
+    {
+        emit sig_writeDigitalIo(tag, value);
+    }
+    void requestWriteWordIo(const QString &tag, qint16 value)
+    {
+        emit sig_writeWordIo(tag, value);
+    }
 
 signals:
     // ── Family-level signals forwarded from PLC thread ────────────────────────
@@ -49,6 +58,8 @@ signals:
     // ── Internal queued triggers ──────────────────────────────────────────────
     void sig_connect();
     void sig_disconnect();
+    void sig_writeDigitalIo(QString tag, bool value);
+    void sig_writeWordIo(QString tag, qint16 value);
 
 protected:
     void wireSignals() override {
@@ -59,6 +70,20 @@ protected:
                 m_device, &Plc::deviceConnect,    Qt::QueuedConnection);
         connect(this,     &Run::sig_disconnect,
                 m_device, &Plc::deviceDisconnect, Qt::QueuedConnection);
+        connect(this, &Run::sig_writeDigitalIo, m_device,
+                [this](const QString &tag, bool value) {
+            auto *writer = dynamic_cast<vc::device::IPlcIoWriter *>(m_device);
+            if (!writer || !writer->writeDigitalIoByName(tag, value)) {
+                emit errorOccurred(QStringLiteral("PLC digital write failed: %1").arg(tag));
+            }
+        }, Qt::QueuedConnection);
+        connect(this, &Run::sig_writeWordIo, m_device,
+                [this](const QString &tag, qint16 value) {
+            auto *writer = dynamic_cast<vc::device::IPlcIoWriter *>(m_device);
+            if (!writer || !writer->writeWordIoByName(tag, value)) {
+                emit errorOccurred(QStringLiteral("PLC word write failed: %1").arg(tag));
+            }
+        }, Qt::QueuedConnection);
 
         connect(m_device, &Plc::connectStatusChanged,
                 this,     &Run::onConnectStatusChanged, Qt::QueuedConnection);

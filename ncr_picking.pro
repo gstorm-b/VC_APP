@@ -45,6 +45,7 @@ SOURCES += \
     src/form/task/localization_setting_widget.cpp \
     src/form/task/localization_task_widget.cpp \
     src/form/vision_output/vision_tcpip_device_widget.cpp \
+    src/form/widgets/status_lamp.cpp \
     src/libwg/group_frame.cpp \
     src/logger/app_logger.cpp \
     src/matching/image_matcher.cpp \
@@ -95,6 +96,7 @@ SOURCES += \
     src/widgets/calibration/calibration_points_table.cpp \
     src/widgets/signals_map_widget.cpp \
     src/widgets/signals_monitor_widget.cpp \
+    src/widgets/task_event_log_widget.cpp \
     src/utils/theme_manager.cpp
 
 
@@ -165,6 +167,7 @@ HEADERS += \
     src/form/task/localization_setting_widget.h \
     src/form/task/localization_task_widget.h \
     src/form/task_widget.h \
+    src/form/widgets/status_lamp.h \
     src/form/vision_output/vision_tcpip_device_widget.h \
     src/libwg/group_frame.h \
     src/libwg/validating_line_edit.h \
@@ -189,6 +192,7 @@ HEADERS += \
     src/model/isignal_group.h \
     src/model/itask.h \
     src/model/itask_config.h \
+    src/model/localization_fault_code.h \
     src/model/localization_pipeline.h \
     src/model/localization_recovery_policy.h \
     src/model/localization_runtime_controller.h \
@@ -297,6 +301,7 @@ HEADERS += \
     src/widgets/calibration/calibration_points_table.h \
     src/widgets/signals_map_widget.h \
     src/widgets/signals_monitor_widget.h \
+    src/widgets/task_event_log_widget.h \
     windows_helper.h
 
 FORMS += \

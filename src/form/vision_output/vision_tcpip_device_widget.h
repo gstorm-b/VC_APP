@@ -38,13 +38,22 @@ private slots:
     void saveConfig();
     void refreshConfig();
 
-
+    void onConnectClicked();
+    void onFieldConfigChanged();
     void onConnectionStateChanged(vc::device::ConnectStatus state);
+    void onMainClientStateChanged(bool connected);
+
+    void onAddRow();
+    void onRemoveRow();
+    void onSendResult();
 
 private:
     void initWidget();
     void populateBrowser();
     void updateConnectionVisual(vc::device::ConnectStatus status);
+    void updateSendSection(bool mainClientConnected);
+    void addPositionRow(double x = 0.0, double y = 0.0,
+                        double z = 0.0, double r = 0.0);
 
 private:
     Ui::VisionTcpipDeviceWidget *ui;

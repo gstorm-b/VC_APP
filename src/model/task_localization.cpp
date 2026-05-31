@@ -2,11 +2,14 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QPointer>
 #include <QRegularExpression>
+#include <QThread>
 
 #include "matching/match_group.h"
 #include "matching/match_pattern.h"
 #include "model/project.h"
+#include "runtime/vision_output_runner.h"
 
 namespace vc::model {
 
@@ -49,34 +52,35 @@ TaskLocalization::TaskLocalization(QString name, QString id, QObject* parent)
     m_limitDeviceMap.insert(device::DeviceType::Camera, limit_num_camera);
 
     m_patternManager = new mtc::PatternGroupManager(this);
-    m_runtimeController = new LocalizationRuntimeController(this);
-    m_runtimeController->setPipeline(&m_pipeline);
-    m_runtimeController->configure(m_config);
-
-    connect(m_runtimeController, &LocalizationRuntimeController::signalChanged,
-            this, &ITask::signalChanged);
-    connect(m_runtimeController, &LocalizationRuntimeController::cameraNumberChanged,
-            this, &TaskLocalization::onSignalChangeCameraNumber);
-    connect(m_runtimeController, &LocalizationRuntimeController::patternNumberChanged,
-            this, &TaskLocalization::onSignalChangePatternNumber);
-    connect(m_runtimeController, &LocalizationRuntimeController::runtimeRecovering,
-            this, &TaskLocalization::onRuntimeRecovering);
-    connect(m_runtimeController, &LocalizationRuntimeController::runtimeReady,
-            this, &TaskLocalization::onRuntimeReady);
-    connect(m_runtimeController, &LocalizationRuntimeController::runtimeFault,
-            this, &TaskLocalization::onRuntimeFault);
+    qRegisterMetaType<mtc::MatchResult>("mtc::MatchResult");
+    qRegisterMetaType<cv::Mat>("cv::Mat");
+    qRegisterMetaType<std::shared_ptr<mtc::MatchGroup>>("std::shared_ptr<mtc::MatchGroup>");
 
     matchingRunner = new QThread();
-    wireMatchingCommissionSignals();
+    matchingRunner->setObjectName(QStringLiteral("LocalizationMatchingThread"));
+    wireMatchingWorkerSignals();
     matchingRunner->start();
+    createRuntimeController();
+}
+
+TaskLocalization::~TaskLocalization()
+{
+    destroyRuntimeController();
+    if (matchingRunner) {
+        matchingRunner->quit();
+        if (!matchingRunner->wait(3000)) {
+            LOG_USER_WARN << "TaskLocalization matching worker did not stop within timeout.";
+        }
+        delete matchingRunner;
+        matchingRunner = nullptr;
+    }
 }
 
 void TaskLocalization::setTaskLocalizeConfig(const TaskLocalizeConfig &cfg)
 {
     m_config = cfg;
     this->setTaskConfig(&m_config);
-    if (m_runtimeController)
-        m_runtimeController->configure(m_config);
+    queueConfigureRuntimeController();
 }
 
 bool TaskLocalization::isReachLimitOfDeviceType(vc::device::DeviceType t) const {
@@ -107,6 +111,24 @@ bool TaskLocalization::isReachLimitOfDeviceType(vc::device::DeviceType t) const 
 
 void TaskLocalization::beginRuntime(bool mergeToTaskThread)
 {
+    if (mergeToTaskThread) {
+        LOG_USER_WARN << "Localization runtime keeps per-device threads; mergeToTaskThread ignored.";
+    }
+
+    if (!transitionTaskState(TaskState::RuntimeStarting,
+                             QStringLiteral("beginRuntime"))) {
+        return;
+    }
+
+    syncRunnersWithDevices();
+    taskRunner()->enterRuntime(false);
+    createRuntimeController();
+    if (auto *thread = taskRunner()->runtimeThread()) {
+        if (m_runtimeController->thread() != thread) {
+            m_runtimeController->moveToThread(thread);
+        }
+    }
+
     setupTask();
     if (!m_runtimeController || !m_runtimeController->isValid()) {
         transitionTaskState(TaskState::Faulted,
@@ -114,19 +136,35 @@ void TaskLocalization::beginRuntime(bool mergeToTaskThread)
         return;
     }
 
-    ITask::beginRuntime(mergeToTaskThread);
+    emit runtimeStarted();
+}
+
+void TaskLocalization::endRuntime()
+{
+    destroyRuntimeController();
+    ITask::endRuntime();
+    createRuntimeController();
+}
+
+void TaskLocalization::stopAll()
+{
+    destroyRuntimeController();
+    ITask::stopAll();
+    createRuntimeController();
 }
 
 // ── Typed runner helpers ──────────────────────────────────────────────────────
 
 vc::runtime::CameraRunner *TaskLocalization::cameraRunner(const QString &deviceId) const
 {
+    if (!taskRunner()) return nullptr;
     return qobject_cast<vc::runtime::CameraRunner *>(
         taskRunner()->runnerFor(deviceId));
 }
 
 vc::runtime::PlcRunner *TaskLocalization::plcRunner(const QString &deviceId) const
 {
+    if (!taskRunner()) return nullptr;
     return qobject_cast<vc::runtime::PlcRunner *>(
         taskRunner()->runnerFor(deviceId));
 }
@@ -231,7 +269,7 @@ void TaskLocalization::setupTask()
         return;
     }
 
-    const auto result = m_runtimeController->setup(this);
+    const auto result = setupRuntimeController();
     m_plcDeviceId = result.primaryPlcDeviceId;
     m_isValid = result.valid;
 }
@@ -252,20 +290,19 @@ void TaskLocalization::executeLocalization()
         return;
     }
 
-    if (!transitionTaskState(TaskState::RunningCycle,
-                             QStringLiteral("Localization cycle started"))) {
-        return;
-    }
-
-    m_runtimeController->execute();
-
-    if (taskState() == TaskState::RunningCycle) {
-        transitionTaskState(TaskState::Ready,
-                            QStringLiteral("Localization cycle completed"));
+    auto *controller = m_runtimeController;
+    if (controller) {
+        QMetaObject::invokeMethod(controller, [controller]() {
+            controller->execute();
+        }, Qt::QueuedConnection);
     }
 }
 
 void TaskLocalization::setCameraNumber(int number) {
+    if (!taskRunner()) {
+        return;
+    }
+
     if (taskRunner()->currentPhase() != runtime::TaskRunner::Phase::Runtime) {
         return;
     }
@@ -282,50 +319,21 @@ void TaskLocalization::setCameraNumber(int number) {
     }
 
     std::shared_ptr<device::IDevice> device = getTaskDevice(cam_id);
-    if (device->deviceType() != device::DeviceType::Camera) {
+    if (!device || device->deviceType() != device::DeviceType::Camera) {
         LOG_USER_WARN << tr("Cannot change camera, device %1 with id %2 isn't camera type")
                              .arg(number).arg(cam_id);
         return;
     }
 
-    device::CameraDevice* camera = qobject_cast<device::CameraDevice*>(device.get());
-    if (!camera) {
-        LOG_USER_WARN << tr("Cannot change camera, device id %1 is null").arg(cam_id);
-        return;
-    }
-
-    // select camera
-    if (m_selectedCamera) {
-        if (m_selectedCamera->isDeviceConnected()) {
-            m_selectedCamera->deviceDisconnect();
-
-            // wait until disconnect current camera before connect another camera
-            connect(m_selectedCamera.get(), &device::IDevice::connectStatusChanged,
-                    this, &TaskLocalization::waitReconnectCameraHandle, Qt::SingleShotConnection);
-
-            m_nextConnectCamera.reset(camera);
-            if (m_runtimeController) {
-                m_runtimeController->setActiveCameraNumber(number);
-            }
-            return;
-        }
-    }
-
-    m_nextConnectCamera.reset(camera);
-    m_selectedCamera.reset(camera);
-
-    if (m_runtimeController) {
-        m_runtimeController->setActiveCameraNumber(number);
-    }
+    queueSetActiveCameraNumber(number);
 }
 
 void TaskLocalization::setPatternNumber(int number) {
-
+    queueSetActivePatternGroupNumber(number);
 }
 
 void TaskLocalization::onCommDeviceValueChanged(QMap<QString, QVariant> values) {
-    if (m_runtimeController)
-        m_runtimeController->handlePlcValues(values);
+    queueHandlePlcValues(values);
 }
 
 void TaskLocalization::onSignalChangeCameraNumber(QVariant value) {
@@ -341,42 +349,6 @@ void TaskLocalization::onSignalChangeCameraNumber(QVariant value) {
 }
 
 
-void TaskLocalization::waitReconnectCameraHandle(device::ConnectStatus status) {
-    if ((status == device::ConnectStatus::Disconnected) || (status == device::ConnectStatus::LostConnected)) {
-
-        m_selectedCamera = m_nextConnectCamera;
-        m_selectedCamera->deviceConnect();
-        return;
-    }
-
-    connect(m_selectedCamera.get(), &device::IDevice::connectStatusChanged,
-            this, &TaskLocalization::waitReconnectCameraHandle, Qt::SingleShotConnection);
-}
-
-void TaskLocalization::selectedCameraConnectStatusChanged(device::ConnectStatus status) {
-
-    switch (status) {
-    case device::ConnectStatus::LostConnected:
-        // handle lost connect
-
-        break;
-    case device::ConnectStatus::ConnectFailed:
-        // handle connect failed
-
-        break;
-    case device::ConnectStatus::Connected:
-
-
-        break;
-    case device::ConnectStatus::Disconnected:
-
-        break;
-    default:
-        break;
-    }
-
-}
-
 void TaskLocalization::onSignalChangePatternNumber(QVariant value) {
     bool is_ok = false;
     int number = value.toInt(&is_ok);
@@ -387,6 +359,11 @@ void TaskLocalization::onSignalChangePatternNumber(QVariant value) {
     }
 
     setPatternNumber(number);
+}
+
+void TaskLocalization::onRuntimeCycleStarted(const QString &message)
+{
+    transitionTaskState(TaskState::RunningCycle, message);
 }
 
 void TaskLocalization::onRuntimeRecovering(const QString &message)
@@ -410,24 +387,214 @@ void TaskLocalization::onRuntimeFault(const QString &message)
     transitionTaskState(TaskState::Faulted, message);
 }
 
+void TaskLocalization::createRuntimeController()
+{
+    if (m_runtimeController) {
+        return;
+    }
 
-void TaskLocalization::wireMatchingCommissionSignals() {
-    QObject *worker = new QObject();
-    worker->moveToThread(matchingRunner);
+    m_runtimeController = new LocalizationRuntimeController();
+    m_runtimeController->configure(m_config);
+    wireRuntimeControllerSignals();
+}
 
-    // delete worker and matching commision thread
-    connect(this, &TaskLocalization::destroyed, worker, [worker]() {
-        QThread* worker_thread = worker->thread();
-        if (worker_thread->isRunning()) {
-            worker_thread->quit();
+void TaskLocalization::destroyRuntimeController()
+{
+    if (!m_runtimeController) {
+        return;
+    }
+
+    auto *controller = m_runtimeController;
+    m_runtimeController = nullptr;
+    controller->disconnect(this);
+    disconnect(controller, nullptr, this, nullptr);
+
+    if (controller->thread() && controller->thread() != QThread::currentThread()
+        && controller->thread()->isRunning()) {
+        QMetaObject::invokeMethod(controller, [controller]() {
+            controller->deleteLater();
+        }, Qt::QueuedConnection);
+    } else {
+        delete controller;
+    }
+}
+
+void TaskLocalization::wireRuntimeControllerSignals()
+{
+    if (!m_runtimeController) {
+        return;
+    }
+
+    connect(m_runtimeController, &LocalizationRuntimeController::signalChanged,
+            this, &ITask::signalChanged, Qt::QueuedConnection);
+    connect(m_runtimeController, &LocalizationRuntimeController::cycleResultUpdated,
+            this, &TaskLocalization::cycleResultUpdated, Qt::QueuedConnection);
+    connect(m_runtimeController, &LocalizationRuntimeController::taskLogAppended,
+            this, &TaskLocalization::taskLogAppended, Qt::QueuedConnection);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeCycleStarted,
+            this, &TaskLocalization::onRuntimeCycleStarted, Qt::QueuedConnection);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeRecovering,
+            this, &TaskLocalization::onRuntimeRecovering, Qt::QueuedConnection);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeReady,
+            this, &TaskLocalization::onRuntimeReady, Qt::QueuedConnection);
+    connect(m_runtimeController, &LocalizationRuntimeController::runtimeFault,
+            this, &TaskLocalization::onRuntimeFault, Qt::QueuedConnection);
+
+    if (m_matchingWorker) {
+        QPointer<LocalizationRuntimeController> controller(m_runtimeController);
+        connect(m_runtimeController,
+                &LocalizationRuntimeController::runtimeMatchingRequested,
+                m_matchingWorker,
+                [this, controller](int cycleId,
+                                   std::shared_ptr<mtc::MatchGroup> group,
+                                   cv::Mat image) {
+            mtc::MatchResult result = m_pipeline.runMatch(group, image);
+            if (!controller) {
+                return;
+            }
+            QMetaObject::invokeMethod(controller.data(),
+                                      [controller, cycleId, result]() {
+                if (controller) {
+                    controller->onRuntimeMatchingFinished(cycleId, result);
+                }
+            }, Qt::QueuedConnection);
+        }, Qt::QueuedConnection);
+    }
+}
+
+LocalizationRuntimeController::RuntimeContext
+TaskLocalization::buildRuntimeContext() const
+{
+    LocalizationRuntimeController::RuntimeContext context;
+    context.config = m_config;
+    context.primaryPlcDeviceId = m_config.d->m_deviceBindings.primaryPlcDeviceId();
+    context.visionOutputDeviceId = m_config.d->m_deviceBindings.visionOutputDeviceId();
+    context.primaryPlcRunner = plcRunner(context.primaryPlcDeviceId);
+    context.visionOutputRunner = qobject_cast<vc::runtime::VisionOutputRunner *>(
+        taskRunner() ? taskRunner()->runnerFor(context.visionOutputDeviceId) : nullptr);
+    context.cameraDeviceIds = m_config.d->m_deviceBindings.cameraNumberMap();
+
+    for (auto it = context.cameraDeviceIds.cbegin(); it != context.cameraDeviceIds.cend(); ++it) {
+        context.cameraRunners.insert(it.key(), cameraRunner(it.value()));
+
+        auto device = getTaskDevice(it.value());
+        auto camera = std::dynamic_pointer_cast<device::CameraDevice>(device);
+        if (!camera) {
+            continue;
         }
-        worker->deleteLater();
-        worker_thread->deleteLater();
-    });
+        std::unique_ptr<device::IDeviceCfg> cfg(camera->deviceConfig());
+        auto *cameraCfg = dynamic_cast<device::CameraCfg *>(cfg.get());
+        if (cameraCfg) {
+            context.cameraCalibrators.insert(it.key(), cameraCfg->calibrator());
+        }
+    }
+
+    if (!context.cameraDeviceIds.isEmpty()) {
+        context.activeCameraNumber = context.cameraDeviceIds.firstKey();
+    }
+
+    if (m_patternManager) {
+        const auto groups = m_patternManager->groups();
+        for (const auto &source : groups) {
+            if (!source) {
+                continue;
+            }
+            auto snapshot = std::make_shared<mtc::MatchGroup>();
+            source->cloneConfigTo(*snapshot);
+            for (const auto &pattern : source->patterns()) {
+                if (pattern) {
+                    snapshot->addPattern(pattern->config());
+                }
+            }
+            context.patternGroups.insert(snapshot->number(), snapshot);
+        }
+        if (!context.patternGroups.isEmpty()) {
+            context.activePatternGroupNumber = context.patternGroups.firstKey();
+        }
+    }
+
+    return context;
+}
+
+LocalizationRuntimeController::SetupResult TaskLocalization::setupRuntimeController()
+{
+    LocalizationRuntimeController::SetupResult result;
+    auto *controller = m_runtimeController;
+    if (!controller) {
+        result.errors.append(QStringLiteral("Runtime controller is null."));
+        return result;
+    }
+
+    const auto context = buildRuntimeContext();
+    if (controller->thread() == QThread::currentThread()) {
+        return controller->setup(context);
+    }
+
+    QMetaObject::invokeMethod(controller, [controller, context, &result]() {
+        result = controller->setup(context);
+    }, Qt::BlockingQueuedConnection);
+    return result;
+}
+
+void TaskLocalization::queueConfigureRuntimeController()
+{
+    auto *controller = m_runtimeController;
+    if (!controller) {
+        return;
+    }
+    const TaskLocalizeConfig cfg = m_config;
+    if (controller->thread() == QThread::currentThread()) {
+        controller->configure(cfg);
+        return;
+    }
+    QMetaObject::invokeMethod(controller, [controller, cfg]() {
+        controller->configure(cfg);
+    }, Qt::QueuedConnection);
+}
+
+void TaskLocalization::queueSetActiveCameraNumber(int number)
+{
+    auto *controller = m_runtimeController;
+    if (!controller) {
+        return;
+    }
+    QMetaObject::invokeMethod(controller, [controller, number]() {
+        controller->setActiveCameraNumber(number);
+    }, Qt::QueuedConnection);
+}
+
+void TaskLocalization::queueSetActivePatternGroupNumber(int number)
+{
+    auto *controller = m_runtimeController;
+    if (!controller) {
+        return;
+    }
+    QMetaObject::invokeMethod(controller, [controller, number]() {
+        controller->setActivePatternGroupNumber(number);
+    }, Qt::QueuedConnection);
+}
+
+void TaskLocalization::queueHandlePlcValues(const QMap<QString, QVariant> &values)
+{
+    auto *controller = m_runtimeController;
+    if (!controller) {
+        return;
+    }
+    const auto copiedValues = values;
+    QMetaObject::invokeMethod(controller, [controller, copiedValues]() {
+        controller->handlePlcValues(copiedValues);
+    }, Qt::QueuedConnection);
+}
+
+void TaskLocalization::wireMatchingWorkerSignals() {
+    m_matchingWorker = new QObject();
+    m_matchingWorker->moveToThread(matchingRunner);
+
+    connect(matchingRunner, &QThread::finished, m_matchingWorker, &QObject::deleteLater);
 
     // commission matching handle, working on matching worker thread
     connect(this, &TaskLocalization::startCommissionMatchingRequest,
-            worker, [this](std::shared_ptr<mtc::MatchGroup> group, cv::Mat image) {
+            m_matchingWorker, [this](std::shared_ptr<mtc::MatchGroup> group, cv::Mat image) {
 
         emit this->commissionMatchingFinished(m_pipeline.runMatch(group, image));
     });

@@ -20,22 +20,6 @@ namespace vc::device {
 //     VisionSerial,   // placeholder for future transport
 // };
 
-[[maybe_unused]] static QString VisionOutputTypeToString(VisionOutputType t) {
-    switch (t) {
-    case VisionOutputType::VisionTCPIP:  return VISION_OUTPUT_TYPE_TCPIP;
-    case VisionOutputType::VisionSerial: return VISION_OUTPUT_TYPE_SERIAL;
-    case VisionOutputType::VisionOutputTypeNone:
-        return "";
-    }
-    return "";
-}
-
-[[maybe_unused]] static VisionOutputType VisionOutputTypeFromString(QString t) {
-    if (t == VISION_OUTPUT_TYPE_TCPIP)  return VisionOutputType::VisionTCPIP;
-    if (t == VISION_OUTPUT_TYPE_SERIAL) return VisionOutputType::VisionSerial;
-    return VisionOutputType::VisionOutputTypeNone;
-}
-
 // =====================================================================
 // VisionOutputDevice — abstract base for the vision-output family
 // =====================================================================

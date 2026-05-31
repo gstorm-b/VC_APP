@@ -57,11 +57,13 @@ package "vc::model" {
 
   class TaskLocalizeConfig <<Q_GADGET>> {
     +nActiveCamera : QString
-    +nActivePattern : QString
+    +nActivePatternGroup : QString
     +nDetectedNumber : QString
+    +nFaultCode : QString
     +bCameraValid : QString
     +bPatternValid : QString
     +bTaskReady : QString
+    +bTaskFault : QString
     +bExecuteTrigger : QString
     +bMatchingFinished : QString
     +bMatchingBusy : QString
@@ -101,6 +103,8 @@ package "vc::model" {
     +taskType() : LocalizationTask
     +isReachLimitOfDeviceType(type) : bool
     +beginRuntime(mergeToTaskThread=false)
+    +endRuntime()
+    +stopAll()
     +setTaskLocalizeConfig(cfg)
     +taskLocalizeConfig() : TaskLocalizeConfig
     +patternManager() : PatternGroupManager*
@@ -110,24 +114,87 @@ package "vc::model" {
     +executeLocalization()
     +setCameraNumber(number)
     +setPatternNumber(number)
+    -buildRuntimeContext() : RuntimeContext
+    -setupRuntimeController() : SetupResult
+    -queueHandlePlcValues(values)
+    -queueSetActiveCameraNumber(number)
   }
 
   class LocalizationRuntimeController <<QObject>> {
     +configure(config)
     +setActiveCameraNumber(cameraNumber)
-    +setup(task) : SetupResult
+    +setActivePatternGroupNumber(patternGroupNumber)
+    +setup(context) : SetupResult
     +execute()
     +handlePlcValues(values)
+    +onRuntimeMatchingFinished(cycleId, result)
     --
+    +runtimeMatchingRequested(cycleId, group, image)
+    +cycleResultUpdated(result)
+    +taskLogAppended(entry)
+    +runtimeCycleStarted(message)
     +runtimeRecovering(message)
     +runtimeReady(message)
     +runtimeFault(message)
+  }
+
+  class RuntimeContext {
+    +config : TaskLocalizeConfig
+    +primaryPlcDeviceId : QString
+    +visionOutputDeviceId : QString
+    +primaryPlcRunner : PlcRunner*
+    +visionOutputRunner : VisionOutputRunner*
+    +cameraDeviceIds : QMap<int, QString>
+    +cameraRunners : QMap<int, CameraRunner*>
+    +patternGroups : QMap<int, MatchGroup>
+    +cameraCalibrators : QMap<int, Calibrator>
+    +activeCameraNumber : int
+    +activePatternGroupNumber : int
+  }
+
+  class CycleResult {
+    +faulted : bool
+    +faultCode : LocalizationFaultCode
+    +detectedNumber : int
+    +sentNumber : int
+    +matchingTimeMs : double
+    +lowArea : bool
+  }
+
+  class ResultRow {
+    +index : int
+    +patternName : QString
+    +score : double
+    +imageX : double
+    +imageY : double
+    +imageR : double
+    +world : VisionOutputPosition
+    +status : QString
+  }
+
+  class TaskLogEntry {
+    +timestamp : QDateTime
+    +severity : QString
+    +message : QString
   }
 
   enum LocalizationRecoveryAction {
     Ignore
     RetryScheduled
     EscalateFault
+  }
+
+  enum LocalizationFaultCode {
+    None = 0
+    CameraLost = 100
+    CameraConnectFailed = 101
+    CameraGrabTimeout = 102
+    VisionOutputLost = 200
+    VisionOutputSendFailed = 201
+    PlcLost = 300
+    PatternInvalid = 400
+    CalibrationInvalid = 401
+    InternalError = 500
   }
 
   class LocalizationRecoveryPolicy {
@@ -142,6 +209,7 @@ package "vc::model" {
   class LocalizationSignalMapper {
     +configure(config)
     +signalNameForTag(tag) : QString
+    +tagForSignalName(name) : QString
     +mapValues(values) : QList<LocalizationSignalEvent>
   }
 
@@ -163,6 +231,7 @@ package "vc::device" {
   abstract class CameraDevice
   abstract class PlcDevice
   abstract class VisionOutputDevice
+  class VisionOutputPosition
   class VisionOutputRequest
 }
 
@@ -195,23 +264,34 @@ TaskLocalizeConfig *-- TaskDeviceBindings : deviceBindings
 TaskDeviceBindings o-- "0..*" TaskDeviceBinding
 TaskDeviceBinding --> TaskDeviceRole
 TaskLocalization *-- PatternGroupManager : m_patternManager
-TaskLocalization *-- LocalizationRuntimeController : m_runtimeController
+TaskLocalization *-- LocalizationRuntimeController : explicit owner, no QObject parent in runtime
 TaskLocalization *-- LocalizationPipeline : m_pipeline
 LocalizationRuntimeController *-- LocalizationSignalMapper : m_signalMapper
 LocalizationRuntimeController *-- LocalizationRecoveryPolicy : camera/plc/output policies
+LocalizationRuntimeController *-- RuntimeContext : runtime snapshot
 LocalizationRuntimeController ..> LocalizationRecoveryAction : policy decision
+LocalizationRuntimeController --> LocalizationFaultCode : publishes stable codes
+LocalizationRuntimeController ..> CycleResult : emits dashboard result
+CycleResult o-- "0..*" ResultRow
+CycleResult --> LocalizationFaultCode
+ResultRow --> VisionOutputPosition
+TaskLocalization ..> TaskLogEntry : emits task log
 LocalizationSignalMapper ..> LocalizationSignalEvent : creates
 LocalizationPipeline ..> ImageMatcher : local matcher
 TaskLocalization --> MatchResult : m_lastMatchResult
-TaskLocalization --> CameraDevice : selected/next camera
 TaskLocalization --> PlcDevice : plcDevice()
 TaskLocalization ..> CameraRunner : typed runner access
 TaskLocalization ..> PlcRunner : typed runner access
 TaskLocalization ..> VisionOutputRunner : via task runner
-TaskLocalization ..> VisionOutputRequest : send match result
+TaskLocalization ..> LocalizationRuntimeController : queued task-to-controller calls
+TaskLocalization ..> LocalizationPipeline : matching worker thread
+LocalizationRuntimeController ..> VisionOutputRequest : send match result
+LocalizationRuntimeController ..> VisionOutputPosition : world-coordinate payload
 LocalizationRuntimeController ..> PlcRunner : connects valueChanged
-LocalizationRuntimeController ..> TaskRunner : validates registered runners
-LocalizationRuntimeController ..> LocalizationPipeline : production-cycle hook
+LocalizationRuntimeController ..> PlcRunner : queued output writes
+LocalizationRuntimeController ..> CameraRunner : single-shot requests
+LocalizationRuntimeController ..> VisionOutputRunner : result request
+LocalizationRuntimeController ..> RuntimeContext : validates registered runners
 
 PatternGroupManager o-- "0..*" MatchGroup
 MatchGroup o-- "0..*" MatchPattern
@@ -227,8 +307,12 @@ TaskDeviceBindings --> VisionOutputDevice : vision_output role
 note right of TaskLocalization
   TaskLocalization now keeps persistent config,
   pattern ownership, and lifecycle entry points.
-  Runtime setup and PLC signal translation are
+  Runtime setup, PLC signal translation, cycle
+  orchestration, fault outputs, and dashboard
+  result/log signals are
   delegated to LocalizationRuntimeController.
+  During runtime, controller calls are queued and the
+  controller lives on TaskRunner::runtimeThread().
   A50 adds explicit taskState transitions around
   commission, runtime start, cycle execution,
   recovery, fault, and stopping.
@@ -238,11 +322,18 @@ note right of LocalizationRuntimeController
   Runtime reconnect/fault behavior is delegated to
   explicit recovery policies per device role.
   Recovery/fault signals now feed the task state machine.
+  The controller does not call TaskLocalization directly.
+  It receives an immutable RuntimeContext snapshot at setup,
+  coordinates device runners through queued APIs, and emits
+  runtimeMatchingRequested() so matching runs on the task
+  matching worker thread.
 end note
 
 note right of LocalizationSignalMapper
   Signal map direction:
   PLC tag -> logical task signal name.
+  Runtime output publishing also uses reverse lookup:
+  logical task signal name -> PLC tag.
 
   Unmapped tags are logged and skipped by a
   range-style pass, so one unmapped tag cannot

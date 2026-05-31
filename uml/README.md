@@ -13,11 +13,12 @@ marked explicitly when the implementation is not wired yet.
 |---|---|
 | `01_project_overview.puml` | High-level package/module structure and dependency direction. |
 | `02_device_families.puml` | Device base classes, family sub-type dispatch, concrete devices, configs, factory, and manager. |
-| `03_runtime_threading.puml` | Task runner, per-device runners, QThread ownership, and phase transitions. |
+| `03_runtime_threading.puml` | Task runner, per-device runners, QThread ownership, and runtime coordination relationships. |
 | `04_localization_task.puml` | Localization task model, configuration, device assignment, signals, matcher, and pattern manager. |
 | `05_matching_calibration.puml` | Matching library and calibration module relationships. |
 | `06_ui_widgets.puml` | Main task UI shell, task pages, device widgets, and reusable mapping widgets. |
 | `07_persistence_sequence.puml` | Project save/load sequence through repository, task factory, device factory, JSON, and image BLOBs. |
+| `08_runtime_state_machines.puml` | Task runner phase, localization task state, and localization runtime cycle state transitions. |
 
 ## Current Architecture Notes
 

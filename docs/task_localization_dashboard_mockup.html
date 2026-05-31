@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Localization Dashboard Mockup</title>
+  <style>
+    :root {
+      --bg: #f2f3f5;
+      --surface: #ffffff;
+      --border: #c8ccd4;
+      --text: #1a1c20;
+      --muted: #66707c;
+      --accent: #c06400;
+      --ok: #1a7a40;
+      --warn: #9a6800;
+      --error: #c0282a;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.45 "Segoe UI", Arial, sans-serif;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(280px, 34%) 1fr;
+      gap: 12px;
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .left, .right {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #edf0f3;
+    }
+    .status-row:last-child { border-bottom: 0; }
+    .label { color: var(--muted); }
+    .value { font-weight: 600; }
+
+    .state-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .lamp {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 8px;
+      min-height: 54px;
+    }
+    .lamp .name {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .lamp .state {
+      margin-top: 6px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .ok .state { color: var(--ok); }
+    .warn .state { color: var(--warn); }
+    .error .state { color: var(--error); }
+    .off .state { color: var(--muted); }
+
+    .fault {
+      border-color: #e0a8a8;
+      background: #fff7f7;
+    }
+    .fault .value { color: var(--error); }
+
+    .signal-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 70px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .signal-grid > div {
+      padding: 7px 8px;
+      border-right: 1px solid #edf0f3;
+      border-bottom: 1px solid #edf0f3;
+      min-height: 32px;
+    }
+    .signal-grid > div:nth-child(3n) { border-right: 0; }
+    .signal-grid > div:nth-last-child(-n+3) { border-bottom: 0; }
+    .head {
+      background: #f8f9fb;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .image-view {
+      display: grid;
+      place-items: center;
+      height: 360px;
+      border: 1px dashed #aab2bd;
+      border-radius: 5px;
+      background:
+        linear-gradient(90deg, rgba(192,100,0,.08) 1px, transparent 1px),
+        linear-gradient(rgba(192,100,0,.08) 1px, transparent 1px);
+      background-size: 28px 28px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .kpi {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 10px;
+    }
+    .kpi .num {
+      margin-top: 4px;
+      font-size: 20px;
+      font-weight: 750;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 7px 8px;
+      border-bottom: 1px solid #edf0f3;
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      background: #f8f9fb;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    .interaction {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .task-log {
+      display: grid;
+      gap: 6px;
+      max-height: 150px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 8px;
+      background: #fbfcfd;
+    }
+    .log-line {
+      display: grid;
+      grid-template-columns: 70px 64px 1fr;
+      gap: 8px;
+      align-items: start;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+    .log-time { color: var(--muted); }
+    .log-info { color: var(--ok); font-weight: 700; }
+    .log-warn { color: var(--warn); font-weight: 700; }
+    .log-error { color: var(--error); font-weight: 700; }
+
+    @media (max-width: 900px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .state-strip, .kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="dashboard">
+    <aside class="left">
+      <section class="panel">
+        <h2 class="section-title">Task Context</h2>
+        <div class="status-row"><div class="label">Vision output</div><div class="value">Vision TCP/IP - VOUT-01</div></div>
+        <div class="status-row"><div class="label">PLC</div><div class="value">Mitsubishi MC - PLC-01</div></div>
+        <div class="status-row"><div class="label">Active camera</div><div class="value">Camera #2 - Basler Top</div></div>
+        <div class="status-row"><div class="label">Pattern group</div><div class="value">Group 4 - Tray A</div></div>
+      </section>
+
+      <section class="state-strip">
+        <div class="lamp ok"><div class="name">Task</div><div class="state">Ready</div></div>
+        <div class="lamp ok"><div class="name">Camera</div><div class="state">Valid</div></div>
+        <div class="lamp ok"><div class="name">Pattern</div><div class="state">Valid</div></div>
+        <div class="lamp off"><div class="name">Cycle</div><div class="state">Idle</div></div>
+      </section>
+
+      <section class="panel fault">
+        <h2 class="section-title">Fault</h2>
+        <div class="status-row"><div class="label">bTaskFault</div><div class="value">false</div></div>
+        <div class="status-row"><div class="label">nFaultCode</div><div class="value">0 - None</div></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">PLC Signal Monitor</h2>
+        <div class="signal-grid">
+          <div class="head">Signal</div><div class="head">Tag</div><div class="head">Value</div>
+          <div>nActiveCamera</div><div>D0100</div><div>2</div>
+          <div>nActivePatternGroup</div><div>D0101</div><div>4</div>
+          <div>bExecuteTrigger</div><div>M0100</div><div>false</div>
+          <div>bTaskReady</div><div>M0101</div><div>true</div>
+          <div>bMatchingBusy</div><div>M0102</div><div>false</div>
+          <div>bMatchingFinished</div><div>M0103</div><div>false</div>
+          <div>bMatchingDetected</div><div>M0104</div><div>false</div>
+          <div>bTaskFault</div><div>M0105</div><div>false</div>
+          <div>nFaultCode</div><div>D0102</div><div>0</div>
+        </div>
+      </section>
+
+      <section class="panel interaction">
+        Dashboard v1 is read-only. Runtime start, stop, reset, manual trigger,
+        and PLC writes stay outside this screen.
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Task Log</h2>
+        <div class="task-log">
+          <div class="log-line">
+            <div class="log-time">10:31:04</div>
+            <div class="log-info">INFO</div>
+            <div>Runtime ready. Active camera #2, pattern group 4.</div>
+          </div>
+          <div class="log-line">
+            <div class="log-time">10:31:08</div>
+            <div class="log-info">INFO</div>
+            <div>Trigger accepted. Localization cycle started.</div>
+          </div>
+          <div class="log-line">
+            <div class="log-time">10:31:08</div>
+            <div class="log-info">INFO</div>
+            <div>Vision output sent. detected=2 skipped=1 time=84 ms.</div>
+          </div>
+          <div class="log-line">
+            <div class="log-time">10:31:09</div>
+            <div class="log-warn">WARN</div>
+            <div>Waiting for execute trigger reset.</div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <section class="right">
+      <section class="panel">
+        <h2 class="section-title">Last Matching View</h2>
+        <div class="image-view">Last grabbed image with matching overlay</div>
+      </section>
+
+      <section class="kpis">
+        <div class="kpi"><div class="label">Detected</div><div class="num">3</div></div>
+        <div class="kpi"><div class="label">Sent</div><div class="num">2</div></div>
+        <div class="kpi"><div class="label">Matching time</div><div class="num">84 ms</div></div>
+        <div class="kpi"><div class="label">Low area</div><div class="num">No</div></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Last Result Table</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Pattern</th><th>Score</th>
+              <th>Img X</th><th>Img Y</th><th>Img R</th>
+              <th>World X</th><th>World Y</th><th>World Z</th><th>World R</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Part A</td><td>0.91</td><td>642.2</td><td>318.4</td><td>12.5</td><td>120.45</td><td>88.10</td><td>0.02</td><td>14.1</td><td>Sent</td></tr>
+            <tr><td>2</td><td>Part A</td><td>0.88</td><td>701.6</td><td>331.0</td><td>10.9</td><td>141.22</td><td>87.92</td><td>0.02</td><td>12.4</td><td>Sent</td></tr>
+            <tr><td>3</td><td>Part A</td><td>0.74</td><td>728.8</td><td>405.6</td><td>-4.2</td><td>149.37</td><td>112.35</td><td>0.03</td><td>-2.8</td><td>Skipped: collision</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

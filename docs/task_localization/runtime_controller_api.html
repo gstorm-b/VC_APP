@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LocalizationRuntimeController API</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f2f3f5;
+  --surface: #ffffff;
+  --text: #1a1c20;
+  --muted: #5a6878;
+  --border: #c8ccd4;
+  --accent: #c06400;
+  --code-bg: #e8eaee;
+  --table-head: #f5ede0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 "Segoe UI", Arial, sans-serif;
+}
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 28px 56px;
+}
+nav {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+nav a,
+nav strong {
+  margin-right: 16px;
+}
+article {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 28px;
+}
+h1, h2, h3 {
+  line-height: 1.25;
+  margin: 1.4em 0 0.55em;
+}
+h1 {
+  margin-top: 0;
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.45rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.1em;
+}
+h3 { font-size: 1.12rem; }
+p { margin: 0.65em 0; }
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.92em;
+}
+pre {
+  overflow-x: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+}
+ul, ol { padding-left: 1.45rem; }
+li { margin: 0.28em 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: top;
+}
+th {
+  background: var(--table-head);
+  text-align: left;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+</style>
+</head>
+<body>
+<div class="page">
+<nav><a href="README.html">Overview</a><a href="task_localization_api.html">task localization api</a><strong>runtime controller api</strong><a href="plc_signal_contract.html">plc signal contract</a><a href="maintenance_and_extension.html">maintenance and extension</a></nav>
+<article>
+<div class="meta">Generated from Markdown documentation.</div>
+<h1 id="localizationruntimecontroller-api">LocalizationRuntimeController API</h1>
+<p><code>LocalizationRuntimeController</code> is the runtime state machine and coordinator
+for localization.</p>
+<p>Source:</p>
+<ul>
+<li><code>src/model/localization_runtime_controller.h</code></li>
+<li><code>src/model/localization_runtime_controller.cpp</code></li>
+</ul>
+<h2 id="responsibility">Responsibility</h2>
+<p>The controller owns runtime behavior:</p>
+<ul>
+<li>PLC signal mapping and trigger handling.</li>
+<li>Runtime readiness and cycle state.</li>
+<li>Camera, PLC, and VisionOutput role bindings.</li>
+<li>Device connect/reconnect requests through runners.</li>
+<li>PLC output publishing through <code>PlcRunner</code>.</li>
+<li>Camera single-shot requests through <code>CameraRunner</code>.</li>
+<li>Vision result sends through <code>VisionOutputRunner</code>.</li>
+<li>Fault publishing and recovery state.</li>
+<li>Dashboard cycle result and task-local log events.</li>
+<li>Runtime matching request/response coordination by cycle id.</li>
+</ul>
+<p>The controller does not own device objects, task objects, pattern managers, or
+the matching pipeline.</p>
+<h2 id="thread-ownership">Thread Ownership</h2>
+<p>During runtime, <code>TaskLocalization</code> moves the controller to
+<code>TaskRunner::runtimeThread()</code>. The controller must not be parented to
+<code>TaskLocalization</code> while moved.</p>
+<p>All public runtime calls from the task should be invoked with queued
+connections when the controller is on another thread.</p>
+<h2 id="runtimecontext">RuntimeContext</h2>
+<pre><code class="language-cpp">struct RuntimeContext {
+    TaskLocalizeConfig config;
+    QString primaryPlcDeviceId;
+    QString visionOutputDeviceId;
+    QPointer&lt;PlcRunner&gt; primaryPlcRunner;
+    QPointer&lt;VisionOutputRunner&gt; visionOutputRunner;
+    QMap&lt;int, QString&gt; cameraDeviceIds;
+    QMap&lt;int, QPointer&lt;CameraRunner&gt;&gt; cameraRunners;
+    QMap&lt;int, std::shared_ptr&lt;mtc::MatchGroup&gt;&gt; patternGroups;
+    QMap&lt;int, calib::Calibrator&gt; cameraCalibrators;
+    int activeCameraNumber{-1};
+    int activePatternGroupNumber{-1};
+};
+</code></pre>
+<p><code>RuntimeContext</code> is a snapshot. Pattern groups and calibrators are copied before
+runtime setup. Runtime edits to pattern groups or calibration are not supported.</p>
+<p>If the controller needs more runtime data, extend <code>RuntimeContext</code>; do not add a
+direct dependency on <code>TaskLocalization</code>.</p>
+<h2 id="setup-api">Setup API</h2>
+<pre><code class="language-cpp">void configure(const TaskLocalizeConfig &amp;config);
+SetupResult setup(const RuntimeContext &amp;context);
+bool isValid() const;
+</code></pre>
+<p><code>configure()</code> refreshes the internal <code>LocalizationSignalMapper</code>.</p>
+<p><code>setup()</code>:</p>
+<ol>
+<li>Resets existing runtime bindings.</li>
+<li>Stores the context snapshot.</li>
+<li>Validates PLC, VisionOutput, and camera runner roles.</li>
+<li>Connects PLC value updates to <code>handlePlcValues</code>.</li>
+<li>Binds active camera, PLC, and VisionOutput role contexts.</li>
+<li>Validates active pattern group and active camera calibration.</li>
+<li>Requests device connects through runners.</li>
+<li>Publishes ready outputs once all required roles are healthy.</li>
+</ol>
+<p><code>SetupResult::valid</code> is false if required role bindings, pattern group, or
+calibration are missing.</p>
+<h2 id="runtime-inputs">Runtime Inputs</h2>
+<pre><code class="language-cpp">void execute();
+void handlePlcValues(const QMap&lt;QString, QVariant&gt; &amp;values);
+void setActiveCameraNumber(int cameraNumber);
+void setActivePatternGroupNumber(int patternGroupNumber);
+</code></pre>
+<p><code>execute()</code> is a manual runtime trigger. It starts a cycle only from
+<code>ReadyForTrigger</code>.</p>
+<p><code>handlePlcValues()</code> maps PLC tags into logical signal events. Important event
+names:</p>
+<ul>
+<li><code>nActiveCamera</code></li>
+<li><code>nActivePatternGroup</code></li>
+<li><code>bExecuteTrigger</code></li>
+</ul>
+<p><code>bExecuteTrigger</code> is edge-triggered. Only a rising edge from false to true can
+start a cycle, and only while the controller is ready.</p>
+<p><code>setActiveCameraNumber()</code> rejects changes while a cycle is running. Accepted
+changes are handled by disconnecting the previous active camera runner,
+binding the new runner, validating calibration, publishing <code>bCameraValid</code>, and
+requesting connect through <code>CameraRunner</code>.</p>
+<p><code>setActivePatternGroupNumber()</code> rejects changes while a cycle is running and
+publishes <code>bPatternValid</code> plus fault outputs if the new group is invalid.</p>
+<h2 id="matching-api">Matching API</h2>
+<pre><code class="language-cpp">signals:
+    void runtimeMatchingRequested(int cycleId,
+                                  std::shared_ptr&lt;mtc::MatchGroup&gt; group,
+                                  cv::Mat image);
+
+public:
+    void onRuntimeMatchingFinished(int cycleId, mtc::MatchResult matchResult);
+</code></pre>
+<p>The controller never runs matching directly. It emits
+<code>runtimeMatchingRequested(...)</code> after a successful camera grab.</p>
+<p><code>TaskLocalization</code> connects this signal to the matching worker. The worker runs
+<code>LocalizationPipeline::runMatch(...)</code> and queues
+<code>onRuntimeMatchingFinished(cycleId, result)</code> back to the controller.</p>
+<p>The controller ignores a matching result when:</p>
+<ul>
+<li><code>cycleId</code> does not equal the current active cycle id.</li>
+<li>the controller is no longer in <code>Running</code>.</li>
+</ul>
+<p>This makes late results harmless after aborts or recovery.</p>
+<h2 id="runtime-cycle-state">Runtime Cycle State</h2>
+<p>Internal cycle states:</p>
+<ul>
+<li><code>NotReady</code></li>
+<li><code>ReadyForTrigger</code></li>
+<li><code>Running</code></li>
+<li><code>WaitingTriggerReset</code></li>
+<li><code>Recovering</code></li>
+<li><code>Faulted</code></li>
+</ul>
+<p>The normal happy path:</p>
+<ol>
+<li><code>ReadyForTrigger</code>.</li>
+<li>Rising <code>bExecuteTrigger</code>.</li>
+<li><code>Running</code>.</li>
+<li>Publish cycle-start outputs.</li>
+<li>Request camera single shot.</li>
+<li>Receive grab frame.</li>
+<li>Emit <code>runtimeMatchingRequested</code>.</li>
+<li>Receive matching result.</li>
+<li>Convert image coordinates to world coordinates through active calibrator.</li>
+<li>Send positions through <code>VisionOutputRunner</code>.</li>
+<li>Publish success outputs.</li>
+<li>If trigger is still true, enter <code>WaitingTriggerReset</code>.</li>
+<li>On trigger falling edge, clear <code>bMatchingFinished</code> and return ready.</li>
+</ol>
+<p>Held trigger behavior is deliberate: a held true trigger must not enqueue a
+second cycle.</p>
+<h2 id="output-coordinate-contract">Output Coordinate Contract</h2>
+<p><code>buildVisionOutputPositions()</code> converts each matched object from image
+coordinates into world coordinates:</p>
+<ul>
+<li><code>imageX/imageY</code> come from <code>MatchedObject::point_Center</code>.</li>
+<li><code>imageR</code> comes from <code>MatchedObject::point_angle</code>.</li>
+<li><code>world.x/y/z</code> comes from <code>calib::Calibrator::imageToRobot</code>.</li>
+<li><code>world.r</code> comes from <code>calib::Calibrator::rotateImageToRobot</code>.</li>
+</ul>
+<p>Objects with collision are marked as skipped and are not sent to
+VisionOutput.</p>
+<h2 id="fault-and-recovery">Fault And Recovery</h2>
+<p>The controller publishes fault state with:</p>
+<ul>
+<li><code>bTaskFault = true</code></li>
+<li><code>nFaultCode = &lt;stable code&gt;</code></li>
+<li><code>bTaskReady = false</code></li>
+<li><code>bMatchingBusy = false</code></li>
+<li><code>bMatchingFinished = true</code> for cycle faults</li>
+</ul>
+<p>Cycle abort increments the active cycle id so late matching results are ignored.</p>
+<p>Role recovery is policy based. Default policies retry recoverable statuses:</p>
+<ul>
+<li><code>LostConnected</code></li>
+<li><code>ConnectFailed</code></li>
+</ul>
+<p>Default retry settings are:</p>
+<ul>
+<li>10 retries</li>
+<li>5000 ms interval</li>
+</ul>
+<p>Recovering roles:</p>
+<ul>
+<li>camera</li>
+<li>primary PLC</li>
+<li>vision output</li>
+</ul>
+<h2 id="signals-to-taskui">Signals To Task/UI</h2>
+<pre><code class="language-cpp">void signalChanged(QString name, QVariant value);
+void cycleResultUpdated(CycleResult result);
+void taskLogAppended(TaskLogEntry entry);
+void runtimeCycleStarted(QString message);
+void runtimeRecovering(QString message);
+void runtimeReady(QString message);
+void runtimeFault(QString message);
+</code></pre>
+<p><code>signalChanged</code> is emitted for both incoming mapped PLC values and controller
+published outputs. The dashboard and task-level signal monitor consume this.</p>
+<p><code>runtimeCycleStarted</code>, <code>runtimeRecovering</code>, <code>runtimeReady</code>, and <code>runtimeFault</code>
+drive the <code>TaskLocalization</code> task state machine.</p>
+<h2 id="plc-output-publishing">PLC Output Publishing</h2>
+<p><code>publishBoolSignal(name, value)</code> and <code>publishNumberSignal(name, value)</code>:</p>
+<ol>
+<li>Emit <code>signalChanged(name, value)</code>.</li>
+<li>Resolve the mapped PLC tag by signal name.</li>
+<li>If a tag exists, request a PLC write through <code>PlcRunner</code>.</li>
+</ol>
+<p>Empty PLC output tags are allowed. The task-facing signal still emits.</p>
+<h2 id="race-guards">Race Guards</h2>
+<p>The controller intentionally blocks ready transitions while <code>Running</code>. This
+prevents delayed device <code>Connected</code> status events from overriding an active
+cycle state.</p>
+<p>Camera command failures only abort immediately on command timeout. Non-timeout
+grab failures are mapped by <code>onCameraGrabFinished()</code> to
+<code>CameraGrabTimeout</code> when the frame is missing or invalid.</p>
+
+</article>
+</div>
+</body>
+</html>

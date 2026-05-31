@@ -22,11 +22,13 @@ public:
     void clear();
 
     QString signalNameForTag(const QString &tag) const;
+    QString tagForSignalName(const QString &name) const;
     QList<LocalizationSignalEvent> mapValues(const QMap<QString, QVariant> &values) const;
     bool isEmpty() const { return m_tagToSignalName.isEmpty(); }
 
 private:
     QMap<QString, QString> m_tagToSignalName;
+    QMap<QString, QString> m_signalNameToTag;
 };
 
 } // namespace vc::model

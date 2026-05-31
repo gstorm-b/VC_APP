@@ -9,9 +9,6 @@
 
 namespace vc::device {
 
-// Forward — defined in vision_output_device.h alongside the device base.
-// enum VisionOutputType : int;
-
 // Family-level sub-type dispatch handle. Mirrors CameraType / RobotType.
 // Concrete vendors register a value here; DeviceFactory::createVisionOutput()
 // switches on this enum to pick the concrete subclass.
@@ -20,8 +17,21 @@ enum VisionOutputType : int {
     VisionTCPIP,
     VisionSerial,   // placeholder for future transport
 };
-QString VisionOutputTypeToString(VisionOutputType t);
-VisionOutputType VisionOutputTypeFromString(QString t);
+
+inline QString VisionOutputTypeToString(VisionOutputType t) {
+    switch (t) {
+    case VisionTCPIP:            return QStringLiteral("VisionTCPIP");
+    case VisionSerial:           return QStringLiteral("VisionSerial");
+    case VisionOutputTypeNone:   return QString();
+    }
+    return QString();
+}
+
+inline VisionOutputType VisionOutputTypeFromString(const QString &t) {
+    if (t == QLatin1String("VisionTCPIP"))  return VisionTCPIP;
+    if (t == QLatin1String("VisionSerial")) return VisionSerial;
+    return VisionOutputTypeNone;
+}
 
 // =====================================================================
 // VisionOutputDeviceCfg — abstract config for the vision-output family

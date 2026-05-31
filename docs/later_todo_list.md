@@ -619,3 +619,77 @@ Rule 4.4 accordingly).
 3. For icons that are theme-neutral: document the exemption and consider
    removing `themedIcon()` if it is never needed, or keeping it for future use.
 4. Update Rule 4.4 in `ui_design_rules.md` to reflect the actual convention.
+
+---
+
+## 25. `LocalizationDashboardWidget` backend wiring to the refactored `.ui`
+
+**Status (2026-05-31): RESOLVED.** `localization_dashboard_widget.{h,cpp}` were
+adapted to the refactored `.ui`. All pre-refactor `objectName` references were
+migrated and the five behavioural changes below were implemented. The widget now
+matches the operator-runtime mockup (`docs/task_localization_dashboard_mockup.html`)
+and the implementation plan (`docs/task_localization_implementation_plan.md`).
+
+**What was done:**
+- objectName migration applied (`gv_match_view`, `wg_signal_monitor`,
+  `lbl_val_vision_device`, `lbl_val_plc_device`, `lbl_val_camera`,
+  `lbl_val_pattern_group`, `tbl_result`, `lbl_kpi_*_val`, `log_task_view`).
+- `updateTaskStateLabel()` now drives the **Cycle** lamp from `TaskState`
+  (Faulted→Error, RunningCycle/Recovering→Warning, Ready→Ok, else Off).
+- New `applySignalToDashboard(name, value)` routes live signals to the
+  Task/Camera/Pattern lamps and context value labels.
+- New `setFaultState(active, code)` drives `frame_fault[active]` (setProperty +
+  repolish, Rule 4.5), the fault value labels, and the Task lamp Error state;
+  fault-code text uses `localizationFaultCodeName()`.
+- `appendTaskLog()` now calls `log_task_view->appendEvent(TaskEvent)` with
+  `severityToLevel()` mapping the runtime severity string → `TaskEventLevel`.
+- Context labels write **value-only** (`lbl_val_*`); captions stay static in `.ui`.
+- Both custom widgets (`StatusLamp`, `TaskEventLogWidget`) are promoted in the
+  `.ui` and registered in `ncr_picking.pro`. Styling lives in global
+  `dark.qss`/`light.qss` (no per-form pair, no `resrc.qrc` change).
+
+**Residual dependency update (2026-05-31):** `TaskLocalization` now exposes the
+`signalChanged(QString, QVariant)` path through `ITask`, and runtime output/input
+updates are forwarded by `LocalizationRuntimeController`. Dashboard v1 is still
+intentionally read-only, so monitor row writes remain disabled.
+
+**Remaining verification (when the project builds end-to-end):** run the §9
+review checklist in both dark and light; confirm lamps, fault panel, KPIs,
+result table, and operator log update on a runtime cycle, and that the dashboard
+exposes no manual write / trigger / start-stop controls (read-only v1).
+
+---
+
+## 26. Localization runtime production follow-ups after first implementation pass
+
+**Status (2026-05-31): OPEN.** The first implementation pass builds and covers
+the main contract shape, but `TaskLocalization` should not yet be considered
+production-complete. The items below are follow-ups from the localization
+runtime implementation.
+
+**Remaining work.**
+- Move the `LocalizationRuntimeController` object into `TaskRunner::m_runtimeThread`
+  or explicitly document that the task object thread is the supported
+  coordinator thread. Moving it requires queued task-to-controller invocations
+  and adjusted QObject ownership.
+- Move runtime matching off the controller call stack if cycle latency or UI
+  responsiveness is a concern. The current pass runs matching synchronously
+  after the camera frame arrives.
+- Rework runtime active-camera switching so it is fully runner-based. The
+  current `TaskLocalization::setCameraNumber()` path still contains direct
+  `CameraDevice::deviceDisconnect()` / `deviceConnect()` calls and should be
+  replaced by queued `CameraRunner` requests coordinated by
+  `LocalizationRuntimeController`.
+- Add focused runtime/controller tests for trigger edge behavior, held-trigger
+  suppression, trigger reset, grab timeout fault `102`, VisionOutput send
+  failure fault `201`, invalid pattern fault `400`, invalid calibration fault
+  `401`, and lost device handling during `RunningCycle`.
+- Add PLC write behavior tests for valid `M` bit tags, valid `D` word tags, and
+  invalid tag rejection once a suitable fake PLC request sink exists.
+- Run an operator UI verification pass against a real or simulated runtime
+  cycle to confirm dashboard lamps, fault panel, KPIs, result table, and
+  task-local log updates.
+
+**Verification already done in the first pass.**
+- `architecture_contract_test` built and ran with exit code `0`.
+- Full Debug app build completed successfully.

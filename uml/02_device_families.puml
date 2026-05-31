@@ -67,6 +67,10 @@ package "vc::device core" {
   }
 
   interface IPlcTagProvider
+  interface IPlcIoWriter {
+    +writeDigitalIoByName(tag, value) : bool
+    +writeWordIoByName(tag, value) : bool
+  }
   interface IResultOutputDevice
 
   class DeviceRegistry <<static>> {
@@ -173,6 +177,8 @@ package "PLC" {
     +pushRequest(request) : bool
     +availableDigitalIoNames() : QStringList
     +availableWordIoNames() : QStringList
+    +writeDigitalIoByName(tag, value) : bool
+    +writeWordIoByName(tag, value) : bool
   }
 
   abstract class McContext {
@@ -289,6 +295,7 @@ IImageSourceDevice <|.. CameraDevice
 IDigitalIoProvider <|.. IPlcTagProvider
 IWordIoProvider <|.. IPlcTagProvider
 IPlcTagProvider <|.. McProtocolDevice
+IPlcIoWriter <|.. McProtocolDevice
 IResultOutputDevice <|.. VisionOutputDevice
 
 CameraCfg <|-- BaslerGigeCfg
@@ -342,6 +349,12 @@ end note
 note right of IPlcTagProvider
   A40 moves PLC tag-list capability out of IDevice.
   Only PLC-family devices expose digital/word tags now.
+end note
+
+note right of IPlcIoWriter
+  Localization runtime uses this PLC-family capability
+  for queued task output writes such as bTaskReady,
+  bTaskFault, and nFaultCode.
 end note
 
 note right of VisionTcpipDevice

@@ -2,10 +2,18 @@
 #include "ui_localization_dashboard_widget.h"
 
 #include "widgets/signals_monitor_widget.h"
+#include "widgets/task_event_log_widget.h"
+#include "widgets/image_widget/image_view_only.h"
+#include "form/widgets/status_lamp.h"
 
 #include "logger/app_logger.h"
+#include "model/project.h"
+#include "model/localization_fault_code.h"
+#include "device/device_manager.h"
 
 #include <QMetaProperty>
+#include <QStyle>
+#include <QTableWidgetItem>
 
 using vc::model::TaskLocalization;
 using vc::model::TaskLocalizeConfig;
@@ -24,9 +32,10 @@ struct SignalRowSpec {
 
 constexpr SignalRowSpec kSignalRows[] = {
     // Number signals
-    { "nActiveCamera",     "Active camera",     SignalsMonitorWidget::Type::Number },
-    { "nActivePattern",    "Active pattern",    SignalsMonitorWidget::Type::Number },
-    { "nDetectedNumber",   "Detected count",    SignalsMonitorWidget::Type::Number },
+    { "nActiveCamera",       "Active camera",       SignalsMonitorWidget::Type::Number },
+    { "nActivePatternGroup", "Active pattern group", SignalsMonitorWidget::Type::Number },
+    { "nDetectedNumber",     "Detected count",      SignalsMonitorWidget::Type::Number },
+    { "nFaultCode",          "Fault code",          SignalsMonitorWidget::Type::Number },
     // Bool signals
     { "bCameraValid",      "Camera valid",      SignalsMonitorWidget::Type::Bool   },
     { "bPatternValid",     "Pattern valid",     SignalsMonitorWidget::Type::Bool   },
@@ -36,6 +45,7 @@ constexpr SignalRowSpec kSignalRows[] = {
     { "bMatchingBusy",     "Matching busy",     SignalsMonitorWidget::Type::Bool   },
     { "bMatchingDetected", "Matching detected", SignalsMonitorWidget::Type::Bool   },
     { "bMatchingLowArea",  "Low binary area",   SignalsMonitorWidget::Type::Bool   },
+    { "bTaskFault",        "Task fault",        SignalsMonitorWidget::Type::Bool   },
 };
 
 QString readConfigField(const TaskLocalizeConfig &cfg, const QString &internalName) {
@@ -50,6 +60,26 @@ SignalsMonitorWidget::Type typeOf(const QString &internalName) {
         if (internalName == QLatin1String(s.internalName)) return s.type;
     }
     return SignalsMonitorWidget::Type::Number;   // fallback; unknown name is logged by widget
+}
+
+// Map a runtime log severity string to the operator-log severity level.
+TaskEventLevel severityToLevel(const QString &severity) {
+    const QString s = severity.trimmed().toUpper();
+    if (s == QLatin1String("ERROR") || s == QLatin1String("FATAL") ||
+        s == QLatin1String("CRITICAL"))
+        return TaskEventLevel::Error;
+    if (s == QLatin1String("WARN") || s == QLatin1String("WARNING"))
+        return TaskEventLevel::Warning;
+    if (s == QLatin1String("OK") || s == QLatin1String("SUCCESS") ||
+        s == QLatin1String("DONE"))
+        return TaskEventLevel::Success;
+    return TaskEventLevel::Info;
+}
+
+QString faultCodeText(int code) {
+    const auto name = vc::model::localizationFaultCodeName(
+        static_cast<vc::model::LocalizationFaultCode>(code));
+    return QStringLiteral("%1 — %2").arg(code).arg(name);
 }
 
 } // namespace
@@ -77,18 +107,24 @@ void LocalizationDashboardWidget::initWidget() {
 
     m_config = m_localizeTask->taskLocalizeConfig();
 
+    setupLamps();
+    setupResultTable();
+    setFaultState(false, 0);
+    updateTaskContext();
+    updateTaskStateLabel();
+
     // ── Signal monitor: append fixed schema ────────────────────────────
     for (const auto &spec : kSignalRows) {
-        ui->listWidget_tag_status->appendRow(
+        ui->wg_signal_monitor->appendRow(
             QString::fromUtf8(spec.internalName),
             QString::fromUtf8(spec.displayName),
             spec.type);
     }
 
     // ── User-initiated writes ──────────────────────────────────────────
-    // TODO(follow-up): route to TaskLocalization's signal-write API once
-    // it lands. For now we just log so the path is visible in user logs.
-    connect(ui->listWidget_tag_status,
+    // Dashboard v1 is read-only. Keep the signal visible in logs in case a
+    // row becomes editable by mistake, but do not route writes from here.
+    connect(ui->wg_signal_monitor,
             &SignalsMonitorWidget::requestWriteValue,
             this, [](const QString &name, const QVariant &v) {
         LOG_USER_WARN << "SignalsMonitor write requested (not wired):"
@@ -100,7 +136,16 @@ void LocalizationDashboardWidget::initWidget() {
             this, [this] {
         m_config = m_localizeTask->taskLocalizeConfig();
         pushSignalTagsFromConfig();
+        updateTaskContext();
     });
+    connect(m_localizeTask, &vc::model::ITask::taskStateChanged,
+            this, [this] {
+        updateTaskStateLabel();
+    });
+    connect(m_localizeTask, &TaskLocalization::cycleResultUpdated,
+            this, &LocalizationDashboardWidget::updateCycleResult);
+    connect(m_localizeTask, &TaskLocalization::taskLogAppended,
+            this, &LocalizationDashboardWidget::appendTaskLog);
 
     // ── Live signal value updates ──────────────────────────────────────
     // The dashboard does NOT subscribe to the communication device directly;
@@ -108,36 +153,44 @@ void LocalizationDashboardWidget::initWidget() {
     // monitor refreshes from. The widget refreshes by signal name (the
     // internalName), not by PLC tag, so we just dispatch by configured type.
     //
-    // TODO(follow-up): TaskLocalization::signalChanged and its emit-path
-    // (observing the PLC and forwarding) are tracked in a separate request.
-    // Until that lands this connect references an undeclared signal — the
-    // wiring is intentional and the build will green up once the signal is
-    // added to TaskLocalization.
     connect(m_localizeTask, &TaskLocalization::signalChanged,
             this, [this](const QString &name, const QVariant &value) {
         switch (typeOf(name)) {
         case SignalsMonitorWidget::Type::Bool:
-            ui->listWidget_tag_status->refreshBool(name, value.toBool());
+            ui->wg_signal_monitor->refreshBool(name, value.toBool());
             break;
         case SignalsMonitorWidget::Type::Number:
-            ui->listWidget_tag_status->refreshNumber(name, value.toInt());
+            ui->wg_signal_monitor->refreshNumber(name, value.toInt());
             break;
         }
+        applySignalToDashboard(name, value);
     });
 
-    // TODO(follow-up): wire device-connection status through TaskLocalization
-    // too (TaskLocalization::commDeviceConnectStatusChanged(bool) or similar).
-    // Until then the Modify button stays disabled so users cannot trigger
-    // a write that has nowhere to land.
-    ui->listWidget_tag_status->setDeviceConnected(false);
+    // Dashboard v1 remains read-only, so writes stay disabled even when the
+    // runtime device is connected.
+    ui->wg_signal_monitor->setDeviceConnected(false);
 
     loadConfigToWidget();
+}
+
+void LocalizationDashboardWidget::setupLamps() {
+    ui->lamp_task->setLampName(tr("Task"));
+    ui->lamp_camera->setLampName(tr("Camera"));
+    ui->lamp_pattern->setLampName(tr("Pattern"));
+    ui->lamp_cycle->setLampName(tr("Cycle"));
+
+    ui->lamp_task->setStatus(StatusLamp::Status::Off, tr("—"));
+    ui->lamp_camera->setStatus(StatusLamp::Status::Off, tr("—"));
+    ui->lamp_pattern->setStatus(StatusLamp::Status::Off, tr("—"));
+    ui->lamp_cycle->setStatus(StatusLamp::Status::Off, tr("Idle"));
 }
 
 void LocalizationDashboardWidget::loadConfigToWidget() {
     if (!m_localizeTask) return;
     m_config = m_localizeTask->taskLocalizeConfig();
     pushSignalTagsFromConfig();
+    updateTaskContext();
+    updateTaskStateLabel();
 }
 
 void LocalizationDashboardWidget::loadConfigToTask() {
@@ -150,6 +203,177 @@ void LocalizationDashboardWidget::pushSignalTagsFromConfig() {
     // TaskLocalization::signalChanged keyed by signal name, not by tag.
     for (const auto &spec : kSignalRows) {
         const QString name = QString::fromUtf8(spec.internalName);
-        ui->listWidget_tag_status->setRowTag(name, readConfigField(m_config, name));
+        ui->wg_signal_monitor->setRowTag(name, readConfigField(m_config, name));
     }
+}
+
+void LocalizationDashboardWidget::updateTaskContext()
+{
+    if (!m_localizeTask) return;
+
+    auto deviceName = [this](const QString &deviceId) {
+        if (deviceId.isEmpty()) return QStringLiteral("—");
+        auto project = m_localizeTask->project();
+        auto manager = project ? project->deviceManager() : nullptr;
+        auto device = manager ? manager->deviceById(deviceId) : nullptr;
+        return device ? QStringLiteral("%1 (%2)").arg(device->name(), deviceId)
+                      : QStringLiteral("%1 (missing)").arg(deviceId);
+    };
+
+    const auto &bindings = m_config.d->m_deviceBindings;
+    // Captions are static in the .ui; the widget only writes value labels.
+    ui->lbl_val_vision_device->setText(deviceName(bindings.visionOutputDeviceId()));
+    ui->lbl_val_plc_device->setText(deviceName(bindings.primaryPlcDeviceId()));
+    ui->lbl_val_camera->setText(QStringLiteral("—"));
+    ui->lbl_val_pattern_group->setText(QStringLiteral("—"));
+}
+
+void LocalizationDashboardWidget::updateTaskStateLabel()
+{
+    if (!m_localizeTask) return;
+    const auto state = m_localizeTask->taskState();
+
+    // The "Cycle" lamp reflects runtime cycle activity derived from task state.
+    StatusLamp::Status status;
+    switch (state) {
+    case vc::model::TaskState::Faulted:
+        status = StatusLamp::Status::Error;
+        break;
+    case vc::model::TaskState::RunningCycle:
+    case vc::model::TaskState::Recovering:
+        status = StatusLamp::Status::Warning;
+        break;
+    case vc::model::TaskState::Ready:
+        status = StatusLamp::Status::Ok;
+        break;
+    default:
+        status = StatusLamp::Status::Off;
+        break;
+    }
+    ui->lamp_cycle->setStatus(status, vc::model::taskStateDisplayName(state));
+}
+
+void LocalizationDashboardWidget::applySignalToDashboard(const QString &name,
+                                                         const QVariant &value)
+{
+    if (name == QLatin1String("bCameraValid")) {
+        const bool ok = value.toBool();
+        ui->lamp_camera->setStatus(ok ? StatusLamp::Status::Ok : StatusLamp::Status::Off,
+                                   ok ? tr("Valid") : tr("Invalid"));
+    } else if (name == QLatin1String("bPatternValid")) {
+        const bool ok = value.toBool();
+        ui->lamp_pattern->setStatus(ok ? StatusLamp::Status::Ok : StatusLamp::Status::Off,
+                                    ok ? tr("Valid") : tr("Invalid"));
+    } else if (name == QLatin1String("bTaskReady")) {
+        // Don't override a fault-driven Error state on the task lamp.
+        if (!m_taskFaultActive) {
+            const bool ready = value.toBool();
+            ui->lamp_task->setStatus(ready ? StatusLamp::Status::Ok : StatusLamp::Status::Off,
+                                     ready ? tr("Ready") : tr("Not ready"));
+        }
+    } else if (name == QLatin1String("bMatchingBusy")) {
+        const bool busy = value.toBool();
+        ui->lamp_cycle->setStatus(busy ? StatusLamp::Status::Warning : StatusLamp::Status::Off,
+                                  busy ? tr("Running") : tr("Idle"));
+    } else if (name == QLatin1String("bTaskFault")) {
+        setFaultState(value.toBool(), m_lastFaultCode);
+    } else if (name == QLatin1String("nFaultCode")) {
+        m_lastFaultCode = value.toInt();
+        ui->lbl_val_fault_code->setText(faultCodeText(m_lastFaultCode));
+    } else if (name == QLatin1String("nActiveCamera")) {
+        ui->lbl_val_camera->setText(QString::number(value.toInt()));
+    } else if (name == QLatin1String("nActivePatternGroup")) {
+        ui->lbl_val_pattern_group->setText(QString::number(value.toInt()));
+    }
+}
+
+void LocalizationDashboardWidget::setFaultState(bool active, int faultCode)
+{
+    m_taskFaultActive = active;
+    m_lastFaultCode   = faultCode;
+
+    ui->lbl_val_fault_flag->setText(active ? QStringLiteral("true")
+                                           : QStringLiteral("false"));
+    ui->lbl_val_fault_code->setText(faultCodeText(faultCode));
+
+    // Drive the QFrame#frame_fault[active] attribute selector (Rule 4.5).
+    ui->frame_fault->setProperty("active", active);
+    ui->frame_fault->style()->unpolish(ui->frame_fault);
+    ui->frame_fault->style()->polish(ui->frame_fault);
+    ui->frame_fault->update();
+
+    // The task lamp surfaces the fault as an Error; cleared faults fall back
+    // to whatever the next bTaskReady update reports.
+    if (active)
+        ui->lamp_task->setStatus(StatusLamp::Status::Error, tr("Fault"));
+}
+
+void LocalizationDashboardWidget::setupResultTable()
+{
+    ui->tbl_result->setColumnCount(11);
+    ui->tbl_result->setHorizontalHeaderLabels({
+        tr("#"),
+        tr("Pattern"),
+        tr("Score"),
+        tr("Img X"),
+        tr("Img Y"),
+        tr("Img R"),
+        tr("World X"),
+        tr("World Y"),
+        tr("World Z"),
+        tr("World R"),
+        tr("Status"),
+    });
+    ui->tbl_result->setRowCount(0);
+}
+
+void LocalizationDashboardWidget::updateCycleResult(
+    const vc::model::LocalizationRuntimeController::CycleResult &result)
+{
+    ui->lbl_kpi_detected_val->setText(QString::number(result.detectedNumber));
+    ui->lbl_kpi_sent_val->setText(QString::number(result.sentNumber));
+    ui->lbl_kpi_cycle_time_val->setText(QStringLiteral("%1 ms").arg(result.matchingTimeMs, 0, 'f', 1));
+    ui->lbl_kpi_low_area_val->setText(result.lowArea ? tr("Yes") : tr("No"));
+
+    // ImageViewOnly owns its own scene + pixmap item and handles cv::Mat →
+    // QPixmap conversion and fit-to-view internally (same path the patterns
+    // widget uses for imageView_Raw / imageView_Result).
+    if (result.displayImage.empty()) {
+        ui->gv_match_view->clearCurrentImage();
+    } else {
+        cv::Mat display = result.displayImage;   // loadImageOpenCv takes a non-const ref
+        ui->gv_match_view->loadImageOpenCv(display, true);
+    }
+
+    ui->tbl_result->setRowCount(result.rows.size());
+    for (int row = 0; row < result.rows.size(); ++row) {
+        const auto &r = result.rows.at(row);
+        const QStringList values = {
+            QString::number(r.index),
+            r.patternName,
+            QString::number(r.score, 'f', 3),
+            QString::number(r.imageX, 'f', 2),
+            QString::number(r.imageY, 'f', 2),
+            QString::number(r.imageR, 'f', 2),
+            QString::number(r.world.x, 'f', 3),
+            QString::number(r.world.y, 'f', 3),
+            QString::number(r.world.z, 'f', 3),
+            QString::number(r.world.r, 'f', 3),
+            r.status,
+        };
+        for (int col = 0; col < values.size(); ++col) {
+            ui->tbl_result->setItem(row, col, new QTableWidgetItem(values.at(col)));
+        }
+    }
+}
+
+void LocalizationDashboardWidget::appendTaskLog(
+    const vc::model::LocalizationRuntimeController::TaskLogEntry &entry)
+{
+    TaskEvent ev;
+    ev.timestamp = entry.timestamp;
+    ev.level     = severityToLevel(entry.severity);
+    ev.message   = entry.message;
+    // The operator log is task-scoped; no per-component source tag for now.
+    ui->log_task_view->appendEvent(ev);
 }

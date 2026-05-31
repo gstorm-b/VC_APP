@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLC Signal Contract</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f2f3f5;
+  --surface: #ffffff;
+  --text: #1a1c20;
+  --muted: #5a6878;
+  --border: #c8ccd4;
+  --accent: #c06400;
+  --code-bg: #e8eaee;
+  --table-head: #f5ede0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 "Segoe UI", Arial, sans-serif;
+}
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 28px 56px;
+}
+nav {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+nav a,
+nav strong {
+  margin-right: 16px;
+}
+article {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 28px;
+}
+h1, h2, h3 {
+  line-height: 1.25;
+  margin: 1.4em 0 0.55em;
+}
+h1 {
+  margin-top: 0;
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.45rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.1em;
+}
+h3 { font-size: 1.12rem; }
+p { margin: 0.65em 0; }
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.92em;
+}
+pre {
+  overflow-x: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+}
+ul, ol { padding-left: 1.45rem; }
+li { margin: 0.28em 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: top;
+}
+th {
+  background: var(--table-head);
+  text-align: left;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+</style>
+</head>
+<body>
+<div class="page">
+<nav><a href="README.html">Overview</a><a href="task_localization_api.html">task localization api</a><a href="runtime_controller_api.html">runtime controller api</a><strong>plc signal contract</strong><a href="maintenance_and_extension.html">maintenance and extension</a></nav>
+<article>
+<div class="meta">Generated from Markdown documentation.</div>
+<h1 id="plc-signal-contract">PLC Signal Contract</h1>
+<p>This document defines the logical PLC contract for localization runtime.</p>
+<p><code>TaskLocalizeConfig</code> stores PLC tag names for each logical signal. The
+<code>LocalizationSignalMapper</code> maps incoming PLC tag values to logical signal
+names and maps outgoing logical signal names back to PLC tags.</p>
+<p>Source:</p>
+<ul>
+<li><code>src/model/task_localization_config.h</code></li>
+<li><code>src/model/localization_signal_mapper.*</code></li>
+<li><code>src/model/localization_runtime_controller.*</code></li>
+<li><code>src/model/localization_fault_code.h</code></li>
+</ul>
+<h2 id="signal-names">Signal Names</h2>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Type</th>
+<th>Direction</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nActiveCamera</code></td>
+<td>number</td>
+<td>PLC -&gt; task and task -&gt; PLC</td>
+<td>Active logical camera number.</td>
+</tr>
+<tr>
+<td><code>nActivePatternGroup</code></td>
+<td>number</td>
+<td>PLC -&gt; task and task -&gt; PLC</td>
+<td>Active pattern group number.</td>
+</tr>
+<tr>
+<td><code>nDetectedNumber</code></td>
+<td>number</td>
+<td>task -&gt; PLC</td>
+<td>Number of detected possible pick positions.</td>
+</tr>
+<tr>
+<td><code>nFaultCode</code></td>
+<td>number</td>
+<td>task -&gt; PLC</td>
+<td>Stable fault code.</td>
+</tr>
+<tr>
+<td><code>bCameraValid</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Active camera binding and calibration are valid.</td>
+</tr>
+<tr>
+<td><code>bPatternValid</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Active pattern group is usable.</td>
+</tr>
+<tr>
+<td><code>bTaskReady</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Runtime is ready to accept a new trigger.</td>
+</tr>
+<tr>
+<td><code>bExecuteTrigger</code></td>
+<td>bool</td>
+<td>PLC -&gt; task</td>
+<td>Rising-edge cycle trigger.</td>
+</tr>
+<tr>
+<td><code>bMatchingFinished</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Accepted trigger has been handled.</td>
+</tr>
+<tr>
+<td><code>bMatchingBusy</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Cycle is currently running.</td>
+</tr>
+<tr>
+<td><code>bMatchingDetected</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Last cycle detected at least one object.</td>
+</tr>
+<tr>
+<td><code>bMatchingLowArea</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Last result was below configured work-area threshold.</td>
+</tr>
+<tr>
+<td><code>bTaskFault</code></td>
+<td>bool</td>
+<td>task -&gt; PLC</td>
+<td>Task has an active fault or last cycle faulted.</td>
+</tr>
+</tbody>
+</table>
+<p><code>nActivePattern</code> is intentionally not supported. Use
+<code>nActivePatternGroup</code>.</p>
+<h2 id="handshake-behavior">Handshake Behavior</h2>
+<h3 id="ready">Ready</h3>
+<p>When runtime is healthy and ready:</p>
+<pre><code class="language-text">bTaskReady = true
+bMatchingBusy = false
+bMatchingFinished = false
+bMatchingDetected = false
+bMatchingLowArea = false
+bTaskFault = false
+nDetectedNumber = 0
+nFaultCode = 0
+</code></pre>
+<h3 id="trigger">Trigger</h3>
+<p><code>bExecuteTrigger</code> is rising-edge triggered. A cycle starts only when:</p>
+<ul>
+<li>previous trigger state was false</li>
+<li>new trigger state is true</li>
+<li>internal state is <code>ReadyForTrigger</code></li>
+</ul>
+<p>If the PLC keeps <code>bExecuteTrigger = true</code>, the task must not enqueue another
+cycle.</p>
+<h3 id="cycle-start">Cycle Start</h3>
+<p>When a trigger is accepted:</p>
+<pre><code class="language-text">bTaskReady = false
+bMatchingBusy = true
+bMatchingFinished = false
+bMatchingDetected = false
+bMatchingLowArea = false
+bTaskFault = false
+nDetectedNumber = 0
+nFaultCode = 0
+</code></pre>
+<h3 id="successful-cycle">Successful Cycle</h3>
+<p>After matching and VisionOutput send succeed:</p>
+<pre><code class="language-text">bMatchingBusy = false
+bMatchingFinished = true
+bMatchingDetected = (detectedNumber &gt; 0)
+bMatchingLowArea = &lt;matchResult.isAreaLessThanLimits&gt;
+bTaskFault = false
+nDetectedNumber = &lt;detectedNumber&gt;
+nFaultCode = 0
+</code></pre>
+<p>If <code>bExecuteTrigger</code> is still true, the controller waits in
+<code>WaitingTriggerReset</code>.</p>
+<p>When <code>bExecuteTrigger</code> falls to false:</p>
+<pre><code class="language-text">bMatchingFinished = false
+bTaskReady = true
+</code></pre>
+<h3 id="faulted-cycle">Faulted Cycle</h3>
+<p>For an abnormal cycle failure:</p>
+<pre><code class="language-text">bMatchingBusy = false
+bMatchingFinished = true
+bTaskReady = false
+bMatchingDetected = false
+bMatchingLowArea = false
+nDetectedNumber = 0
+bTaskFault = true
+nFaultCode = &lt;specific fault code&gt;
+</code></pre>
+<p><code>bMatchingFinished = true</code> means the accepted trigger has been handled, even
+when it failed. The PLC must check <code>bTaskFault</code> and <code>nFaultCode</code>.</p>
+<h2 id="fault-codes">Fault Codes</h2>
+<p>Stable numeric values:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Code</th>
+<th>Name</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td><code>None</code></td>
+<td>No active fault.</td>
+</tr>
+<tr>
+<td style="text-align: right;">100</td>
+<td><code>CameraLost</code></td>
+<td>Active camera lost connection or runner is unavailable.</td>
+</tr>
+<tr>
+<td style="text-align: right;">101</td>
+<td><code>CameraConnectFailed</code></td>
+<td>Active camera could not connect.</td>
+</tr>
+<tr>
+<td style="text-align: right;">102</td>
+<td><code>CameraGrabTimeout</code></td>
+<td>Single-shot grab failed, timed out, or returned no valid frame.</td>
+</tr>
+<tr>
+<td style="text-align: right;">200</td>
+<td><code>VisionOutputLost</code></td>
+<td>Vision-output device lost connection or runner is unavailable.</td>
+</tr>
+<tr>
+<td style="text-align: right;">201</td>
+<td><code>VisionOutputSendFailed</code></td>
+<td>Result payload could not be sent.</td>
+</tr>
+<tr>
+<td style="text-align: right;">300</td>
+<td><code>PlcLost</code></td>
+<td>Primary PLC lost connection.</td>
+</tr>
+<tr>
+<td style="text-align: right;">400</td>
+<td><code>PatternInvalid</code></td>
+<td>Active pattern group is missing or has no train image.</td>
+</tr>
+<tr>
+<td style="text-align: right;">401</td>
+<td><code>CalibrationInvalid</code></td>
+<td>Active camera has no valid calibration for world-coordinate output.</td>
+</tr>
+<tr>
+<td style="text-align: right;">500</td>
+<td><code>InternalError</code></td>
+<td>Unexpected internal runtime error.</td>
+</tr>
+</tbody>
+</table>
+<p>Do not renumber existing codes. Add new codes in a documented range and update
+tests.</p>
+<h2 id="plc-write-path">PLC Write Path</h2>
+<p>Runtime output publishing calls:</p>
+<ul>
+<li><code>PlcRunner::requestWriteDigitalIo(tag, value)</code></li>
+<li><code>PlcRunner::requestWriteWordIo(tag, value)</code></li>
+</ul>
+<p><code>PlcRunner</code> resolves the optional <code>IPlcIoWriter</code> capability on the concrete PLC
+device. <code>McProtocolDevice</code> implements the writer and parses tag families such
+as <code>Mxxxx</code> and <code>Dxxxx</code>.</p>
+<p>If an output signal has no mapped PLC tag, the runtime still emits
+<code>signalChanged(name, value)</code> for UI/dashboard consumers and skips the PLC write.</p>
+<h2 id="recovery-behavior">Recovery Behavior</h2>
+<p>When a required device role becomes unhealthy:</p>
+<ul>
+<li>The controller enters recovery.</li>
+<li>Recoverable statuses are retried according to role policy.</li>
+<li>If retry limit is exceeded, the controller raises a runtime fault.</li>
+</ul>
+<p>If a device is lost during <code>Running</code>, the cycle is aborted with the role-specific
+fault code and stale matching results are ignored.</p>
+<p>If the PLC is disconnected, app task state and logs remain the source of truth.
+On recovery, current runtime state is republished instead of silently clearing a
+fault.</p>
+
+</article>
+</div>
+</body>
+</html>

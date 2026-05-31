@@ -10,8 +10,9 @@ namespace {
 
 constexpr const char *kSignalFields[] = {
     "nActiveCamera",
-    "nActivePattern",
+    "nActivePatternGroup",
     "nDetectedNumber",
+    "nFaultCode",
     "bCameraValid",
     "bPatternValid",
     "bTaskReady",
@@ -20,6 +21,7 @@ constexpr const char *kSignalFields[] = {
     "bMatchingBusy",
     "bMatchingDetected",
     "bMatchingLowArea",
+    "bTaskFault",
 };
 
 QString readSignalTag(const TaskLocalizeConfig &config, const char *fieldName)
@@ -37,6 +39,7 @@ QString readSignalTag(const TaskLocalizeConfig &config, const char *fieldName)
 void LocalizationSignalMapper::configure(const TaskLocalizeConfig &config)
 {
     m_tagToSignalName.clear();
+    m_signalNameToTag.clear();
 
     for (const char *fieldName : kSignalFields) {
         const QString tag = readSignalTag(config, fieldName).trimmed();
@@ -52,18 +55,26 @@ void LocalizationSignalMapper::configure(const TaskLocalizeConfig &config)
                         << fieldName;
         }
 
-        m_tagToSignalName.insert(tag, QString::fromUtf8(fieldName));
+        const QString signalName = QString::fromUtf8(fieldName);
+        m_tagToSignalName.insert(tag, signalName);
+        m_signalNameToTag.insert(signalName, tag);
     }
 }
 
 void LocalizationSignalMapper::clear()
 {
     m_tagToSignalName.clear();
+    m_signalNameToTag.clear();
 }
 
 QString LocalizationSignalMapper::signalNameForTag(const QString &tag) const
 {
     return m_tagToSignalName.value(tag);
+}
+
+QString LocalizationSignalMapper::tagForSignalName(const QString &name) const
+{
+    return m_signalNameToTag.value(name);
 }
 
 QList<LocalizationSignalEvent> LocalizationSignalMapper::mapValues(

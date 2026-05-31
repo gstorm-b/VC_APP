@@ -13,7 +13,7 @@
 
 namespace vc::device {
 
-class McProtocolDevice : public PlcDevice, public IPlcTagProvider {
+class McProtocolDevice : public PlcDevice, public IPlcTagProvider, public IPlcIoWriter {
     Q_OBJECT
 
 public:
@@ -40,6 +40,8 @@ public:
 
     QStringList availableDigitalIoNames() const override;
     QStringList availableWordIoNames() const override;
+    bool writeDigitalIoByName(const QString &tag, bool value) override;
+    bool writeWordIoByName(const QString &tag, qint16 value) override;
 
     bool pushRequest(IRequest *request) override;
 

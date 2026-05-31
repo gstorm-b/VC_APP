@@ -117,6 +117,8 @@ signals:
     void resultSent(const QByteArray &payload);
     /// Phát khi heartbeat phát hiện lost connect (timeout/sai format).
     void heartbeatLost(const QString &reason);
+    /// Phát khi main client connect (true) hoặc disconnect (false).
+    void mainClientStateChanged(bool connected);
 
 private slots:
     void onMainNewConnection();

@@ -43,9 +43,9 @@ public:
     }
 
     void startCommissionMatching(
-        std::shared_ptr<mtc::MatchGroup> group, cv::Mat &image) {
+        std::shared_ptr<mtc::MatchGroup> group, cv::Mat image, vc::model::CameraWorkspace workspace) {
 
-        emit startCommissionMatchingRequest(group, image.clone());
+        emit startCommissionMatchingRequest(group, image.clone(), workspace);
     }
 
     mtc::PatternGroupManager* patternManager() const {
@@ -107,7 +107,7 @@ signals:
 
 private:
     signals:
-        void startCommissionMatchingRequest(std::shared_ptr<mtc::MatchGroup> group, cv::Mat image);
+        void startCommissionMatchingRequest(std::shared_ptr<mtc::MatchGroup> group, cv::Mat image, CameraWorkspace workspace);
 
 private:
     // ── Helpers for typed runner access ───────────────────────────────────────
@@ -140,6 +140,12 @@ private:
     LocalizationPipeline m_pipeline;
     LocalizationRuntimeController *m_runtimeController{nullptr};
     mtc::PatternGroupManager *m_patternManager;
+
+    // Persistent runtime matcher — built once and reused across cycles (touched
+    // only on the matchingRunner thread). The learned model is reloaded only
+    // when the active pattern group changes (m_loadedRuntimeGroup identity).
+    std::unique_ptr<mtc::ImageMatcher> m_runtimeMatcher;
+    std::shared_ptr<mtc::MatchGroup> m_loadedRuntimeGroup;
 };
 
 

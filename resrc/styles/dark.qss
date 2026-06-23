@@ -462,6 +462,18 @@ QPushButton#patternDeleteBtn {
 QPushButton#patternDeleteBtn:hover   { background-color: #c0282a; }
 QPushButton#patternDeleteBtn:pressed { background-color: #922015; }
 
+QPushButton#patternEditBtn {
+    background-color: #1a1c20;
+    color: #e0e4ea;
+    border: 1px solid #3a3f48;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0;
+}
+QPushButton#patternEditBtn:hover   { background-color: #3d2e10; color: #e87c00; border-color: #e87c00; }
+QPushButton#patternEditBtn:pressed { background-color: #e87c00; color: #ffffff; }
+
 /* ═══════════════════════════════════════════════════════════════════
    StatusLamp — Dark theme
    Read-only state indicator for operator dashboards.
@@ -547,6 +559,7 @@ QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_flag,
 QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_code { color: #ff5252; }
 
 /* KPI cards */
+QFrame#frame_match_view,
 QFrame#frame_kpi_detected,
 QFrame#frame_kpi_sent,
 QFrame#frame_kpi_cycle_time,

@@ -51,6 +51,22 @@ public:
                         std::vector<cv::Point2f>* cornerImagePoints = nullptr,
                         cv::Mat* debugOverlay = nullptr) const = 0;
 
+    // Binarize `image` (grayscale or BGR) into a single-channel mask where the
+    // dark board dots become foreground (255). When binarizeThreshold() < 0 the
+    // threshold is computed automatically (Otsu); otherwise the fixed value is
+    // applied (THRESH_BINARY_INV). If `usedThreshold` is non-null it receives
+    // the value actually applied (the Otsu-computed value in auto mode).
+    // detect() uses this same routine, so a preview built from binarize()
+    // matches exactly what detection sees.
+    virtual cv::Mat binarize(const cv::Mat& image,
+                             double* usedThreshold = nullptr) const;
+
+    // Binarization threshold used by detect(): -1 => auto (Otsu),
+    // 0..255 => fixed manual threshold. The base defaults to auto; subclasses
+    // that expose the value through their Params override these.
+    virtual int  binarizeThreshold() const { return -1; }
+    virtual void setBinarizeThreshold(int /*threshold*/) {}
+
     // --- Geometry (board coordinates in mm, z = 0 on a planar board) ---
     virtual int                      totalDots()             const = 0;
     virtual std::vector<cv::Point3f> objectPoints()          const = 0;

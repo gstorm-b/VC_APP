@@ -20,16 +20,15 @@ namespace mtc {
 //    {
 //      "groups": [
 //        { "name", "number",
-//          "pickingBoxSize":  { "w", "h" },
-//          "pickingBoxDistance", "pickingBoxAngle",
-//          "pickingOffset":   { "x", "y", "z" },
-//          "lowWorkpieceRatio",
+//          "matchingType": "Edge-Based" | "Correlation",
+//          "typeConfig":   { /* shared per-algorithm fields incl. lowWorkpieceRatio */ },
 //          "patterns": [
 //            { "name", "number",
 //              "minScore", "angle", "toleranceAngle", "maxOverlap",
 //              "pickPosition": { "x", "y" },
-//              "matchingType": "Edge-Based" | "Correlation",
-//              "typeConfig":   { /* per-algorithm fields */ }
+//              "pickingBoxSize":  { "w", "h" },
+//              "pickingBoxDistance", "pickingBoxAngle",
+//              "pickingOffset":   { "x", "y", "z" }
 //            }, …
 //          ]
 //        }, …
@@ -66,9 +65,12 @@ QJsonObject edgeConfigToJson(const EdgeMatchConfig &c) {
     o["blurWidth"]             = c.blurWidth;
     o["blurHeight"]            = c.blurHeight;
     o["greediness"]            = c.greediness;
+    o["lowWorkpieceRatio"]     = c.lowWorkpieceRatio;
     o["minReduceLength"]       = c.minReduceLength;
     o["tSamples"]              = c.tSamples;
     o["invertBinaryThreshold"] = c.invertBinaryThreshold;
+    o["binaryThreshold"]       = c.binaryThreshold;
+    o["binaryMaxValue"]        = c.binaryMaxValue;
     o["subPixelEstimation"]    = c.subPixelEstimation;
     o["stopAtLayer1"]          = c.stopAtLayer1;
     return o;
@@ -81,9 +83,12 @@ void edgeConfigFromJson(const QJsonObject &o, EdgeMatchConfig &c) {
     c.blurWidth             = o["blurWidth"]            .toInt   (c.blurWidth);
     c.blurHeight            = o["blurHeight"]           .toInt   (c.blurHeight);
     c.greediness            = o["greediness"]           .toDouble(c.greediness);
+    c.lowWorkpieceRatio     = o["lowWorkpieceRatio"]    .toDouble(c.lowWorkpieceRatio);
     c.minReduceLength       = o["minReduceLength"]      .toInt   (c.minReduceLength);
     c.tSamples              = o["tSamples"]             .toInt   (c.tSamples);
     c.invertBinaryThreshold = o["invertBinaryThreshold"].toBool  (c.invertBinaryThreshold);
+    c.binaryThreshold       = o["binaryThreshold"]      .toInt   (c.binaryThreshold);
+    c.binaryMaxValue        = o["binaryMaxValue"]       .toInt   (c.binaryMaxValue);
     c.subPixelEstimation    = o["subPixelEstimation"]   .toBool  (c.subPixelEstimation);
     c.stopAtLayer1          = o["stopAtLayer1"]         .toBool  (c.stopAtLayer1);
 }
@@ -104,9 +109,13 @@ QJsonObject patternConfigToJson(const MatchPatternConfig &c) {
     pick["y"] = c.m_pickPosition.y;
     o["pickPosition"] = pick;
 
-    o["matchingType"] = matchingTypeToString(c.matchingType());
-    if (auto *ecfg = c.edgeConfig())
-        o["typeConfig"] = edgeConfigToJson(*ecfg);
+    o["pickingBoxSize"]     = QJsonObject{{ "w", c.m_pickingBoxSize.width  },
+                                          { "h", c.m_pickingBoxSize.height }};
+    o["pickingBoxDistance"] = c.m_pickingBoxDistance;
+    o["pickingBoxAngle"]    = c.m_pickingBoxAngle;
+    o["pickingOffset"]      = QJsonObject{{ "x", c.m_pickingOffset.x },
+                                          { "y", c.m_pickingOffset.y },
+                                          { "z", c.m_pickingOffset.z }};
 
     return o;
 }
@@ -124,9 +133,16 @@ MatchPatternConfig patternConfigFromJson(const QJsonObject &o) {
     c.m_pickPosition.x = static_cast<float>(pick["x"].toDouble(0.0));
     c.m_pickPosition.y = static_cast<float>(pick["y"].toDouble(0.0));
 
-    c.setMatchingType(matchingTypeFromString(o["matchingType"].toString()));
-    if (auto *ecfg = c.edgeConfig())
-        edgeConfigFromJson(o["typeConfig"].toObject(), *ecfg);
+    const QJsonObject sz = o["pickingBoxSize"].toObject();
+    c.m_pickingBoxSize = cv::Size2f(static_cast<float>(sz["w"].toDouble(0.0)),
+                                    static_cast<float>(sz["h"].toDouble(0.0)));
+    c.m_pickingBoxDistance = o["pickingBoxDistance"].toDouble(0.0);
+    c.m_pickingBoxAngle    = o["pickingBoxAngle"]   .toDouble(0.0);
+
+    const QJsonObject off = o["pickingOffset"].toObject();
+    c.m_pickingOffset = cv::Point3f(static_cast<float>(off["x"].toDouble(0.0)),
+                                    static_cast<float>(off["y"].toDouble(0.0)),
+                                    static_cast<float>(off["z"].toDouble(0.0)));
 
     return c;
 }
@@ -138,14 +154,13 @@ QJsonObject groupToJson(const MatchGroup &group) {
     QJsonObject o;
     o["name"]               = QString::fromStdWString(g.m_groupName);
     o["number"]             = g.m_groupIndex;
-    o["pickingBoxSize"]     = QJsonObject{{ "w", g.m_pickingBoxSize.width  },
-                                          { "h", g.m_pickingBoxSize.height }};
-    o["pickingBoxDistance"] = g.m_pickingBoxDistance;
-    o["pickingBoxAngle"]    = g.m_pickingBoxAngle;
-    o["pickingOffset"]      = QJsonObject{{ "x", g.m_pickingOffset.x },
-                                          { "y", g.m_pickingOffset.y },
-                                          { "z", g.m_pickingOffset.z }};
-    o["lowWorkpieceRatio"]  = g.m_lowWorkpieceRatio;
+    o["sortByAngle"]        = g.m_sortByAngle;
+    o["sortConditionAngle"] = g.m_sortConditionAngle;
+
+
+    o["matchingType"] = matchingTypeToString(g.matchingType());
+    if (auto *ecfg = g.edgeConfig())
+        o["typeConfig"] = edgeConfigToJson(*ecfg);
 
     QJsonArray patterns;
     for (const auto &p : group.patterns())
@@ -159,20 +174,12 @@ MatchGroupConfig groupConfigFromJson(const QJsonObject &o) {
     MatchGroupConfig g;
     g.m_groupName  = o["name"].toString().toStdWString();
     g.m_groupIndex = o["number"].toInt(0);
+    g.m_sortByAngle = o["sortByAngle"].toBool(false);
+    g.m_sortConditionAngle = o["sortConditionAngle"].toDouble(0.0);
 
-    const QJsonObject sz = o["pickingBoxSize"].toObject();
-    g.m_pickingBoxSize = cv::Size2f(static_cast<float>(sz["w"].toDouble(0.0)),
-                                    static_cast<float>(sz["h"].toDouble(0.0)));
-
-    g.m_pickingBoxDistance = o["pickingBoxDistance"].toDouble(0.0);
-    g.m_pickingBoxAngle    = o["pickingBoxAngle"]   .toDouble(0.0);
-
-    const QJsonObject off = o["pickingOffset"].toObject();
-    g.m_pickingOffset = cv::Point3f(static_cast<float>(off["x"].toDouble(0.0)),
-                                    static_cast<float>(off["y"].toDouble(0.0)),
-                                    static_cast<float>(off["z"].toDouble(0.0)));
-
-    g.m_lowWorkpieceRatio = o["lowWorkpieceRatio"].toDouble(g.m_lowWorkpieceRatio);
+    g.setMatchingType(matchingTypeFromString(o["matchingType"].toString()));
+    if (auto *ecfg = g.edgeConfig())
+        edgeConfigFromJson(o["typeConfig"].toObject(), *ecfg);
 
     // m_patterns vector left empty here — patterns are inserted via the
     // manager's addPattern() after the group is added, which creates the

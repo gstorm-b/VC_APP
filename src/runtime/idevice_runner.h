@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QThread>
 #include <QEventLoop>
+#include <QTimer>
 #include "device/idevice.h"
 #include "runtime/device_command.h"
 
@@ -68,9 +69,55 @@ public:
         loop.exec();
     }
 
+    // Synchronously close the device connection on its own worker thread.
+    //
+    // Must be called BEFORE detach()/stop() during a phase teardown: the device
+    // owns thread-affined transport objects (e.g. a QTcpSocket created on the
+    // worker thread). Moving the device across threads or stopping the worker
+    // while the link is still open leaks the connection and can crash on
+    // re-entry. Triggering deviceDisconnect() here lets the device close its
+    // transport on the correct thread.
+    //
+    // No-op when the device is not connected. Bounded by timeoutMs so a
+    // misbehaving device cannot stall teardown. Requires the runner to still be
+    // attached with its worker thread running (the normal pre-detach state).
+    void disconnectAndWait(int timeoutMs = 3000) {
+        vc::device::IDevice *dev = device();
+        if (!dev) return;
+
+        const vc::device::ConnectStatus status = dev->connectStatus();
+        if (status != vc::device::ConnectStatus::Connected &&
+            status != vc::device::ConnectStatus::Connecting &&
+            status != vc::device::ConnectStatus::LostConnected) {
+            return;   // nothing to tear down
+        }
+
+        QEventLoop loop;
+        QTimer guard;
+        guard.setSingleShot(true);
+
+        const QMetaObject::Connection statusConn = connect(
+            this, &IDeviceRunner::connectStatusChanged, &loop,
+            [&loop](vc::device::ConnectStatus s) {
+                if (s == vc::device::ConnectStatus::Disconnected ||
+                    s == vc::device::ConnectStatus::NoConnection) {
+                    loop.quit();
+                }
+            });
+        connect(&guard, &QTimer::timeout, &loop, &QEventLoop::quit);
+        connect(this, &IDeviceRunner::requestDeviceDisconnect,
+                dev, &vc::device::IDevice::deviceDisconnect, Qt::SingleShotConnection);
+
+        guard.start(timeoutMs);
+        emit requestDeviceDisconnect();
+        loop.exec();
+        disconnect(statusConn);
+    }
+
 signals:
     // Forwarded from the concrete device (cross-thread safe)
     void requestDetach(QThread *dest);
+    void requestDeviceDisconnect();
     // void detachFinished();
     void connectStatusChanged(vc::device::ConnectStatus status);
     void errorOccurred(const QString &msg);

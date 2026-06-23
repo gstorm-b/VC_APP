@@ -35,8 +35,9 @@
 
 **Priority.** P0
 
-**Status.** Implemented as `tests/architecture_contract_test/`. Verified on
-2026-05-30 with Qt 6.8.2 MSVC 2022 debug build: 17 passed, 0 failed.
+**Status.** Implemented as `tests/architecture_contract_test/`. Re-verified on
+2026-06-24 with Qt 6.8.2 MSVC 2022 Debug build: suite exit code `0`, including
+the runtime matching queued-payload metatype guard.
 
 **Depends on.** None
 
@@ -91,8 +92,7 @@ links to `uml_diagram/` from active docs once the old folder is deleted.
 
 **Acceptance criteria.**
 - Active docs point to `uml/`.
-- `docs/claude_session_onboarding.md` still gives a clear starting path for new
-  sessions.
+- `AGENT.md` still gives a clear starting path for new sessions.
 
 **UML updates.** None expected.
 

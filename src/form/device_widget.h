@@ -9,9 +9,11 @@
 
 class IDeviceWidget : public QWidget {
     Q_OBJECT
+    Q_DISABLE_COPY_MOVE(IDeviceWidget)
 
 public:
     explicit IDeviceWidget(QWidget *parent = nullptr) : QWidget(parent) {}
+    ~IDeviceWidget() override = default;
 
     virtual PropertyBrowserWidget* getPropertyBrowser() const {
         return m_propBrowser;

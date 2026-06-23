@@ -35,6 +35,8 @@ bool FanucIRvisionBoard::Params::isValid(std::string* errorOut) const
         return fail("coorDotSizeMm must be greater than normalDotSizeMm");
     if (coorDotSizeMm    >= dotSpacingMm)
         return fail("coorDotSizeMm must be smaller than dotSpacingMm");
+    if (binarizeThreshold < -1 || binarizeThreshold > 255)
+        return fail("binarizeThreshold must be -1 (auto/Otsu) or in 0..255");
     return true;
 }
 
@@ -61,6 +63,7 @@ void FanucIRvisionBoard::writeJsonFields(cv::FileStorage& fs) const
     fs << "normalDotSizeMm"      << m_params.normalDotSizeMm;
     fs << "coorDotSizeMm"        << m_params.coorDotSizeMm;
     fs << "innerTargetDotSizeMm" << m_params.innerTargetDotSizeMm;
+    fs << "binarizeThreshold"    << m_params.binarizeThreshold;
 }
 
 FanucIRvisionBoard::Params FanucIRvisionBoard::paramsFromJson(const std::string& json)
@@ -79,6 +82,9 @@ FanucIRvisionBoard::Params FanucIRvisionBoard::paramsFromJson(const std::string&
     fs["normalDotSizeMm"]      >> p.normalDotSizeMm;
     fs["coorDotSizeMm"]        >> p.coorDotSizeMm;
     fs["innerTargetDotSizeMm"] >> p.innerTargetDotSizeMm;
+    // Optional / backward-compatible: absent in older JSON -> keep default (-1).
+    if (!fs["binarizeThreshold"].isNone())
+        fs["binarizeThreshold"] >> p.binarizeThreshold;
     return p;
 }
 
@@ -347,12 +353,9 @@ bool FanucIRvisionBoard::detect(const cv::Mat& image,
 
     const cv::Mat gray = ensureGray(image);
 
-    cv::Mat binary;
-    cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
-
-    if (debugOverlay) {
-        cv::imwrite("calib_thresh_image.bmp", binary);
-    }
+    // Binarize with the configured threshold (auto/Otsu when binarizeThreshold
+    // < 0, fixed manual value otherwise). Shared with the tuning dialog preview.
+    const cv::Mat binary = binarize(gray);
 
     std::vector<std::vector<cv::Point>> contours;
     std::vector<cv::Vec4i> hierarchy;

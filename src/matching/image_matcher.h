@@ -6,6 +6,7 @@
 #include "match_object.h"
 #include "match_group.h"
 #include "edge_match_config.h"
+#include "robot_picking_checker.h"
 
 #define SOURCE_THERSHOLD_TOLERANCE  (double)0.3
 
@@ -13,23 +14,23 @@ namespace mtc {
 
 struct MatchResult {
     std::vector<MatchedObject> Objects;
-    cv::Point  cropOffsetPoint;
-    double     ExecutionTime{0.0};
-    cv::Mat    Image;
-    int        imageCols{0};
-    int        imageRows{0};
-    bool       isFoundMatchObject{false};
-    int        totalPossiblePicking{0};
-    bool       isAreaLessThanLimits{false};
+    cv::Point2f cropOffsetPoint;
+    double      ExecutionTime{0.0};
+    cv::Mat     Image;
+    int         imageCols{0};
+    int         imageRows{0};
+    bool        isFoundMatchObject{false};
+    int         totalPossiblePicking{0};
+    bool        isAreaLessThanLimits{false};
 };
 
 // ---------------------------------------------------------------------------
 // ImageMatcher — edge-based template matching engine.
 //
-// Algorithm config lives in each MatchPattern's MatchPatternConfig::typeConfig
-// (EdgeMatchConfig).  Runtime search parameters (max_pos_num, max_overlap)
-// are kept here as they govern the search over the whole image, not a single
-// pattern.
+// Algorithm config lives in the group's MatchGroupConfig::typeConfig
+// (EdgeMatchConfig), shared by every pattern in the group.  Runtime search
+// parameters (max_pos_num, max_overlap) are kept here as they govern the
+// search over the whole image, not a single pattern.
 // ---------------------------------------------------------------------------
 class ImageMatcher {
 public:
@@ -42,13 +43,48 @@ public:
     void setImageSource(std::string path);
     void setImageSource(cv::Mat img);
     void setMatchingROI(cv::Point tl, cv::Point br);
+    void setMatchingConditionROI(cv::Point tl, cv::Point br);
 
-    void matching(cv::Mat& image, bool boundingBoxChecking, int objectsNum, bool usingRoi);
-    void matching(bool boundingBoxChecking, int objectsNum, bool usingRoi);
+    void matching(cv::Mat& image, bool boundingBoxChecking, int objectsNum, bool usingRoi, bool usingConditionRoi);
+    void matching(bool boundingBoxChecking, int objectsNum, bool usingRoi,  bool usingConditionRoi);
 
     void setMatchSourceImage(cv::Mat& img);
     bool MatchEdge(cv::Mat& imgEdge, MatchPattern* pattern,
                    std::vector<MatchedObject>& matchObjs);
+
+    // Sort matched objects in place by pick priority, then by score or angle.
+    //
+    // Primary key — pick priority (best first):
+    //   1. no collision AND inside the condition ROI
+    //   2. collision   AND inside the condition ROI
+    //   3. the rest (outside the condition ROI)
+    //
+    // Secondary key — applied within each priority group:
+    //   - highest matched_Score first (default), or
+    //   - if the group config's m_sortByAngle is set, smallest angular error of
+    //     point_angle vs m_sortConditionAngle first (score is ignored).
+    void sortMatchedObjects(std::vector<MatchedObject>& objects);
+
+    // Inject the robot-pickability checker (dependency inversion; non-owning).
+    // Pass nullptr to disable. The owner builds the concrete adapter from the
+    // calibration + robot config and keeps it alive while this matcher is used.
+    void setRobotPickingChecker(const IRobotPickingChecker* checker) {
+        m_pickingChecker = checker;
+    }
+
+    // Whether the robot can actually pick this matched object. Sequential steps:
+    //   1. convert the object's image position/angle to a world pick pose,
+    //   2. solveAll IK to confirm the pose is reachable,
+    //   3. (only if the robot config enabled it) simplified-mesh self-collision.
+    // Returns true when no checker is injected (the check is advisory: an
+    // unconfigured robot does not gate matching).
+    //
+    // Frame note: the image coordinates handed to the checker are
+    // point_Center + match_result.cropOffsetPoint, i.e. the matcher's own input
+    // frame. If the host pre-crops the image before matching, it must inject a
+    // checker whose calibration is consistent with that frame (or set the
+    // matching ROI here instead of pre-cropping).
+    bool robotPossiblePickingCheck(const MatchedObject& obj) const;
 
 public:
     int    max_pos_num = 70;
@@ -89,14 +125,20 @@ private:
     void SortPtWithCenter(std::vector<cv::Point2f>& vecSort);
     void DrawMatchResult(cv::Mat& drawImage,
                          std::vector<MatchedObject>& matchedResults);
+    bool pointInBox(const cv::Point2f& tl, const cv::Point2f& br, const cv::Point2f& pt);
 
 private:
-    cv::Mat    m_img_source;
-    MatchGroup m_model_src;
-    cv::Point  ROI_tl;
-    cv::Point  ROI_br;
+    cv::Mat      m_img_source;
+    MatchGroup   m_model_src;
+    cv::Point2f  ROI_tl;
+    cv::Point2f  ROI_br;
+    cv::Point2f  Condition_ROI_tl;
+    cv::Point2f  Condition_ROI_br;
 
     std::vector<MatchParams> m_final_overlap_result;
+
+    // Non-owning robot-pickability checker (nullptr => check disabled).
+    const IRobotPickingChecker* m_pickingChecker{nullptr};
 
     const double lowerThreshRatio = 1.0 - SOURCE_THERSHOLD_TOLERANCE;
     const double upperThreshRatio = 4.0 + SOURCE_THERSHOLD_TOLERANCE;

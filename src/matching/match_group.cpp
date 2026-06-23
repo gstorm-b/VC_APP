@@ -11,6 +11,30 @@ int MatchGroup::m_max_index_range = 32;
 int MatchGroup::m_min_pattern_range = 1;
 int MatchGroup::m_max_pattern_range = 4;
 
+// ── MatchGroupConfig — deep-copy of the shared typeConfig ──────────────────────
+
+MatchGroupConfig::MatchGroupConfig()
+    : typeConfig(std::make_shared<EdgeMatchConfig>()) {}
+
+MatchGroupConfig::MatchGroupConfig(const MatchGroupConfig &other)
+    : m_groupName(other.m_groupName),
+      m_groupIndex(other.m_groupIndex),
+      m_sortByAngle(other.m_sortByAngle),
+      m_sortConditionAngle(other.m_sortConditionAngle),
+      typeConfig(other.typeConfig ? other.typeConfig->clone() : nullptr),
+      m_patterns(other.m_patterns) {}
+
+MatchGroupConfig &MatchGroupConfig::operator=(const MatchGroupConfig &other) {
+    if (this != &other) {
+        m_groupName          = other.m_groupName;
+        m_groupIndex         = other.m_groupIndex;
+        m_sortByAngle        = other.m_sortByAngle;
+        m_sortConditionAngle = other.m_sortConditionAngle;
+        typeConfig           = other.typeConfig ? other.typeConfig->clone() : nullptr;
+        m_patterns           = other.m_patterns;
+    }
+    return *this;
+}
 
 MatchGroup::MatchGroup() {
 

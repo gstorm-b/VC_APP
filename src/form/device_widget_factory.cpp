@@ -6,6 +6,7 @@
 #include "form/camera/basler_camera_widget.h"
 #include "form/plc/mitsubishi_mc_device_widget.h"
 #include "form/vision_output/vision_tcpip_device_widget.h"
+#include "form/vision_output/vision_tcpip_client_device_widget.h"
 #include "logger/app_logger.h"
 #include "runtime/camera_runner.h"
 #include "runtime/plc_runner.h"
@@ -47,14 +48,22 @@ QWidget *DeviceWidgetFactory::createDeviceWidget(
 
     case vc::device::DeviceType::VisionOutput: {
         auto *output = qobject_cast<vc::device::VisionOutputDevice *>(device.get());
-        if (!output ||
-            output->visionOutputType() != vc::device::VisionOutputType::VisionTCPIP) {
+        if (!output) {
             LOG_DEV_ERR << "DeviceWidgetFactory: unsupported vision output subtype"
                         << device->id();
             return nullptr;
         }
         auto *outputRunner = qobject_cast<vc::runtime::VisionOutputRunner *>(runner);
-        return new VisionTcpipDeviceWidget(device, outputRunner, dock, parent);
+        switch (output->visionOutputType()) {
+        case vc::device::VisionOutputType::VisionTCPIP:
+            return new VisionTcpipDeviceWidget(device, outputRunner, dock, parent);
+        case vc::device::VisionOutputType::VisionTcpipClient:
+            return new VisionTcpipClientDeviceWidget(device, outputRunner, dock, parent);
+        default:
+            LOG_DEV_ERR << "DeviceWidgetFactory: unsupported vision output subtype"
+                        << device->id();
+            return nullptr;
+        }
     }
 
     default:

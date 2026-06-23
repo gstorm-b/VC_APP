@@ -239,6 +239,11 @@ templatised. Until then, leave alone.
 
 ## 13. Widget `static_cast` to concrete device is unsafe
 
+**Status (2026-06-24): RESOLVED.** `BaslerCameraWidget` and
+`VisionTcpipDeviceWidget` now use `qobject_cast` at the widget boundary. Wrong
+subtypes log an error and disable the widget instead of dereferencing an invalid
+concrete pointer. The full Debug app build passed after the change.
+
 **What.** Both `BaslerCameraWidget::initCameraWiget` and
 `VisionTcpipDeviceWidget::initWidget` use `static_cast` to downcast
 from `IDevice*` to the concrete device type
@@ -336,21 +341,16 @@ them the per-vendor names at the same time
 
 ## 21. `TaskLocalization::matchingRunner` has no explicit teardown
 
-**What.** `TaskLocalization` creates `matchingRunner = new QThread()` in its
-constructor and starts it immediately, but the class does not declare a
-destructor that quits, waits for, and deletes the thread.
+**Status (2026-06-23): RESOLVED.** `TaskLocalization` now declares and
+implements `~TaskLocalization()`. The destructor destroys the runtime
+controller, quits `matchingRunner`, waits up to 3000 ms, logs a warning if the
+thread does not stop in time, deletes the thread, and clears the pointer.
 
-**Where.** `src/model/task_localization.cpp` constructor and
+**Where.** `src/model/task_localization.cpp` constructor/destructor and
 `src/model/task_localization.h` member `QThread *matchingRunner`.
 
-**Why deferred.** It was noticed while adding Phase 0 architecture contract
-tests. Fixing runtime thread ownership is production behavior and should be a
-focused lifecycle change, not mixed into test scaffolding.
-
-**How to pick up.** Add a `TaskLocalization` destructor that stops matching
-commission work safely, calls `matchingRunner->quit()`, waits with a bounded
-timeout, and deletes the thread. Verify task factory tests and any commission
-matching path still shut down cleanly.
+**Residual verification.** Covered by code inspection in the Phase 0 audit.
+Keep lifecycle shutdown in the Phase 1/2 build and runtime verification pass.
 
 ---
 
@@ -382,17 +382,29 @@ commission run, ahead of the cleanup items lower down.
   another `shared_ptr`.
 
 **22.2 — Cross-thread queued matching signals carry unregistered metatypes.**
-- Where. [task_localization.h:89,95](../src/model/task_localization.h) +
-  [task_localization.cpp:381-418](../src/model/task_localization.cpp).
-  `startCommissionMatchingRequest(std::shared_ptr<mtc::MatchGroup>, cv::Mat)` and
-  `commissionMatchingFinished(mtc::MatchResult)` cross thread boundaries (worker
-  on `matchingRunner`) → `Qt::QueuedConnection`.
+
+**Status (2026-06-24): RESOLVED.** `TaskLocalization` now registers
+`mtc::MatchResult`, `cv::Mat`, `std::shared_ptr<mtc::MatchGroup>`,
+`std::shared_ptr<mtc::IRobotPickingChecker>`, and `CameraWorkspace`.
+`CameraWorkspace` is also declared with `Q_DECLARE_METATYPE`. The architecture
+contract test now includes
+`test_runtime_matching_payload_metatypes_support_queued_connection`, which
+passes `runtimeMatchingRequested(...)` through a `Qt::QueuedConnection` and
+verifies that `CameraWorkspace` and `cv::Mat` are delivered.
+
+- Where. [task_localization.h](../src/model/task_localization.h) +
+  [task_localization.cpp](../src/model/task_localization.cpp) and
+  [localization_runtime_controller.h](../src/model/localization_runtime_controller.h).
+  `startCommissionMatchingRequest(std::shared_ptr<mtc::MatchGroup>, cv::Mat,
+  CameraWorkspace)`, `commissionMatchingFinished(mtc::MatchResult)`, and
+  `runtimeMatchingRequested(...)` cross thread boundaries (worker on
+  `matchingRunner`) -> `Qt::QueuedConnection`.
 - Why it matters. Queued connections marshal each argument through the metatype
   system. `mtc::MatchResult`, `cv::Mat`, and `std::shared_ptr<mtc::MatchGroup>`
   are not registered, so Qt logs "Cannot queue arguments of type 'cv::Mat'" and
   silently drops the call — commission matching never runs.
-- How to fix. `Q_DECLARE_METATYPE` for the non-Qt types and `qRegisterMetaType`
-  once at startup for all three.
+- Verification. Phase 1 architecture contract suite rebuilt and ran with exit
+  code `0` on 2026-06-24.
 
 ### High — real bugs, scoped fixes
 
@@ -416,6 +428,11 @@ commission run, ahead of the cleanup items lower down.
   block.
 
 **22.5 — `IDeviceWidget` constructor drops its `parent` argument.**
+
+**Status (2026-06-24): RESOLVED.** The constructor forwards `parent` to
+`QWidget(parent)`. This pass also verified the base widget contract during the
+full Debug app build.
+
 - Where. [device_widget.h:12](../src/form/device_widget.h). `IDeviceWidget(QWidget *parent = nullptr) {}`
   has an empty init list, so `QWidget` is default-constructed and `parent` is
   discarded. Subclasses forward `parent` expecting parent-child ownership.
@@ -455,12 +472,22 @@ commission run, ahead of the cleanup items lower down.
   `bool`-return convention.
 
 **22.10 — `IDeviceWidget` polymorphic base lacks virtual dtor / `Q_DISABLE_COPY_MOVE`.**
+
+**Status (2026-06-24): RESOLVED.** `IDeviceWidget` now declares
+`~IDeviceWidget() override = default;` and `Q_DISABLE_COPY_MOVE(IDeviceWidget)`.
+The full Debug app build passed after moc regeneration.
+
 - Where. [device_widget.h:8](../src/form/device_widget.h). Declares pure virtuals
   but no explicit virtual destructor and no `Q_DISABLE_COPY_MOVE`.
 - How to fix. Add `Q_DISABLE_COPY_MOVE(IDeviceWidget)` and
   `~IDeviceWidget() override = default;`. (Base class — coordinate with 22.5.)
 
 **22.11 — `m_output_device` may be dereferenced uninitialized.**
+
+**Status (2026-06-24): RESOLVED.** `m_output_device` is now initialized to
+`nullptr`; `initWidget()` assigns it only after a successful `qobject_cast`, and
+`saveConfig()` returns early when the typed device is unavailable.
+
 - Where. [vision_tcpip_device_widget.h:54](../src/form/vision_output/vision_tcpip_device_widget.h).
   No in-class initializer; assigned only inside `if (m_device)` in `initWidget()`,
   but `saveConfig()` derefs unconditionally. The factory currently guards device
@@ -662,10 +689,12 @@ exposes no manual write / trigger / start-stop controls (read-only v1).
 
 ## 26. Localization runtime production follow-ups after first implementation pass
 
-**Status (2026-05-31): OPEN.** The first implementation pass builds and covers
-the main contract shape, but `TaskLocalization` should not yet be considered
-production-complete. The items below are follow-ups from the localization
-runtime implementation.
+**Status (2026-06-24): PARTIALLY VERIFIED.** The first implementation pass
+builds and covers the main contract shape, and the 2026-06-24 hardening pass
+added focused tests for invalid setup faults, PLC output writes, invalid PLC tag
+rejection, and camera loss during `RunningCycle`. `TaskLocalization` should not
+yet be considered production-complete because the operator UI pass, latency
+measurement, and broader active-camera switching refactor are still open.
 
 **Remaining work.**
 - Move the `LocalizationRuntimeController` object into `TaskRunner::m_runtimeThread`
@@ -680,12 +709,14 @@ runtime implementation.
   `CameraDevice::deviceDisconnect()` / `deviceConnect()` calls and should be
   replaced by queued `CameraRunner` requests coordinated by
   `LocalizationRuntimeController`.
-- Add focused runtime/controller tests for trigger edge behavior, held-trigger
-  suppression, trigger reset, grab timeout fault `102`, VisionOutput send
-  failure fault `201`, invalid pattern fault `400`, invalid calibration fault
-  `401`, and lost device handling during `RunningCycle`.
-- Add PLC write behavior tests for valid `M` bit tags, valid `D` word tags, and
-  invalid tag rejection once a suitable fake PLC request sink exists.
+- Add focused runtime/controller tests for any remaining unverified edge cases.
+  Covered by 2026-06-24 contract tests: trigger edge behavior,
+  held-trigger suppression, trigger reset, grab timeout fault `102`,
+  VisionOutput send failure fault `201`, invalid pattern fault `400`, invalid
+  calibration fault `401`, and camera-loss handling during `RunningCycle`.
+- Extend PLC write behavior tests only when new tag families or PLC vendors are
+  added. Covered by 2026-06-24 contract tests for valid `M` bit tags, valid `D`
+  word tags, and invalid tag rejection through `PlcRunner`.
 - Run an operator UI verification pass against a real or simulated runtime
   cycle to confirm dashboard lamps, fault panel, KPIs, result table, and
   task-local log updates.
@@ -693,3 +724,53 @@ runtime implementation.
 **Verification already done in the first pass.**
 - `architecture_contract_test` built and ran with exit code `0`.
 - Full Debug app build completed successfully.
+
+**Additional verification (2026-06-24).**
+- `architecture_contract_test` rebuilt with qmake + `nmake /nologo`.
+- `architecture_contract_test.exe -silent` exited with code `0`.
+- Full Debug app build completed successfully after the Phase 2/3 edits.
+
+---
+
+## 27. RobotKinematics — build-folder deploy done; customer install pending
+
+**Status (2026-06-22): RESOLVED for build-folder runs.** The `RobotKinematics`
+component replaced the old `rkin` module and is wired into `ncr_picking.pro` via
+`components/RobotKinematics/robotkinematics.pri`, including the Coal mesh-collision
+backend. The `.pri` now post-link-copies everything the app needs next to the
+binary:
+
+- **Mesh-collision runtime DLLs.** `coal.dll`, `assimp-vc143-mt.dll`,
+  `boost_serialization-vc143-mt-x64-1_87.dll`, and
+  `boost_filesystem-vc143-mt-x64-1_87.dll` from
+  `3rdparty/{coal,assimp,boost}`, only if not already present (`if not exist ...
+  copy`). Toggle: `CONFIG -= robotkinematics_copy_dlls`.
+- **Mesh assets.** The whole `components/RobotKinematics/presets/Nachi/MZ04`
+  tree, including the `simplified/` mesh profile, is copied to
+  `<target>/robot_assets/Nachi/MZ04` via `xcopy /D /E`. Toggle:
+  `CONFIG -= robotkinematics_copy_assets`.
+
+`runKinematicCheck()` resolves the profile from `<appdir>/robot_assets/Nachi/MZ04`
+first, then falls back to the source-tree upward walk.
+
+**Still open — customer install packaging.**
+1. **Verify clean target runtime.** Phase 1 found that `coal.dll` dynamically
+   depends on Boost serialization/filesystem DLLs, and
+   `robotkinematics.pri` now copies them for build-folder runs. Confirm on a
+   clean target machine that no further transitive runtime DLLs are missing.
+2. **Installer layout.** When an install/packaging step exists, ship
+   `robot_assets/` (and the DLLs) next to the binary through the installer rather
+   than relying on the build-time `QMAKE_POST_LINK`. Embedding the STL meshes as
+   Qt resources is possible but `MeshCollisionProfileJsonLoader` reads from the
+   filesystem, so a temp-extract shim would be needed.
+
+Detailed release payload and clean-machine checks are now tracked in
+[customer_installer_packaging.md](customer_installer_packaging.md).
+
+**Why deferred.** No installer/packaging step exists yet; the build-folder copy
+covers dev and local QA. Revisit when packaging is defined.
+
+**Build note.** The whole `RobotKinematics` source set now compiles into the app;
+the heavy lift is environment-dependent (the prebuilt `3rdparty/{coal,boost,
+assimp}` trees must be present and ABI-compatible with the MSVC 2022 / Qt 6.8.2
+kit used in Phase 1). Validate with a local build.

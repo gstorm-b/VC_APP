@@ -3,26 +3,66 @@
 
 #include "match_pattern.h"
 #include "manager_result.h"
+#include "edge_match_config.h"
+
+#include <memory>
 
 namespace mtc {
 
 class PatternGroupManager;
 
+// ---------------------------------------------------------------------------
+// MatchGroupConfig — per-group configuration.
+//
+// Holds group identity and the algorithm-specific config (`typeConfig`,
+// default EdgeMatchConfig) that is SHARED by every pattern in the group.
+// Typed access helpers (edgeConfig / configAs<T>) return nullptr when the
+// current matching type does not match.
+//
+// Picking / collision-box geometry is per-pattern — it lives on
+// MatchPatternConfig, not here (collision is an Edge-Based, per-pattern
+// concern).
+//
+// Copy semantics: deep-copies `typeConfig` via clone() so each group owns an
+// independent copy of its algorithm config.
+// ---------------------------------------------------------------------------
 class MatchGroupConfig {
 public:
+    MatchGroupConfig();
+    MatchGroupConfig(const MatchGroupConfig &other);
+    MatchGroupConfig &operator=(const MatchGroupConfig &other);
+    MatchGroupConfig(MatchGroupConfig &&)            = default;
+    MatchGroupConfig &operator=(MatchGroupConfig &&) = default;
+
     std::wstring m_groupName;
-    int m_groupIndex;
+    int m_groupIndex{0};
+    bool m_sortByAngle{false};
+    double m_sortConditionAngle{0.0};
 
-    cv::Size2f m_pickingBoxSize{0.0, 0.0};
-    double m_pickingBoxDistance{0.0};
-    double m_pickingBoxAngle{0.0};
-
-    cv::Point3f m_pickingOffset{0.0, 0.0, 0.0};
-
-    // for edge-based match only
-    double m_lowWorkpieceRatio = 1.5;
+    // ── Algorithm-specific config — shared by all patterns in the group ───
+    // Default-constructed as EdgeMatchConfig.  Replace via setMatchingType().
+    std::shared_ptr<IMatchTypeConfig> typeConfig;
 
     std::vector<MatchPatternConfig> m_patterns;
+
+    // ── Typed helpers ─────────────────────────────────────────────────────
+    MatchingType matchingType() const noexcept {
+        return typeConfig ? typeConfig->type() : MatchingType::EdgeBased;
+    }
+
+    // Switches to a different algorithm type; resets typeConfig to defaults.
+    void setMatchingType(MatchingType t) {
+        if (!typeConfig || typeConfig->type() != t)
+            typeConfig = IMatchTypeConfig::createDefault(t);
+    }
+
+    // Convenience cast — returns nullptr if current type != EdgeBased.
+    EdgeMatchConfig*       edgeConfig()       noexcept { return dynamic_cast<EdgeMatchConfig*>(typeConfig.get()); }
+    const EdgeMatchConfig* edgeConfig() const noexcept { return dynamic_cast<const EdgeMatchConfig*>(typeConfig.get()); }
+
+    // Generic typed cast for future algorithm types.
+    template<typename T>       T* configAs()       noexcept { return dynamic_cast<T*>(typeConfig.get()); }
+    template<typename T> const T* configAs() const noexcept { return dynamic_cast<const T*>(typeConfig.get()); }
 };
 
 class MatchGroup {

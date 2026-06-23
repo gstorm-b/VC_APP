@@ -17,6 +17,7 @@
 #define DEVICE_JSK_CAM_TYPE             "CameraType"
 #define DEVICE_JSK_CALIBRATOR           "CameraCalibrator"
 #define DEVICE_JSK_CALIB_BOARD_PRESET   "CalibBoardPreset"
+#define DEVICE_JSK_CALIB_THRESHOLD      "CalibBinarizeThreshold"
 
 #define DEVICE_JSK_ROBOT_TYPE           "RobotType"
 
@@ -26,10 +27,13 @@
 
 #define DEVICE_JSK_VOUT_TYPE               "VisionOutputType"
 #define DEVICE_JSK_VOUT_LISTEN_ADDR        "ListenAddress"
+#define DEVICE_JSK_VOUT_SERVER_ADDR        "ServerAddress"
 #define DEVICE_JSK_VOUT_MAIN_PORT          "MainPort"
 #define DEVICE_JSK_VOUT_HB_PORT            "HeartbeatPort"
 #define DEVICE_JSK_VOUT_HB_INTERVAL        "HeartbeatIntervalMs"
 #define DEVICE_JSK_VOUT_HB_TIMEOUT         "HeartbeatTimeoutMs"
+#define DEVICE_JSK_VOUT_RECONNECT          "ReconnectIntervalMs"
+#define DEVICE_JSK_VOUT_KCHECK             "RobotKinematicCheck"
 // #define DEVICE_JSK_PLC_BRAND        "PlcBrand"
 // #define DEVICE_JSK_PLC_TYPE         "PlcType"
 

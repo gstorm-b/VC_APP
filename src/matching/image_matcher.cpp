@@ -88,6 +88,11 @@ void ImageMatcher::setMatchingROI(cv::Point tl, cv::Point br) {
     ROI_br = br;
 }
 
+void ImageMatcher::setMatchingConditionROI(cv::Point tl, cv::Point br) {
+    Condition_ROI_tl = tl;
+    Condition_ROI_br = br;
+}
+
 // ── Border clear helper ───────────────────────────────────────────────────────
 
 static inline void clearImageBorder(Mat& image, int offset) {
@@ -107,16 +112,17 @@ static inline void clearImageBorder(Mat& image, int offset) {
 // ── Public matching entry points ──────────────────────────────────────────────
 
 void ImageMatcher::matching(Mat& image, bool boundingBoxChecking,
-                             int objectsNum, bool usingRoi) {
+                             int objectsNum, bool usingRoi, bool usingConditionRoi) {
     m_img_source = image.clone();
-    matching(boundingBoxChecking, objectsNum, usingRoi);
+    matching(boundingBoxChecking, objectsNum, usingRoi, usingConditionRoi);
 }
 
-void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool usingRoi) {
+void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool usingRoi, bool usingConditionRoi) {
     if (m_img_source.empty()) return;
 
     match_result.isFoundMatchObject   = false;
     match_result.totalPossiblePicking = 0;
+    match_result.cropOffsetPoint = usingRoi ? ROI_tl : cv::Point2f(0.0, 0.0);
 
     if (m_model_src.isEmpty()) {
         match_result.Objects.clear();
@@ -149,12 +155,24 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
     else
         imageGray = m_img_source.clone();
 
-    GaussianBlur(imageGray, imageGray, cv::Size(5, 5), 0);
-    threshold(imageGray, imageThresh, 0, 255, cv::THRESH_BINARY + cv::THRESH_OTSU);
+    // const MatchGroupConfig &groupConfig = m_model_src.config();
+    const EdgeMatchConfig* groupEcfg = m_model_src.config().edgeConfig();
+
+    GaussianBlur(imageGray, imageGray, cv::Size(groupEcfg->blurWidth, groupEcfg->blurHeight), 0);
+    if(groupEcfg->binaryThreshold >= 0) {
+        threshold(imageGray, imageThresh, groupEcfg->binaryThreshold, groupEcfg->binaryMaxValue,
+                  groupEcfg->invertBinaryThreshold ? cv::THRESH_BINARY_INV : cv::THRESH_BINARY_INV);
+    } else {
+        threshold(imageGray, imageThresh, 0, 255,
+                  groupEcfg->invertBinaryThreshold ? cv::THRESH_BINARY_INV + cv::THRESH_OTSU
+                                                   : cv::THRESH_BINARY + cv::THRESH_OTSU);
+    }
 
     vector<vector<Point>> srcContours;
     vector<Vec4i>         srcHierarchy;
     const int border_offset = 2;
+    cv::Point2f cropConditionRoiTl;
+    cv::Point2f cropConditionRoiBr;
 
     if (usingRoi) {
         temp_src_image = m_img_source(cv::Range(ROI_tl.y, ROI_br.y),
@@ -165,6 +183,10 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
         // cv::imwrite("Test.bmp", roi_mat);
         findContours(roi_mat, srcContours, srcHierarchy,
                      cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
+        cropConditionRoiTl.x = Condition_ROI_tl.x - ROI_tl.x;
+        cropConditionRoiTl.y = Condition_ROI_tl.y - ROI_tl.y;
+        cropConditionRoiBr.x = Condition_ROI_br.x - ROI_tl.x;
+        cropConditionRoiBr.y = Condition_ROI_br.y - ROI_tl.y;
     } else {
         m_img_source.copyTo(temp_src_image);
         clearImageBorder(imageThresh, border_offset);
@@ -249,20 +271,26 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
         for (auto& obj : area_obj) {
             if (obj.parent() == nullptr) continue;
             obj.translateByTopLeft(objects[oi].conBoundingRect.tl());
-            obj.pickingBox = cv::RotatedRect(obj.point_Center,
-                                              m_model_src.config().m_pickingBoxSize,
-                                              obj.point_angle);
-            obj.pattern_name  = obj.parent()->patternConfigPtr()->m_patternName;
-            obj.pattern_index = obj.parent()->patternConfigPtr()->m_patternIndex;
-            obj.computeGripperBox(m_model_src.config().m_pickingBoxSize,
-                                  m_model_src.config().m_pickingBoxDistance,
-                                  m_model_src.config().m_pickingBoxAngle);
-            obj.checkCollisionObject(srcContours, possibleCollisionContourIndex);
-            if (!obj.hasCollision()) {
 
-                match_result.totalPossiblePicking++;
+            // Picking / collision-box geometry is per-pattern — read it from the
+            // matched object's parent pattern config, not the shared group config.
+            const MatchPatternConfig* pcfg = obj.parent()->patternConfigPtr();
+            obj.pickingBox = cv::RotatedRect(obj.point_Center,
+                                              pcfg->m_pickingBoxSize,
+                                              obj.point_angle);
+            obj.pattern_name  = pcfg->m_patternName;
+            obj.pattern_index = pcfg->m_patternIndex;
+            obj.computeGripperBox(pcfg->m_pickingBoxSize,
+                                  pcfg->m_pickingBoxDistance,
+                                  pcfg->m_pickingBoxAngle);
+            obj.checkCollisionObject(srcContours, possibleCollisionContourIndex);
+            if (usingConditionRoi) {
+                obj.outSideConditionRoiCheck(cropConditionRoiTl, cropConditionRoiBr);
             }
+            obj.setPossibleToPick(robotPossiblePickingCheck(obj));
             match_result.Objects.push_back(obj);
+            if ((!obj.hasCollision()) && (!obj.isOutsideConditionRoi()) && ((obj.isPossibleToPick())))
+                match_result.totalPossiblePicking++;
         }
 
         if (objectsNum < 0) continue;
@@ -274,18 +302,18 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
     std::chrono::time_point stop_pt = std::chrono::high_resolution_clock::now();
     double time_count = std::chrono::duration<double, std::milli>(stop_pt - start).count();
 
-    match_result.cropOffsetPoint = usingRoi ? ROI_tl : cv::Point(0, 0);
     match_result.ExecutionTime   = time_count;
     match_result.imageCols       = temp_src_image.cols;
     match_result.imageRows       = temp_src_image.rows;
 
-    match_result.totalPossiblePicking = 0;
-    for (auto& obj : match_result.Objects)
-        if (!obj.hasCollision()) match_result.totalPossiblePicking++;
+    // Order objects so the best pick candidates come first (priority, then score
+    // or angle). The downstream consumer reports + sends them in this order.
+    sortMatchedObjects(match_result.Objects);
 
     match_result.isFoundMatchObject = !match_result.Objects.empty();
+    const double lowWorkpieceRatio = groupEcfg ? groupEcfg->lowWorkpieceRatio : 1.5;
     match_result.isAreaLessThanLimits =
-        (sumArea < static_cast<int>(maxModelSize * m_model_src.config().m_lowWorkpieceRatio));
+        (sumArea < static_cast<int>(maxModelSize * lowWorkpieceRatio));
 
     if (temp_src_image.channels() == 1)
         cv::cvtColor(temp_src_image, match_result.Image, cv::COLOR_GRAY2BGR);
@@ -302,13 +330,58 @@ void ImageMatcher::matching(bool boundingBoxChecking, int objectsNum, bool using
                           false, 20, 0.4, DEFAULT_COLOR_BLUE, DEFAULT_COLOR_RED);
 
         if (obj.hasCollision()) {
-            // std::cout << "Has collision";
             obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_RED);
+        } else if (!obj.isPossibleToPick() || obj.isOutsideConditionRoi()){
+            obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_YELLOW);
         } else {
             obj.drawGripperBoxToImage(match_result.Image, DEFAULT_COLOR_GREEN);
         }
         obj.setParent(nullptr);
     }
+}
+
+namespace {
+
+// Pick-priority bucket: lower value is picked first.
+//   0  no collision and inside the condition ROI
+//   1  collision but inside the condition ROI
+//   2  the rest (outside the condition ROI, regardless of collision)
+int pickPriority(const MatchedObject& obj) {
+    if (obj.isOutsideConditionRoi()) return 2;
+    if (obj.hasCollision())          return 1;
+    return 0;
+}
+
+// Absolute circular angular error (degrees) between an object angle and the
+// target condition angle, wrapped into [-180, 180] so 179 vs -179 is 2, not 358.
+double angleErrorDeg(double angle, double target) {
+    double diff = angle - target;
+    while (diff > 180.0)  diff -= 360.0;
+    while (diff < -180.0) diff += 360.0;
+    return std::fabs(diff);
+}
+
+} // namespace
+
+void ImageMatcher::sortMatchedObjects(std::vector<MatchedObject>& objects) {
+    const MatchGroupConfig& cfg = m_model_src.config();
+    const bool   sortByAngle = cfg.m_sortByAngle;
+    const double targetAngle = cfg.m_sortConditionAngle;
+
+    std::stable_sort(objects.begin(), objects.end(),
+        [sortByAngle, targetAngle](const MatchedObject& a, const MatchedObject& b) {
+            // 1) Pick priority — better pick group first.
+            const int pa = pickPriority(a);
+            const int pb = pickPriority(b);
+            if (pa != pb) return pa < pb;
+
+            // 2) Within a group: angle error (if enabled) or score.
+            if (sortByAngle) {
+                return angleErrorDeg(a.point_angle, targetAngle)
+                     < angleErrorDeg(b.point_angle, targetAngle);   // smallest error first
+            }
+            return a.matched_Score > b.matched_Score;                // highest score first
+        });
 }
 
 void ImageMatcher::setMatchSourceImage(cv::Mat& img) {
@@ -327,7 +400,9 @@ bool ImageMatcher::MatchEdge(cv::Mat& img_edge, MatchPattern* edgePattern,
     if (img_dst.size().area() > img_edge.size().area()) return false;
 
     const MatchPatternConfig* cfg = edgePattern->patternConfigPtr();
-    const EdgeMatchConfig* ecfg = cfg->edgeConfig();
+    // Edge algorithm config is shared at the group level (m_model_src), not on
+    // the individual pattern.  Per-pattern search params still come from cfg.
+    const EdgeMatchConfig* ecfg = m_model_src.config().edgeConfig();
     if (!ecfg) return false;  // only EdgeBased supported here
 
     // ── Build source pyramid ──────────────────────────────────────────────
@@ -582,6 +657,7 @@ bool ImageMatcher::MatchEdge(cv::Mat& img_edge, MatchPattern* edgePattern,
         mo.point_Center = Point2f(
             mo.point_LT.x + (tspt.x * cos(dRA) + tspt.y * sin(dRA)),
             mo.point_LT.y + (tspt.y * cos(dRA) - tspt.x * sin(dRA)));
+        mo.point_offset = cfg->m_pickingOffset;
 
         mo.matched_Score = vecAllResult[idx]._matchScore;
         mo.computeMatchAngle(vecAllResult[idx]._matchAngle);
@@ -961,6 +1037,35 @@ void ImageMatcher::DrawMatchResult(Mat& drawImage,
         cv::circle(drawImage, obj.point_Center, 2, cv::Scalar(0, 0, 255), 2);
         cv::circle(drawImage, obj.point_LT,     2, cv::Scalar(0, 255, 0), 2);
     }
+}
+
+bool ImageMatcher::pointInBox(const cv::Point2f& tl, const cv::Point2f& br, const cv::Point2f& pt) {
+    float left   = std::min(tl.x, br.x);
+    float right  = std::max(tl.x, br.x);
+    float top    = std::min(tl.y, br.y);
+    float bottom = std::max(tl.y, br.y);
+
+    return (pt.x >= left && pt.x <= right && pt.y >= top && pt.y <= bottom);
+}
+
+bool ImageMatcher::robotPossiblePickingCheck(const MatchedObject& obj) const {
+    // No robot checker configured: the check is advisory, do not gate matching.
+    if (!m_pickingChecker) {
+        return true;
+    }
+
+    // Step 1 — image position/angle -> world pick pose. point_Center is in the
+    // matcher's input frame; cropOffsetPoint maps it back to that input's full
+    // frame (see the header's frame note).
+    const double imgX = obj.point_Center.x + match_result.cropOffsetPoint.x;
+    const double imgY = obj.point_Center.y + match_result.cropOffsetPoint.y;
+    WorldPickPose pose;
+    if (!m_pickingChecker->imageToWorld(imgX, imgY, obj.point_angle, pose))
+        return false;
+
+    // Step 2 (+3) — reachability via solveAll IK; the adapter additionally runs
+    // the simplified-mesh self-collision check when the robot config enabled it.
+    return m_pickingChecker->isPickable(pose, m_pickingChecker->collisionCheckEnabled());
 }
 
 } // namespace mtc

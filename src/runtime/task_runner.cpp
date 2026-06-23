@@ -152,6 +152,12 @@ void TaskRunner::enterIdle()
 
     for (IDeviceRunner *runner : m_runners) {
         if (runner->isAttached()) {
+            // Close the device connection on its own worker thread before
+            // detaching/stopping. Moving a live socket across threads or
+            // stopping the worker while the link is open leaks the connection
+            // and can crash on the next phase entry. See
+            // docs/task_localization for the lifecycle contract.
+            runner->disconnectAndWait();
             runner->detach(nullptr);
         }
 

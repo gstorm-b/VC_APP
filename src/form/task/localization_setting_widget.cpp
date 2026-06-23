@@ -3,14 +3,24 @@
 
 #include "widgets/signals_map_widget.h"
 #include "widgets/camera_mapping_widget.h"
+#include "widgets/camera_workspace_widget.h"
+#include "form/task/workspace_setting_dialog.h"
 
 #include "logger/app_logger.h"
 #include "model/project.h"
 #include "device/device_capabilities.h"
 #include "device/device_manager.h"
+#include "runtime/task_runner.h"
+#include "runtime/camera_runner.h"
 
 #include <QComboBox>
+#include <QImage>
+#include <QMessageBox>
+#include <QPixmap>
+#include <QRectF>
 #include <QSignalBlocker>
+
+#include <opencv2/imgproc.hpp>
 
 using vc::model::TaskLocalization;
 using vc::model::TaskLocalizeConfig;
@@ -81,6 +91,61 @@ QString readConfigField(const TaskLocalizeConfig &cfg, const QString &internalNa
     return meta.property(idx).readOnGadget(&cfg).toString();
 }
 
+// ── Image conversion (matches the helpers used by the pattern dialogs) ──────
+QPixmap matToPixmap(const cv::Mat &mat) {
+    if (mat.empty()) return {};
+
+    QImage img;
+    if (mat.type() == CV_8UC1) {
+        img = QImage(mat.data, mat.cols, mat.rows,
+                     static_cast<int>(mat.step), QImage::Format_Grayscale8).copy();
+    } else if (mat.type() == CV_8UC3) {
+        cv::Mat rgb;
+        cv::cvtColor(mat, rgb, cv::COLOR_BGR2RGB);
+        img = QImage(rgb.data, rgb.cols, rgb.rows,
+                     static_cast<int>(rgb.step), QImage::Format_RGB888).copy();
+    } else if (mat.type() == CV_8UC4) {
+        cv::Mat rgba;
+        cv::cvtColor(mat, rgba, cv::COLOR_BGRA2RGBA);
+        img = QImage(rgba.data, rgba.cols, rgba.rows,
+                     static_cast<int>(rgba.step), QImage::Format_RGBA8888).copy();
+    } else {
+        return {};
+    }
+    return QPixmap::fromImage(img);
+}
+
+cv::Mat pixmapToMat(const QPixmap &pixmap) {
+    const QImage qimg = pixmap.toImage();
+    if (qimg.isNull()) return cv::Mat();
+
+    switch (qimg.format()) {
+    case QImage::Format_Grayscale8: {
+        cv::Mat mat(qimg.height(), qimg.width(), CV_8UC1,
+                    const_cast<uchar*>(qimg.bits()),
+                    static_cast<size_t>(qimg.bytesPerLine()));
+        return mat.clone();
+    }
+    case QImage::Format_RGB888: {
+        cv::Mat mat(qimg.height(), qimg.width(), CV_8UC3,
+                    const_cast<uchar*>(qimg.bits()),
+                    static_cast<size_t>(qimg.bytesPerLine()));
+        cv::Mat bgr;
+        cv::cvtColor(mat, bgr, cv::COLOR_RGB2BGR);
+        return bgr;
+    }
+    default: {
+        const QImage converted = qimg.convertToFormat(QImage::Format_RGBA8888);
+        cv::Mat mat(converted.height(), converted.width(), CV_8UC4,
+                    const_cast<uchar*>(converted.bits()),
+                    static_cast<size_t>(converted.bytesPerLine()));
+        cv::Mat bgra;
+        cv::cvtColor(mat, bgra, cv::COLOR_RGBA2BGRA);
+        return bgra;
+    }
+    }
+}
+
 } // namespace
 
 LocalizationSettingWidget::LocalizationSettingWidget(
@@ -141,6 +206,14 @@ void LocalizationSettingWidget::initWidget() {
         pushConfigToTask();
     });
 
+    // ── Camera workspace (ROI) ──────────────────────────────────────────
+    connect(ui->listView_cameras_workspace, &CameraWorkspaceWidget::useWorkspaceToggled,
+            this, &LocalizationSettingWidget::onWorkspaceUseToggled);
+    connect(ui->listView_cameras_workspace, &CameraWorkspaceWidget::useConditionToggled,
+            this, &LocalizationSettingWidget::onWorkspaceConditionToggled);
+    connect(ui->listView_cameras_workspace, &CameraWorkspaceWidget::setWorkspaceRequested,
+            this, &LocalizationSettingWidget::onWorkspaceSetRequested);
+
     // ── Signals map ─────────────────────────────────────────────────────
     connect(ui->listView_signals_map, &SignalsMapWidget::signalMappingChanged,
             this, [this](const QString &internalName, const QString &tag) {
@@ -153,6 +226,7 @@ void LocalizationSettingWidget::initWidget() {
             this, [this] {
         rebuildDeviceCombos();
         rebuildCameraList();
+        rebuildCameraWorkspaceList();
         // The primary PLC binding may now point to a stale device - refresh tags.
         refreshCommTags(ui->cbb_comm_device->currentData().toString());
     });
@@ -199,6 +273,124 @@ void LocalizationSettingWidget::rebuildCameraList() {
 
     QSignalBlocker block(ui->listView_cameras_map);
     ui->listView_cameras_map->setCameraOptions(idToName);
+}
+
+void LocalizationSettingWidget::rebuildCameraWorkspaceList() {
+    if (!m_localizeTask) return;
+
+    const auto cams = m_localizeTask->assignedDevicesOfType(DeviceType::Camera);
+    QMap<QString, QString> idToName;
+    for (const auto &d : cams) {
+        if (d) idToName.insert(d->id(), d->name());
+    }
+
+    ui->listView_cameras_workspace->setCameras(idToName);
+
+    for (auto it = idToName.cbegin(); it != idToName.cend(); ++it)
+        refreshWorkspaceRow(it.key());
+}
+
+void LocalizationSettingWidget::refreshWorkspaceRow(const QString &cameraId) {
+    const vc::model::CameraWorkspace ws = m_config.cameraWorkspace(cameraId);
+    const QRectF roi(ws.roi.x, ws.roi.y, ws.roi.width, ws.roi.height);
+    const QRectF condRoi(ws.conditionRoi.x, ws.conditionRoi.y,
+                         ws.conditionRoi.width, ws.conditionRoi.height);
+    ui->listView_cameras_workspace->setWorkspaceState(
+        cameraId, ws.useWorkspace, roi,
+        ws.useConditionWorkspace, condRoi,
+        !ws.referenceImage.empty());
+}
+
+void LocalizationSettingWidget::onWorkspaceUseToggled(const QString &cameraId, bool enabled) {
+    if (cameraId.isEmpty()) return;
+
+    vc::model::CameraWorkspace ws = m_config.cameraWorkspace(cameraId);
+    ws.useWorkspace = enabled;
+    m_config.setCameraWorkspace(cameraId, ws);
+    pushConfigToTask();
+
+    refreshWorkspaceRow(cameraId);
+}
+
+void LocalizationSettingWidget::onWorkspaceConditionToggled(const QString &cameraId, bool enabled) {
+    if (cameraId.isEmpty()) return;
+
+    vc::model::CameraWorkspace ws = m_config.cameraWorkspace(cameraId);
+    ws.useConditionWorkspace = enabled;
+    m_config.setCameraWorkspace(cameraId, ws);
+    pushConfigToTask();
+
+    refreshWorkspaceRow(cameraId);
+}
+
+void LocalizationSettingWidget::onWorkspaceSetRequested(const QString &cameraId) {
+    if (!m_localizeTask || cameraId.isEmpty()) return;
+
+    vc::model::CameraWorkspace ws = m_config.cameraWorkspace(cameraId);
+
+    QString camName = cameraId;
+    if (auto proj = m_localizeTask->project()) {
+        if (auto dm = proj->deviceManager()) {
+            if (auto dev = dm->deviceById(cameraId)) camName = dev->name();
+        }
+    }
+
+    WorkspaceSettingDialog dialog(this);
+    dialog.setTitleText(tr("Workspace — %1").arg(camName));
+    dialog.setInitial(
+        matToPixmap(ws.referenceImage),
+        QRectF(ws.roi.x, ws.roi.y, ws.roi.width, ws.roi.height),
+        QRectF(ws.conditionRoi.x, ws.conditionRoi.y,
+               ws.conditionRoi.width, ws.conditionRoi.height));
+
+    // Serve "Grab from camera": grab a single shot through the camera runner.
+    // Only available while the camera has a runner (Commission / Runtime).
+    connect(&dialog, &WorkspaceSettingDialog::requestGrab, &dialog,
+            [this, cameraId, &dialog]() {
+        auto *runner = m_localizeTask->taskRunner()
+            ? qobject_cast<vc::runtime::CameraRunner *>(
+                  m_localizeTask->taskRunner()->runnerFor(cameraId))
+            : nullptr;
+        if (!runner) {
+            QMessageBox::warning(&dialog, tr("Workspace"),
+                tr("Camera is not available. Start Commission and connect the camera first."));
+            return;
+        }
+        connect(runner, &vc::runtime::CameraRunner::grabFinished, &dialog,
+                [&dialog](vc::device::GrabResult result) {
+            if (result.isGrabSuccess && !result.frame.empty())
+                dialog.setMainViewImage(matToPixmap(result.frame));
+            else
+                QMessageBox::warning(&dialog, QObject::tr("Workspace"),
+                                     QObject::tr("Camera grab failed."));
+        }, Qt::SingleShotConnection);
+        runner->requestSingleShot();
+    });
+
+    if (dialog.exec() != QDialog::Accepted || !dialog.hasResult())
+        return;
+
+    // The dialog's ROIs are authoritative. Presence of an ROI implies "use it"
+    // (matching the original behaviour); the row checkboxes still allow turning
+    // either workspace off afterwards without losing the ROI.
+    const QRectF r  = dialog.resultRoi();
+    const QRectF cr = dialog.resultConditionRoi();
+    const bool hasWorking   = r.width()  > 0.0 && r.height()  > 0.0;
+    const bool hasCondition = cr.width() > 0.0 && cr.height() > 0.0;
+
+    ws.roi = cv::Rect2f(static_cast<float>(r.x()), static_cast<float>(r.y()),
+                        static_cast<float>(r.width()), static_cast<float>(r.height()));
+    ws.useWorkspace = hasWorking;
+
+    ws.conditionRoi = cv::Rect2f(static_cast<float>(cr.x()), static_cast<float>(cr.y()),
+                                 static_cast<float>(cr.width()), static_cast<float>(cr.height()));
+    ws.useConditionWorkspace = hasCondition;
+
+    ws.referenceImage = pixmapToMat(dialog.resultImage());
+    m_config.setCameraWorkspace(cameraId, ws);
+    pushConfigToTask();
+
+    refreshWorkspaceRow(cameraId);
 }
 
 void LocalizationSettingWidget::refreshCommTags(const QString &deviceId) {
@@ -260,6 +452,9 @@ void LocalizationSettingWidget::loadConfigToWidget() {
         ui->listView_cameras_map->setCurrentMapping(
             m_config.d->m_deviceBindings.cameraNumberMap());
     }
+
+    // Camera workspace (ROI) rows
+    rebuildCameraWorkspaceList();
 
     // Signal map values
     for (const auto &spec : kSignalRows) {

@@ -327,6 +327,16 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="btn_view_binary">
+            <property name="text">
+             <string>Binary</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -376,6 +386,99 @@
            </property>
            <item>
             <widget class="ImageViewOnly" name="imageView_Result"/>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_binary">
+          <layout class="QVBoxLayout" name="vl_page_binary">
+           <property name="spacing">
+            <number>4</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="ImageViewOnly" name="imageView_Binary"/>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="hl_binary_controls">
+             <property name="spacing">
+              <number>8</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="chk_binary_auto">
+               <property name="text">
+                <string>Auto (Otsu)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lbl_binary_threshold">
+               <property name="text">
+                <string>Threshold:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSlider" name="sld_binary_threshold">
+               <property name="minimum">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <number>255</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="spn_binary_threshold">
+               <property name="minimum">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <number>255</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lbl_binary_maxvalue">
+               <property name="text">
+                <string>Max:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="spn_binary_maxvalue">
+               <property name="minimum">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <number>255</number>
+               </property>
+               <property name="value">
+                <number>255</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lbl_binary_info">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>

@@ -1,0 +1,150 @@
+{
+  "schema": "robot-kinematics-preset/v1",
+  "identity": {
+    "vendor": "Nachi",
+    "model": "MZ04D",
+    "name": "Nachi MZ04D",
+    "revision": "1.0.0"
+  },
+  "units": {
+    "length": "m",
+    "angle": "rad"
+  },
+  "topology": {
+    "type": "serial",
+    "dof": 6
+  },
+  "links": [
+    { "id": "base_link" },
+    { "id": "link_1" },
+    { "id": "link_2" },
+    { "id": "link_3" },
+    { "id": "link_4" },
+    { "id": "link_5" },
+    { "id": "flange" }
+  ],
+  "joints": [
+    {
+      "id": "J1",
+      "type": "revolute",
+      "parent": "base_link",
+      "child": "link_1",
+      "origin": { "xyz_m": [0.0, 0.0, 0.340], "rpy_rad": [0.0, 0.0, 0.0] },
+      "axis": [0.0, 0.0, 1.0],
+      "limits": { "lower": -2.9670597283903604, "upper": 2.9670597283903604, "velocity": null, "acceleration": null },
+      "home": 0.0,
+      "aliases": ["JT1"]
+    },
+    {
+      "id": "J2",
+      "type": "revolute",
+      "parent": "link_1",
+      "child": "link_2",
+      "origin": { "xyz_m": [0.0, 0.0, 0.0], "rpy_rad": [1.5707963267948966, 0.0, 0.0] },
+      "axis": [0.0, 0.0, 1.0],
+      "limits": { "lower": -1.5707963267948966, "upper": 2.5307274153917776, "velocity": null, "acceleration": null },
+      "home": 0.0,
+      "aliases": ["JT2"]
+    },
+    {
+      "id": "J3",
+      "type": "revolute",
+      "parent": "link_2",
+      "child": "link_3",
+      "origin": { "xyz_m": [0.260, 0.0, 0.0], "rpy_rad": [0.0, 0.0, 0.0] },
+      "axis": [0.0, 0.0, 1.0],
+      "limits": { "lower": -2.1816615649929116, "upper": 4.886921905584122, "velocity": null, "acceleration": null },
+      "home": 0.0,
+      "aliases": ["JT3"]
+    },
+    {
+      "id": "J4",
+      "type": "revolute",
+      "parent": "link_3",
+      "child": "link_4",
+      "origin": { "xyz_m": [0.025, -0.280, 0.0], "rpy_rad": [1.5707963267948966, 0.0, 0.0] },
+      "axis": [0.0, 0.0, 1.0],
+      "limits": { "lower": -3.3161255787892263, "upper": 3.3161255787892263, "velocity": null, "acceleration": null },
+      "home": 0.0,
+      "aliases": ["JT4"]
+    },
+    {
+      "id": "J5",
+      "type": "revolute",
+      "parent": "link_4",
+      "child": "link_5",
+      "origin": { "xyz_m": [0.0, 0.0, 0.0], "rpy_rad": [-1.5707963267948966, 0.0, 0.0] },
+      "axis": [0.0, 0.0, 1.0],
+      "limits": { "lower": -2.0943951023931953, "upper": 2.0943951023931953, "velocity": null, "acceleration": null },
+      "home": 0.0,
+      "aliases": ["JT5"]
+    },
+    {
+      "id": "J6",
+      "type": "revolute",
+      "parent": "link_5",
+      "child": "flange",
+      "origin": { "xyz_m": [0.0, -0.072, 0.0], "rpy_rad": [1.5707963267948966, 0.0, 0.0] },
+      "axis": [0.0, 0.0, 1.0],
+      "limits": { "lower": -6.283185307179586, "upper": 6.283185307179586, "velocity": null, "acceleration": null },
+      "home": 0.0,
+      "aliases": ["JT6"]
+    }
+  ],
+  "frames": {
+    "base": "base_link",
+    "flange": "flange",
+    "userFrames": [
+      {
+        "id": "table_frame",
+        "parent": "base_link",
+        "transform": { "xyz_m": [0.35, 0.0, 0.0], "rpy_rad": [0.0, 0.0, 0.0] }
+      }
+    ]
+  },
+  "tools": [
+    {
+      "id": "default",
+      "name": "Default Tool",
+      "flangeToTcp": { "xyz_m": [0.0, 0.0, 0.0], "rpy_rad": [0.0, 0.0, 0.0] }
+    },
+    {
+      "id": "pointer",
+      "name": "Pointer Tool",
+      "flangeToTcp": { "xyz_m": [0.0, 0.0, 0.05], "rpy_rad": [0.0, 0.0, 0.0] }
+    }
+  ],
+  "defaultTool": "default",
+  "posture": {
+    "resolver": "serial_6dof_shoulder_elbow_wrist",
+    "labels": {
+      "shoulder": { "negative": "righty", "positive": "lefty" },
+      "elbow": { "negative": "above", "positive": "below" },
+      "wrist": { "negative": "flip", "positive": "non-flip" }
+    }
+  },
+  "solver": {
+    "default": "adaptive_damped_least_squares",
+    "parameters": {
+      "maxIterations": 200,
+      "maxSeeds": 32,
+      "positionTolerance_m": 0.000001,
+      "orientationTolerance_rad": 0.000017453292519943296
+    }
+  },
+  "sources": [
+    {
+      "type": "field_measurement",
+      "title": "Nachi MZ04D teach-pendant joint/flange pose and joint-limit measurements (tool offset 0)",
+      "reference": "docs/preset_references/nachi-mz04d.md",
+      "appliesTo": ["dimensions", "joint_limits"]
+    }
+  ],
+  "metadata": {
+    "collisionProfile": "presets/Nachi/MZ04/nachi_mz04d_collision.json",
+    "meshCollisionProfile": "presets/Nachi/MZ04/nachi_mz04d_mesh_collision.json",
+    "kinematics_source": "reverse_engineered_from_teach_pendant_poses",
+    "joint_limits_status": "from_teach_pendant",
+    "posture_status": "from_nachi_manual"
+  }
+}

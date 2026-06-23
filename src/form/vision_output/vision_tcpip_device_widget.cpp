@@ -162,6 +162,7 @@ void VisionTcpipDeviceWidget::loadConfigToWidget() {
     ui->ledit_ip->setText(m_config.m_listenAddress);
     ui->spb_port_data->setValue(m_config.m_mainPort);
     ui->spb_port_heartbeat->setValue(m_config.m_heartbeatPort);
+    if (m_kcheckWidget) m_kcheckWidget->setConfig(m_config.m_kinematicCheck);
     m_populating_browser = false;
 }
 
@@ -171,28 +172,33 @@ void VisionTcpipDeviceWidget::initWidget() {
                     QStringLiteral(":/styles/vision_tcpip_device_widget_light.qss"));
 
     if (m_device) {
-        m_output_device = static_cast<vc::device::VisionTcpipDevice*>(m_device.get());
-
-        // ── Wire to runner (NOT to device directly) ──────────────────────────
-        // The runner forwards device signals onto the GUI thread via
-        // QueuedConnection, so it is safe to update widgets from these slots.
-        // Widget never owns a QThread.
-        if (m_runner) {
-            connect(m_runner, &vc::runtime::VisionOutputRunner::connectStatusChanged,
-                    this,     &VisionTcpipDeviceWidget::onConnectionStateChanged);
+        m_output_device = qobject_cast<vc::device::VisionTcpipDevice*>(m_device.get());
+        if (!m_output_device) {
+            LOG_DEV_ERR << "VisionTcpipDeviceWidget: expected VisionTcpipDevice but got"
+                        << m_device->id();
+            setEnabled(false);
         } else {
-            LOG_DEV_ERR << "VisionTcpipDeviceWidget: no runner provided - control disabled";
+            // ── Wire to runner (NOT to device directly) ──────────────────────
+            // The runner forwards device signals onto the GUI thread via
+            // QueuedConnection, so it is safe to update widgets from these slots.
+            // Widget never owns a QThread.
+            if (m_runner) {
+                connect(m_runner, &vc::runtime::VisionOutputRunner::connectStatusChanged,
+                        this,     &VisionTcpipDeviceWidget::onConnectionStateChanged);
+            } else {
+                LOG_DEV_ERR << "VisionTcpipDeviceWidget: no runner provided - control disabled";
+            }
+
+            loadConfigToWidget();
+            populateBrowser();
+
+            connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
+                    this, &VisionTcpipDeviceWidget::onPropertyValueChanged);
+
+            connect(m_output_device, &vc::device::VisionTcpipDevice::mainClientStateChanged,
+                    this, &VisionTcpipDeviceWidget::onMainClientStateChanged,
+                    Qt::QueuedConnection);
         }
-
-        loadConfigToWidget();
-        populateBrowser();
-
-        connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
-                this, &VisionTcpipDeviceWidget::onPropertyValueChanged);
-
-        connect(m_output_device, &vc::device::VisionTcpipDevice::mainClientStateChanged,
-                this, &VisionTcpipDeviceWidget::onMainClientStateChanged,
-                Qt::QueuedConnection);
     }
 
     connect(ui->btn_connect, &QPushButton::clicked,
@@ -214,6 +220,15 @@ void VisionTcpipDeviceWidget::initWidget() {
     connect(ui->btn_add_row,    &QPushButton::clicked, this, &VisionTcpipDeviceWidget::onAddRow);
     connect(ui->btn_remove_row, &QPushButton::clicked, this, &VisionTcpipDeviceWidget::onRemoveRow);
     connect(ui->btn_send_result,&QPushButton::clicked, this, &VisionTcpipDeviceWidget::onSendResult);
+
+    // ── Robot kinematic check (Phase 2) ─────────────────────────────────────
+    m_kcheckWidget = new RobotKinematicCheckWidget(this);
+    ui->verticalLayout->insertWidget(ui->verticalLayout->count() - 1, m_kcheckWidget);
+    m_kcheckWidget->setConfig(m_config.m_kinematicCheck);
+    connect(m_kcheckWidget, &RobotKinematicCheckWidget::configChanged, this, [this]() {
+        m_config.m_kinematicCheck = m_kcheckWidget->config();
+        saveConfig();
+    });
 
     updateConnectionVisual(m_device && m_device->isDeviceConnected()
                                ? vc::device::ConnectStatus::Connected
@@ -263,6 +278,7 @@ void VisionTcpipDeviceWidget::onPropertyValueChanged(QtProperty *property, const
 }
 
 void VisionTcpipDeviceWidget::saveConfig() {
+    if (!m_output_device) return;
     m_output_device->setVisionTcpipConfig(m_config);
 }
 
@@ -413,7 +429,5 @@ void VisionTcpipDeviceWidget::updateConnectionVisual(vc::device::ConnectStatus s
         w->update();
     }
 }
-
-
 
 

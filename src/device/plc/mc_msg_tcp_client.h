@@ -160,10 +160,6 @@ public:
         return m_error_description;
     }
 
-    McMsgInterface* clone() const override {
-        return new McEthernetTcpPort(*this);
-    }
-
     const McMsgItfType type() const override {
         return McMsgItfType::EthernetTCPIP;
     }
@@ -175,7 +171,13 @@ public:
     void DestroyMsgPort() override {
         DisconnectFromPort();
         if (m_socket != nullptr) {
-            m_socket->deleteLater();
+            // Delete synchronously on the socket's own (worker) thread. Using
+            // deleteLater() here is unsafe during a phase teardown: the worker
+            // event loop may be stopped before the deferred delete runs, which
+            // leaks the socket and keeps the PLC connection half-open.
+            m_socket->abort();
+            delete m_socket;
+            m_socket = nullptr;
         }
     }
 

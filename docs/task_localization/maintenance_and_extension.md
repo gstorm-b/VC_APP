@@ -14,7 +14,7 @@ See:
 
 - `docs/design_rules.md`
 - `docs/ui_design_rules.md`
-- `docs/claude_session_onboarding.md`
+- `AGENT.md`
 
 ## Adding A PLC Signal
 
@@ -60,8 +60,16 @@ Use the existing role pattern:
 5. Add a role recovery context and policy in `LocalizationRuntimeController`.
 6. Bind runner signals with queued connections.
 7. Request device actions through the runner, not the device.
-8. Add fake-device tests.
-9. Update UML.
+8. Forward the device `connectStatusChanged` through the base
+   `IDeviceRunner::connectStatusChanged` signal. `TaskRunner::enterIdle()` relies
+   on it to know when `IDeviceRunner::disconnectAndWait()` has finished closing
+   the connection during teardown; a runner that does not forward it will fall
+   back to the disconnect timeout on every phase exit.
+9. Make the device `deviceConnect()` idempotent and have `deviceDisconnect()`
+   release its transport on the device's own thread (no leaks, no cross-thread
+   socket use).
+10. Add fake-device tests.
+11. Update UML.
 
 The controller must remain task-independent. If it needs data from the task,
 snapshot that data in `RuntimeContext`.
@@ -147,4 +155,3 @@ For every localization runtime change, check:
 - `uml/04_localization_task.puml`
 
 If a change does not affect diagrams, say so in the task summary.
-

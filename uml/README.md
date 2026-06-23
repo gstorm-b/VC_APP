@@ -19,6 +19,7 @@ marked explicitly when the implementation is not wired yet.
 | `06_ui_widgets.puml` | Main task UI shell, task pages, device widgets, and reusable mapping widgets. |
 | `07_persistence_sequence.puml` | Project save/load sequence through repository, task factory, device factory, JSON, and image BLOBs. |
 | `08_runtime_state_machines.puml` | Task runner phase, localization task state, and localization runtime cycle state transitions. |
+| `09_robot_kinematics.puml` | Current `components/RobotKinematics` component: solver hierarchy, config, results, collision backends, presets, and Vision Output integration. |
 
 ## Current Architecture Notes
 
@@ -33,6 +34,14 @@ marked explicitly when the implementation is not wired yet.
   supported device.
 - Runtime runner support currently exists for `Camera`, `PLC`, and
   `VisionOutput`. `Robot` devices exist as stubs but do not have a runner yet.
+- The `components/RobotKinematics` component is the active kinematics source of
+  truth. It is an Eigen-based Qt Core library pulled into the app via
+  `components/RobotKinematics/robotkinematics.pri`, independent of the
+  `vc::device::robot` communications family. Public APIs use SI units internally
+  with mm/deg convenience helpers. Current app integration uses the Nachi MZ04D
+  preset, optional Coal mesh collision, Vision Output
+  `RobotKinematicCheckConfig`, the embedded `RobotKinematicCheckWidget`, and the
+  `RobotKinematicPickingChecker` adapter used by Localization runtime matching.
 - `TaskLocalization` is the only concrete task currently implemented.
 - Pattern data belongs to `PatternGroupManager`, while binary pattern images
   are persisted through `ProjectRepository::project_images`.
@@ -49,3 +58,11 @@ marked explicitly when the implementation is not wired yet.
 - `RobotType::Huayan` is declared but has no concrete implementation.
 - `KawasakiRobotDevice` and `NachiRobotDevice` are minimum stubs.
 - `TaskRunner` does not create a `RobotRunner`.
+- `RobotKinematics` is packaged for build-folder runs, but customer installer
+  packaging is still open (see `docs/later_todo_list.md` #27).
+- `RobotKinematics` currently exposes the Nachi MZ04D production preset plus
+  test/JSON-loaded presets. Kawasaki RS007N and Nachi MZ07 were dropped with the
+  old `rkin` module.
+- The robot-pickability adapter duplicates some solve/collision wiring from the
+  Vision Output device and widget. Consolidating that into a shared facade is a
+  later cleanup candidate.

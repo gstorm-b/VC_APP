@@ -142,6 +142,13 @@ void PatternItemWidget::setupUi()
 
     root->addLayout(infoBox, 1);
 
+    // ── Edit button ───────────────────────────────────────────────────────────
+    m_editBtn = new QPushButton(QStringLiteral("✎"), this);
+    m_editBtn->setObjectName(QStringLiteral("patternEditBtn"));
+    m_editBtn->setFixedSize(22, 22);
+    m_editBtn->setCursor(Qt::PointingHandCursor);
+    root->addWidget(m_editBtn, 0, Qt::AlignVCenter);
+
     // ── Delete button ─────────────────────────────────────────────────────────
     m_deleteBtn = new QPushButton(QStringLiteral("✕"), this);
     m_deleteBtn->setObjectName(QStringLiteral("patternDeleteBtn"));
@@ -149,6 +156,8 @@ void PatternItemWidget::setupUi()
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     root->addWidget(m_deleteBtn, 0, Qt::AlignVCenter);
 
+    connect(m_editBtn, &QPushButton::clicked,
+            this, &PatternItemWidget::editRequested);
     connect(m_deleteBtn, &QPushButton::clicked,
             this, &PatternItemWidget::deleteRequested);
 }
@@ -459,6 +468,11 @@ void PatternTreeWidget::appendPatternItem(QTreeWidgetItem *parentItem,
     connect(w, &PatternItemWidget::clicked, this,
             [this, groupIndex, patternIdx, w]() {
                 emit patternClicked(m_groups[groupIndex].number, patternIdx, w->config());
+            });
+
+    connect(w, &PatternItemWidget::editRequested, this,
+            [this, groupIndex, patternIdx]() {
+                emit editPatternRequested(m_groups[groupIndex].number, patternIdx);
             });
 
     connect(w, &PatternItemWidget::deleteRequested, this,

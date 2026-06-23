@@ -11,6 +11,8 @@ namespace Ui {
 class LocalizationDashboardWidget;
 }
 
+class StatusLamp;
+
 class LocalizationDashboardWidget : public ITaskWidget
 {
     Q_OBJECT
@@ -28,11 +30,30 @@ public:
 private:
     void initWidget();
     void setupLamps();
+
+    // ── Device connection lamps (hl_state_connection) ──────────────────────
+    // The PLC / Camera / Vision-Output lamps reflect the live link state of the
+    // devices currently bound to the task. Each lamp subscribes to its device's
+    // runner (IDeviceRunner::connectStatusChanged, forwarded onto the GUI
+    // thread); the subscriptions are rebuilt whenever the device bindings or the
+    // active camera change.
+    void setupConnectionLamps();
+    void rebuildConnectionWiring();
+    void wireConnectionLamp(StatusLamp *lamp, const QString &deviceId);
+    void applyConnectStatusToLamp(StatusLamp *lamp, vc::device::ConnectStatus status);
+    // Active camera device for the camera lamp: the device mapped to the live
+    // nActiveCamera number, falling back to the first bound camera.
+    QString resolveActiveCameraDeviceId() const;
+
     void pushSignalTagsFromConfig();
     void updateTaskContext();
     void updateTaskStateLabel();
     void setupResultTable();
     void updateCycleResult(const vc::model::LocalizationRuntimeController::CycleResult &result);
+    // Overlay the active camera's condition ROI on the result view when the user
+    // has enabled it. imgW/imgH are the displayed result image's dimensions; the
+    // ROI is shifted into the cropped frame when the working workspace is active.
+    void drawConditionRoiOverlay(int imgW, int imgH);
     void appendTaskLog(const vc::model::LocalizationRuntimeController::TaskLogEntry &entry);
 
     // Route a single live signal value to its dashboard visual (state lamps,
@@ -50,6 +71,12 @@ private:
 
     int  m_lastFaultCode{0};
     bool m_taskFaultActive{false};
+
+    // Live nActiveCamera number; -1 = unknown (use first bound camera).
+    int m_activeCameraNumber{-1};
+    // Active runner subscriptions for the connection lamps; dropped/rebuilt on
+    // binding or active-camera changes.
+    QList<QMetaObject::Connection> m_connectionConns;
 };
 
 #endif // LOCALIZATION_DASHBOARD_WIDGET_H

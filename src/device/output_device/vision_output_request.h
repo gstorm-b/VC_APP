@@ -19,11 +19,16 @@ struct VisionOutputPosition {
     double r{0.0};
 
     QString toString() const {
+        // return QString("%1,%2,%3,%4")
+        //     .arg(x, 0, 'f', 3)
+        //     .arg(y, 0, 'f', 3)
+        //     .arg(z, 0, 'f', 3)
+        //     .arg(r, 0, 'f', 3);
         return QString("%1,%2,%3,%4")
-            .arg(x, 0, 'f', 3)
-            .arg(y, 0, 'f', 3)
-            .arg(z, 0, 'f', 3)
-            .arg(r, 0, 'f', 3);
+            .arg(QString::asprintf("%08.2f", x),
+                 QString::asprintf("%08.2f", y),
+                 QString::asprintf("%08.2f", z),
+                 QString::asprintf("%08.2f", r));
     }
 };
 

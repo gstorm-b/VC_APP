@@ -10,10 +10,15 @@
 #include "model/project.h"
 #include "model/localization_fault_code.h"
 #include "device/device_manager.h"
+#include "runtime/idevice_runner.h"
+#include "runtime/task_runner.h"
 
+#include <QColor>
 #include <QMetaProperty>
 #include <QStyle>
 #include <QTableWidgetItem>
+
+#include <utility>
 
 using vc::model::TaskLocalization;
 using vc::model::TaskLocalizeConfig;
@@ -108,6 +113,7 @@ void LocalizationDashboardWidget::initWidget() {
     m_config = m_localizeTask->taskLocalizeConfig();
 
     setupLamps();
+    setupConnectionLamps();
     setupResultTable();
     setFaultState(false, 0);
     updateTaskContext();
@@ -137,6 +143,7 @@ void LocalizationDashboardWidget::initWidget() {
         m_config = m_localizeTask->taskLocalizeConfig();
         pushSignalTagsFromConfig();
         updateTaskContext();
+        rebuildConnectionWiring();
     });
     connect(m_localizeTask, &vc::model::ITask::taskStateChanged,
             this, [this] {
@@ -183,6 +190,102 @@ void LocalizationDashboardWidget::setupLamps() {
     ui->lamp_camera->setStatus(StatusLamp::Status::Off, tr("—"));
     ui->lamp_pattern->setStatus(StatusLamp::Status::Off, tr("—"));
     ui->lamp_cycle->setStatus(StatusLamp::Status::Off, tr("Idle"));
+}
+
+void LocalizationDashboardWidget::setupConnectionLamps() {
+    ui->lamp_connection_plc->setLampName(tr("PLC"));
+    ui->lamp_connection_camera->setLampName(tr("Camera"));
+    ui->lamp_connection_output->setLampName(tr("Output"));
+
+    ui->lamp_connection_plc->setStatus(StatusLamp::Status::Off, tr("—"));
+    ui->lamp_connection_camera->setStatus(StatusLamp::Status::Off, tr("—"));
+    ui->lamp_connection_output->setStatus(StatusLamp::Status::Off, tr("—"));
+
+    rebuildConnectionWiring();
+}
+
+void LocalizationDashboardWidget::rebuildConnectionWiring() {
+    // Drop any previous runner subscriptions before re-resolving devices.
+    for (const auto &conn : std::as_const(m_connectionConns))
+        QObject::disconnect(conn);
+    m_connectionConns.clear();
+
+    if (!m_localizeTask) return;
+
+    const auto &bindings = m_config.d->m_deviceBindings;
+    wireConnectionLamp(ui->lamp_connection_plc,    bindings.primaryPlcDeviceId());
+    wireConnectionLamp(ui->lamp_connection_camera, resolveActiveCameraDeviceId());
+    wireConnectionLamp(ui->lamp_connection_output, bindings.visionOutputDeviceId());
+}
+
+void LocalizationDashboardWidget::wireConnectionLamp(StatusLamp *lamp,
+                                                     const QString &deviceId) {
+    if (!lamp) return;
+
+    if (deviceId.isEmpty()) {
+        lamp->setStatus(StatusLamp::Status::Off, tr("Not set"));
+        return;
+    }
+
+    auto *taskRunner = m_localizeTask->taskRunner();
+    auto *runner = taskRunner ? taskRunner->runnerFor(deviceId) : nullptr;
+    if (!runner) {
+        // Bound, but no runner yet (device not registered / wrong phase).
+        lamp->setStatus(StatusLamp::Status::Off, tr("—"));
+        return;
+    }
+
+    // Seed the lamp from the current status. connectStatus() is a plain enum
+    // read; a momentarily stale value is acceptable for an indicator and is
+    // corrected by the next forwarded change below.
+    applyConnectStatusToLamp(
+        lamp, runner->device() ? runner->device()->connectStatus()
+                               : vc::device::ConnectStatus::NoConnection);
+
+    // The runner forwards the device's connectStatusChanged onto the GUI thread
+    // (QueuedConnection), so updating the lamp from this slot is thread-safe.
+    m_connectionConns.append(connect(
+        runner, &vc::runtime::IDeviceRunner::connectStatusChanged, this,
+        [this, lamp](vc::device::ConnectStatus status) {
+            applyConnectStatusToLamp(lamp, status);
+        }));
+}
+
+void LocalizationDashboardWidget::applyConnectStatusToLamp(
+    StatusLamp *lamp, vc::device::ConnectStatus status) {
+    if (!lamp) return;
+    using CS = vc::device::ConnectStatus;
+    switch (status) {
+    case CS::Connected:
+        lamp->setStatus(StatusLamp::Status::Ok, tr("Connected"));
+        break;
+    case CS::Connecting:
+        lamp->setStatus(StatusLamp::Status::Warning, tr("Connecting"));
+        break;
+    case CS::LostConnected:
+        lamp->setStatus(StatusLamp::Status::Error, tr("Lost"));
+        break;
+    case CS::ConnectFailed:
+        lamp->setStatus(StatusLamp::Status::Error, tr("Failed"));
+        break;
+    case CS::Disconnected:
+        lamp->setStatus(StatusLamp::Status::Off, tr("Disconnected"));
+        break;
+    case CS::NoConnection:
+    default:
+        lamp->setStatus(StatusLamp::Status::Off, tr("—"));
+        break;
+    }
+}
+
+QString LocalizationDashboardWidget::resolveActiveCameraDeviceId() const {
+    const QMap<int, QString> cameras = m_config.d->m_deviceBindings.cameraNumberMap();
+    if (cameras.isEmpty()) return QString();
+    // Prefer the live active camera when it maps to a bound device; otherwise
+    // fall back to the first bound camera (QMap iterates by ascending number).
+    if (cameras.contains(m_activeCameraNumber))
+        return cameras.value(m_activeCameraNumber);
+    return cameras.first();
 }
 
 void LocalizationDashboardWidget::loadConfigToWidget() {
@@ -281,7 +384,13 @@ void LocalizationDashboardWidget::applySignalToDashboard(const QString &name,
         m_lastFaultCode = value.toInt();
         ui->lbl_val_fault_code->setText(faultCodeText(m_lastFaultCode));
     } else if (name == QLatin1String("nActiveCamera")) {
-        ui->lbl_val_camera->setText(QString::number(value.toInt()));
+        const int number = value.toInt();
+        ui->lbl_val_camera->setText(QString::number(number));
+        if (number != m_activeCameraNumber) {
+            m_activeCameraNumber = number;
+            // The camera lamp follows the active camera; re-resolve its device.
+            rebuildConnectionWiring();
+        }
     } else if (name == QLatin1String("nActivePatternGroup")) {
         ui->lbl_val_pattern_group->setText(QString::number(value.toInt()));
     }
@@ -338,11 +447,13 @@ void LocalizationDashboardWidget::updateCycleResult(
     // ImageViewOnly owns its own scene + pixmap item and handles cv::Mat →
     // QPixmap conversion and fit-to-view internally (same path the patterns
     // widget uses for imageView_Raw / imageView_Result).
+    ui->gv_match_view->removeAllROI();
     if (result.displayImage.empty()) {
         ui->gv_match_view->clearCurrentImage();
     } else {
         cv::Mat display = result.displayImage;   // loadImageOpenCv takes a non-const ref
         ui->gv_match_view->loadImageOpenCv(display, true);
+        drawConditionRoiOverlay(display.cols, display.rows);
     }
 
     ui->tbl_result->setRowCount(result.rows.size());
@@ -365,6 +476,37 @@ void LocalizationDashboardWidget::updateCycleResult(
             ui->tbl_result->setItem(row, col, new QTableWidgetItem(values.at(col)));
         }
     }
+}
+
+void LocalizationDashboardWidget::drawConditionRoiOverlay(int imgW, int imgH)
+{
+    if (!m_localizeTask || imgW <= 0 || imgH <= 0) return;
+
+    const QString camId = resolveActiveCameraDeviceId();
+    if (camId.isEmpty()) return;
+
+    // Read the workspace fresh from the task: workspace edits made after this
+    // widget was constructed are not mirrored into the cached m_config.
+    const vc::model::CameraWorkspace ws =
+        m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
+    if (!ws.useConditionWorkspace || !ws.hasConditionRoi()) return;
+
+    // The result image is cropped to the working ROI when that workspace is
+    // active, so shift the condition ROI (full-frame coords) into the crop.
+    float ox = 0.0f, oy = 0.0f;
+    if (ws.useWorkspace && ws.hasRoi()) {
+        ox = ws.roi.x;
+        oy = ws.roi.y;
+    }
+
+    const int tlx = qMax(0, qRound(ws.conditionRoi.x - ox));
+    const int tly = qMax(0, qRound(ws.conditionRoi.y - oy));
+    const int brx = qMin(imgW, qRound(ws.conditionRoi.x - ox + ws.conditionRoi.width));
+    const int bry = qMin(imgH, qRound(ws.conditionRoi.y - oy + ws.conditionRoi.height));
+    if (brx <= tlx || bry <= tly) return;
+
+    // Info blue — matches the patterns raw-view condition overlay.
+    ui->gv_match_view->addROI(tlx, tly, brx, bry, QColor(0x40, 0xA8, 0xE0));
 }
 
 void LocalizationDashboardWidget::appendTaskLog(

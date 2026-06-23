@@ -4,6 +4,7 @@
 #include "device/camera/camera_device.h"
 #include "device/output_device/vision_output_config.h"
 #include "device/output_device/vision_tcpip_device.h"
+#include "device/output_device/vision_tcpip_client_device.h"
 #include "device/plc/mc_protocol_device.h"
 #include "device/plc/plc_device.h"
 #include "device/robot/kawasaki_robot_device.h"
@@ -62,6 +63,22 @@ IDevice *createVisionTcpip(const QJsonObject &obj, QObject *parent)
     return device;
 }
 
+IDevice *createVisionTcpipClient(const QJsonObject &obj, QObject *parent)
+{
+    const QString deviceId = obj[DEVICE_JSK_ID].toString();
+    if (deviceId.isEmpty()) {
+        return nullptr;
+    }
+
+    auto *device = new VisionTcpipClientDevice(deviceId,
+                                               obj[DEVICE_JSK_NAME].toString(),
+                                               parent);
+    if (obj.contains(DEVICE_JSK_CONFIG) && obj[DEVICE_JSK_CONFIG].isObject()) {
+        device->fromJson(obj);
+    }
+    return device;
+}
+
 IDevice *createKawasaki(const QJsonObject &obj, QObject *parent)
 {
     const QString deviceId = obj[DEVICE_JSK_ID].toString();
@@ -109,9 +126,15 @@ const QList<DeviceRegistryEntry> kEntries = {
       true },
     { DeviceType::VisionOutput,
       VisionOutputTypeToString(VisionOutputType::VisionTCPIP),
-      QStringLiteral("Vision TCP/IP"),
+      QStringLiteral("Vision TCP/IP Server"),
       QStringLiteral(DEVICE_JSK_VOUT_TYPE),
       createVisionTcpip,
+      true },
+    { DeviceType::VisionOutput,
+      VisionOutputTypeToString(VisionOutputType::VisionTcpipClient),
+      QStringLiteral("Vision TCP/IP Client"),
+      QStringLiteral(DEVICE_JSK_VOUT_TYPE),
+      createVisionTcpipClient,
       true },
     { DeviceType::Robot,
       RobotTypeToString(RobotType::Kawasaki),

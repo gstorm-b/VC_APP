@@ -117,8 +117,6 @@ public:
         return m_error_description;
     }
 
-    virtual McMsgInterface* clone() const = 0;
-
     virtual const McMsgItfType type() const = 0;
 
     virtual QIODevice* ioDevice() const = 0;

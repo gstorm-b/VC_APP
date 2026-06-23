@@ -8,6 +8,8 @@
 
 namespace mtc {
 
+class ImageMatcher;
+
 class MatchedObject {
 public:
     struct GripperBox {
@@ -25,7 +27,8 @@ public:
         pattern_name(L""),
         pattern_index(-1),
         m_parent(nullptr),
-        m_has_collision(false) {
+        m_hasCollision(false),
+        m_isOutsideConditionRoi(false) {
 
     }
 
@@ -33,7 +36,7 @@ public:
         this->m_parent = parent;
     }
 
-    const MatchPattern* parent() {
+    const MatchPattern* parent() const {
         return m_parent;
     }
 
@@ -81,74 +84,70 @@ public:
 
     void drawGripperBoxToImage(cv::Mat &image, cv::Scalar color) {
         for (int i=0; i<4; i++) {
-            cv::line(image, m_gripper_box.box_right_pts[i],
-                     m_gripper_box.box_right_pts[(i+1)%4], color, 1);
+            cv::line(image, m_gripperBox.box_right_pts[i],
+                     m_gripperBox.box_right_pts[(i+1)%4], color, 1);
         }
 
         for (int i=0; i<4; i++) {
-            cv::line(image, m_gripper_box.box_left_pts[i],
-                     m_gripper_box.box_left_pts[(i+1)%4], color, 1);
+            cv::line(image, m_gripperBox.box_left_pts[i],
+                     m_gripperBox.box_left_pts[(i+1)%4], color, 1);
         }
     }
-
-    // void computeGripperBox(cv::Size box_size, double distance) {
-    //     double rad = point_angle * CV_PI / 180.0f;
-    //     cv::Point2f offset(distance * cos(rad), distance * sin(rad));
-    //     m_gripper_box.box_right = cv::RotatedRect(point_Center + offset, box_size, point_angle);
-    //     m_gripper_box.box_left = cv::RotatedRect(point_Center - offset, box_size, point_angle);
-    //     m_gripper_box.box_right.points(m_gripper_box.box_right_pts);
-    //     m_gripper_box.box_left.points(m_gripper_box.box_left_pts);
-    // }
 
     void computeGripperBox(cv::Size box_size, double distance, double angle) {
         double rad = (point_angle + angle) * CV_PI / 180.0f;
         cv::Point2f offset(distance * cos(rad), distance * sin(rad));
-        m_gripper_box.box_right = cv::RotatedRect(point_Center + offset, box_size, point_angle + angle);
-        m_gripper_box.box_left = cv::RotatedRect(point_Center - offset, box_size, point_angle + angle);
-        m_gripper_box.box_right.points(m_gripper_box.box_right_pts);
-        m_gripper_box.box_left.points(m_gripper_box.box_left_pts);
+        m_gripperBox.box_right = cv::RotatedRect(point_Center + offset, box_size, point_angle + angle);
+        m_gripperBox.box_left = cv::RotatedRect(point_Center - offset, box_size, point_angle + angle);
+        m_gripperBox.box_right.points(m_gripperBox.box_right_pts);
+        m_gripperBox.box_left.points(m_gripperBox.box_left_pts);
     }
 
-    // void computeGripperBox(cv::Size box_size, double distance, double angle) {
-    //     double rad = point_angle * CV_PI / 180.0f;
-    //     double rad_center = angle * CV_PI / 180.0;
-
-    //     cv::Point2f offset(distance * cos(rad), distance * sin(rad));
-
-    //     float x = offset.x * cos(rad_center) - offset.y * sin(rad_center);
-    //     float y = offset.x * sin(rad_center) + offset.y * cos(rad_center);
-    //     cv::Point2f rotated_offset(x, y);
-
-    //     m_gripper_box.box_right = cv::RotatedRect(point_Center + rotated_offset, box_size, point_angle);
-    //     m_gripper_box.box_left  = cv::RotatedRect(point_Center - rotated_offset, box_size, point_angle);
-
-    //     m_gripper_box.box_right.points(m_gripper_box.box_right_pts);
-    //     m_gripper_box.box_left.points(m_gripper_box.box_left_pts);
-    // }
-
     bool checkCollisionObject(std::vector<std::vector<cv::Point>> &contours, std::vector<int> &indexes) {
-        m_has_collision = false;
+        m_hasCollision = false;
         for(int idx=0;idx<indexes.size();idx++) {
             std::vector<cv::Point>& con = contours.at(indexes[idx]);
             for(int con_idx=0;con_idx<con.size();con_idx++) {
-                if(cv::pointPolygonTest(m_gripper_box.box_left_pts, con.at(con_idx), false) >= 0) {
-                    m_has_collision = true;
+                if(cv::pointPolygonTest(m_gripperBox.box_left_pts, con.at(con_idx), false) >= 0) {
+                    m_hasCollision = true;
                     goto _ret_point;
                 }
 
-                if(cv::pointPolygonTest(m_gripper_box.box_right_pts, con.at(con_idx), false) >= 0) {
-                    m_has_collision = true;
+                if(cv::pointPolygonTest(m_gripperBox.box_right_pts, con.at(con_idx), false) >= 0) {
+                    m_hasCollision = true;
                     goto _ret_point;
                 }
             }
         }
 
         _ret_point:
-        return m_has_collision;
+        return m_hasCollision;
     }
 
     bool hasCollision() const {
-        return m_has_collision;
+        return m_hasCollision;
+    }
+
+    bool outSideConditionRoiCheck(const cv::Point2f& tl, const cv::Point2f& br) {
+        float left   = (tl.x < br.x) ? tl.x : br.x;
+        float top    = (tl.y < br.y) ? tl.y : br.y;
+        float right  = (tl.x > br.x) ? tl.x : br.x;
+        float bottom = (tl.y > br.y) ? tl.y : br.y;
+        m_isOutsideConditionRoi = (point_Center.x >= left && point_Center.x <= right && point_Center.y >= top && point_Center.y <= bottom);
+        m_isOutsideConditionRoi = !m_isOutsideConditionRoi;
+        return m_isOutsideConditionRoi;
+    }
+
+    bool isOutsideConditionRoi() const {
+        return m_isOutsideConditionRoi;
+    }
+
+    bool isPossibleToPick() const {
+        return m_isPossibleToPicking;
+    }
+
+    void setPossibleToPick(bool state) {
+        m_isPossibleToPicking = state;
     }
 
 private:
@@ -208,12 +207,15 @@ private:
         // cv::circle(image, new_pts, 2, cv::Scalar(0, 255, 0), 2);
     }
 
+    friend class mtc::ImageMatcher;
+
 public:
     cv::Point2f point_LT;
     cv::Point2f point_RT;
     cv::Point2f point_LB;
     cv::Point2f point_RB;
     cv::Point2f point_Center;
+    cv::Point3f point_offset;
     cv::RotatedRect pickingBox;
     double point_angle;
     double matched_Angle;
@@ -224,9 +226,10 @@ public:
 
 private:
     MatchPattern *m_parent{nullptr};
-    // cv::Point2f m_raw_picking_point;
-    GripperBox m_gripper_box;
-    bool m_has_collision{false};
+    GripperBox m_gripperBox;
+    bool m_hasCollision{false};
+    bool m_isPossibleToPicking{false};
+    bool m_isOutsideConditionRoi{false};
 };
 
 }

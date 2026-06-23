@@ -85,6 +85,7 @@ public:
 
 signals:
     void clicked();
+    void editRequested();
     void deleteRequested();
 
 protected:
@@ -99,6 +100,7 @@ private:
     QLabel      *m_nameLabel   = nullptr;
     QLabel      *m_numberLabel = nullptr;
     QLabel      *m_threshLabel = nullptr;
+    QPushButton *m_editBtn     = nullptr;
     QPushButton *m_deleteBtn   = nullptr;
 };
 
@@ -173,6 +175,7 @@ signals:
     // ── User intent (host should respond by calling add/remove methods) ────────
     void addGroupRequested();
     void addPatternRequested(int groupIndex);
+    void editPatternRequested(int groupIndex, int patternIndex);
     void deleteGroupRequested(int groupIndex);
     void deletePatternRequested(int groupIndex, int patternIndex);
 

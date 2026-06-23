@@ -63,7 +63,10 @@ private slots:
     void onNameChanged(const QString &v);
     void onNumberChanged(int v);
     void onPickChanged(const QPoint &p);
+    void onPickCenter();
     void onBoxChanged();
+    void onBoxReset();
+    void onBoxRotate90();
 
 private:
     void buildUi();

@@ -297,6 +297,21 @@ QWidget *EditPatternWizard::buildStepPick() {
     addAxis("Y", m_pickYSpin, CH, m_old.pickY, 1);
     right->addLayout(grid);
 
+    // Widen the pick spin ranges to the locked image so dragging the pick on
+    // the canvas (which can reach any pixel) is reflected exactly.
+    if (!m_old.image.empty()) {
+        QSignalBlocker bx(m_pickXSpin), by(m_pickYSpin);
+        m_pickXSpin->setRange(0, m_old.image.cols - 1);
+        m_pickYSpin->setRange(0, m_old.image.rows - 1);
+        m_pickXSpin->setValue(m_new.pickX);
+        m_pickYSpin->setValue(m_new.pickY);
+    }
+
+    auto *bCenter = new QPushButton(tr("Center"));
+    bCenter->setStyleSheet(ptn::ghostButtonStyle());
+    connect(bCenter, &QPushButton::clicked, this, &EditPatternWizard::onPickCenter);
+    right->addWidget(bCenter);
+
     auto *prev = new QLabel(QString(tr("was: (%1, %2)"))
                                 .arg(m_old.pickX).arg(m_old.pickY));
     prev->setStyleSheet(QString("color: %1; font: 9pt '%2';")
@@ -332,6 +347,34 @@ QWidget *EditPatternWizard::buildStepBox() {
     m_boxCanvas->setPick({m_new.pickX, m_new.pickY});
     m_boxCanvas->setBoxConfig(m_new.pickBoxW, m_new.pickBoxH,
                               m_new.pickBoxDist, m_new.pickBoxAngle);
+    // Canvas-driven box edits (drag body / corners / rotation handle) feed the
+    // spin boxes, which then echo into m_new via onBoxChanged().
+    connect(m_boxCanvas, &AddPatternImageCanvas::boxChanged,
+            this, [this](double w, double h, double d, double a) {
+                if (m_boxWSpin) {
+                    QSignalBlocker b1(m_boxWSpin), b2(m_boxHSpin),
+                                   b3(m_boxDistSpin), b4(m_boxAngleSpin);
+                    m_boxWSpin->setValue(w);
+                    m_boxHSpin->setValue(h);
+                    m_boxDistSpin->setValue(d);
+                    m_boxAngleSpin->setValue(a);
+                }
+                m_new.pickBoxW = w; m_new.pickBoxH = h;
+                m_new.pickBoxDist = d; m_new.pickBoxAngle = a;
+                updateFooterStatus();
+            });
+    // The picking centre is draggable on the box canvas too (image is locked,
+    // so coords are plain image pixels).  Echo the Pick-step spin boxes.
+    connect(m_boxCanvas, &AddPatternImageCanvas::pickChanged,
+            this, [this](const QPoint &p, const QPoint &) {
+                m_new.pickX = p.x(); m_new.pickY = p.y();
+                if (m_pickXSpin) {
+                    QSignalBlocker b1(m_pickXSpin), b2(m_pickYSpin);
+                    m_pickXSpin->setValue(p.x());
+                    m_pickYSpin->setValue(p.y());
+                }
+                updateFooterStatus();
+            });
     lay->addWidget(m_boxCanvas, 1);
 
     auto *col = new QWidget; col->setFixedWidth(280);
@@ -370,6 +413,30 @@ QWidget *EditPatternWizard::buildStepBox() {
     addO(tr("Distance"), m_boxDistSpin,    0,  400, m_old.pickBoxDist,  0);
     addO(tr("Angle"),    m_boxAngleSpin, -180, 180, m_old.pickBoxAngle, 1);
     right->addLayout(og);
+
+    // Match the Add wizard: size the geometry spin ranges to the locked image
+    // so canvas drags aren't silently clamped by the default CW/CH caps.
+    if (!m_old.image.empty()) {
+        const double sizeCap = qMax<double>(qMax(m_old.image.cols, m_old.image.rows), 5000.0);
+        const double distCap = qMax<double>(m_old.image.cols + m_old.image.rows, 1000.0);
+        QSignalBlocker b1(m_boxWSpin), b2(m_boxHSpin), b3(m_boxDistSpin);
+        m_boxWSpin->setRange(1.0, sizeCap);
+        m_boxHSpin->setRange(1.0, sizeCap);
+        m_boxDistSpin->setRange(0.0, distCap);
+        m_boxWSpin->setValue(m_new.pickBoxW);
+        m_boxHSpin->setValue(m_new.pickBoxH);
+        m_boxDistSpin->setValue(m_new.pickBoxDist);
+    }
+
+    auto *btns = new QHBoxLayout;
+    auto *bReset = new QPushButton(tr("Reset"));
+    bReset->setStyleSheet(ptn::ghostButtonStyle());
+    connect(bReset, &QPushButton::clicked, this, &EditPatternWizard::onBoxReset);
+    auto *bRot = new QPushButton(tr("Rotate +90°"));
+    bRot->setStyleSheet(ptn::ghostButtonStyle());
+    connect(bRot, &QPushButton::clicked, this, &EditPatternWizard::onBoxRotate90);
+    btns->addWidget(bReset); btns->addWidget(bRot); btns->addStretch();
+    right->addLayout(btns);
 
     auto *prev = new QLabel(QString(tr("was: %1×%2 · d=%3 · %4°"))
                                 .arg(m_old.pickBoxW).arg(m_old.pickBoxH)
@@ -591,6 +658,12 @@ void EditPatternWizard::onPickChanged(const QPoint &p) {
     updateFooterStatus();
 }
 
+void EditPatternWizard::onPickCenter() {
+    const int iw = m_old.image.empty() ? CW : m_old.image.cols;
+    const int ih = m_old.image.empty() ? CH : m_old.image.rows;
+    onPickChanged({iw / 2, ih / 2});
+}
+
 void EditPatternWizard::onBoxChanged() {
     if (m_boxWSpin)     m_new.pickBoxW     = m_boxWSpin->value();
     if (m_boxHSpin)     m_new.pickBoxH     = m_boxHSpin->value();
@@ -600,4 +673,23 @@ void EditPatternWizard::onBoxChanged() {
         m_boxCanvas->setBoxConfig(m_new.pickBoxW, m_new.pickBoxH,
                                   m_new.pickBoxDist, m_new.pickBoxAngle);
     updateFooterStatus();
+}
+
+void EditPatternWizard::onBoxReset() {
+    // Mirror the Add wizard: reset to the default jaw geometry.
+    m_new.pickBoxW = 120; m_new.pickBoxH = 80;
+    m_new.pickBoxDist = 90; m_new.pickBoxAngle = 0;
+    if (m_boxWSpin)     m_boxWSpin->setValue(m_new.pickBoxW);
+    if (m_boxHSpin)     m_boxHSpin->setValue(m_new.pickBoxH);
+    if (m_boxDistSpin)  m_boxDistSpin->setValue(m_new.pickBoxDist);
+    if (m_boxAngleSpin) m_boxAngleSpin->setValue(m_new.pickBoxAngle);
+    onBoxChanged();
+}
+
+void EditPatternWizard::onBoxRotate90() {
+    m_new.pickBoxAngle += 90;
+    while (m_new.pickBoxAngle > 180)  m_new.pickBoxAngle -= 360;
+    while (m_new.pickBoxAngle < -180) m_new.pickBoxAngle += 360;
+    if (m_boxAngleSpin) m_boxAngleSpin->setValue(m_new.pickBoxAngle);
+    onBoxChanged();
 }

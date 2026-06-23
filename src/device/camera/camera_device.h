@@ -68,6 +68,7 @@ public:
         obj[DEVICE_JSK_CAM_TYPE] = CameraTypeToString(this->cameraType());
         obj[DEVICE_JSK_CALIBRATOR] = QString::fromStdString(m_calibrator.toJson());
         obj[DEVICE_JSK_CALIB_BOARD_PRESET] = m_calibBoardPreset;
+        obj[DEVICE_JSK_CALIB_THRESHOLD] = m_calibThreshold;
         return obj;
     }
 
@@ -81,6 +82,10 @@ public:
 
         if (obj.contains(DEVICE_JSK_CALIB_BOARD_PRESET)) {
             m_calibBoardPreset = obj[DEVICE_JSK_CALIB_BOARD_PRESET].toString();
+        }
+
+        if (obj.contains(DEVICE_JSK_CALIB_THRESHOLD)) {
+            m_calibThreshold = obj[DEVICE_JSK_CALIB_THRESHOLD].toInt(-1);
         }
 
         if (cameraType() != CameraTypeFromString(obj[DEVICE_JSK_CAM_TYPE].toString())) {
@@ -107,11 +112,24 @@ public:
         m_calibBoardPreset = preset;
     }
 
+    // Binarization threshold for calibration-board detection:
+    // -1 => auto (Otsu), 0..255 => fixed manual threshold.
+    virtual int calibThreshold() const {
+        return m_calibThreshold;
+    }
+
+    virtual void setCalibThreshold(int threshold) {
+        m_calibThreshold = (threshold < 0) ? -1
+                           : (threshold > 255 ? 255 : threshold);
+    }
+
 protected:
     calib::Calibrator m_calibrator;
     // Stored preset name (resolved by calib::CalibrationBoardFactory). Default
     // matches iRVision 22.5 mm dot grid; UI lets the user change it.
     QString m_calibBoardPreset{"iRvision-22.5mm"};
+    // Detection binarization threshold; -1 = auto (Otsu).
+    int m_calibThreshold{-1};
 };
 
 struct GrabResult {

@@ -63,6 +63,12 @@ private:
     };
 
     bool initialize_mc_device();
+    // Free the transport + frame and stop (but keep) the polling timer.
+    // Caller must hold m_mutex. Does not change connection status.
+    void releaseConnectionResources();
+    // Release transport resources and publish the given terminal status.
+    // Locks m_mutex; safe to call from the polling/response handlers.
+    void teardownConnection(ConnectStatus finalStatus);
     void excute_request();
     void polling_query();
 
@@ -76,6 +82,8 @@ private:
     void check_device_changed();
     void update_last_m_map();
     void update_last_d_map();
+
+    void setDeviceLostConnect();
 
 signals:
     void requestFinished(vc::device::McResult result);
@@ -94,7 +102,7 @@ private:
     std::shared_ptr<MCRequest> m_current_request;
 
     McDeviceMap m_device_map;
-    QTimer *m_polling_timer;
+    QTimer *m_polling_timer{nullptr};
 
     std::chrono::high_resolution_clock::time_point m_sent_time_point;
 
@@ -104,7 +112,7 @@ private:
     int m_update_command_index;
     bool is_first_time_polling;
     bool m_wait_for_response;
-    bool m_retry_by_timeout{false};
+    // bool m_retry_by_timeout{false};
     int m_retry_count{0};
 
     std::map<int, quint8> m_last_device_M_map;

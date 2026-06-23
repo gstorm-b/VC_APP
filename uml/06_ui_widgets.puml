@@ -57,6 +57,8 @@ package "Task UI" {
   class LocalizationSettingWidget <<ITaskWidget>> {
     -rebuildDeviceCombos()
     -rebuildCameraList()
+    -rebuildCameraWorkspaceList()
+    -onWorkspaceSetRequested(cameraId)
     -refreshCommTags(deviceId)
     -pushConfigToTask()
   }
@@ -81,7 +83,6 @@ package "Pattern UI" {
   class EditPatternWizard <<QDialog>>
   class AddPatternImageDialog <<QDialog>>
   class AddPatternImageCanvas <<QWidget>>
-  class PatternSettingPanel <<QWidget>>
   class PatternGroupItemWidget <<QWidget>>
   class PatternItemWidget <<QWidget>>
   class FooterItemWidget <<QWidget>>
@@ -105,10 +106,28 @@ package "Mapping widgets" {
   }
 
   class SignalsMonitorWidget <<QWidget>>
+
+  class CameraWorkspaceWidget <<QWidget>> {
+    +setCameras(idToName)
+    +setWorkspaceState(cameraId, useWorkspace, roi, useCondition, conditionRoi, hasImage)
+    +useWorkspaceToggled(cameraId, enabled)
+    +useConditionToggled(cameraId, enabled)
+    +setWorkspaceRequested(cameraId)
+  }
+
+  class WorkspaceSettingDialog <<QDialog>> {
+    +setInitial(image, workingRoi, conditionRoi)
+    +setMainViewImage(image)
+    +resultImage() : QPixmap
+    +resultRoi() : QRectF
+    +resultConditionRoi() : QRectF
+    +requestGrab()
+  }
 }
 
 package "Calibration UI" {
   class CalibrationBoardDialog <<QDialog>>
+  class CalibrationThresholdDialog <<QDialog>>
   class CalibrationPointsTable <<QTableWidget>>
 }
 
@@ -155,10 +174,11 @@ LocalizationPatternsWidget --> TaskLocalization
 LocalizationPatternsWidget --> PatternGroupManager
 LocalizationPatternsWidget --> AddPatternWizard
 LocalizationPatternsWidget --> EditPatternWizard
-LocalizationPatternsWidget --> PatternSettingPanel
 LocalizationSettingWidget --> TaskLocalization
 LocalizationSettingWidget *-- CameraMappingWidget
+LocalizationSettingWidget *-- CameraWorkspaceWidget
 LocalizationSettingWidget *-- SignalsMapWidget
+LocalizationSettingWidget ..> WorkspaceSettingDialog : set ROI per camera
 LocalizationSettingWidget ..> IDigitalIoProvider : PLC bool tags
 LocalizationSettingWidget ..> IWordIoProvider : PLC number tags
 
@@ -175,7 +195,9 @@ IDeviceWidget *-- PropertyBrowserWidget
 ITaskWidget *-- PropertyBrowserWidget
 
 CalibrationBoardDialog ..> "calib::CalibrationBoardFactory"
+CalibrationThresholdDialog ..> "calib::CalibrationBoard" : binarize() + detect() preview
 CalibrationPointsTable ..> "calib::Calibrator"
+BaslerCameraWidget ..> CalibrationThresholdDialog : tune threshold
 
 AddDeviceWizard ..> "vc::device::DeviceType"
 AddDeviceWizard ..> "vc::device::DeviceFactory" : JSON consumed later
@@ -197,6 +219,14 @@ note right of LocalizationSettingWidget
 
   Localization signals now include nActivePatternGroup,
   bTaskFault, and nFaultCode.
+
+  Per-camera workspace (ROI) is edited via CameraWorkspaceWidget +
+  WorkspaceSettingDialog and stored in TaskLocalizeConfig (keyed by
+  camera id; reference image as a project_images BLOB).
+  LocalizationPatternsWidget shows the active camera's ROI overlay and
+  crops the commission test image by the working ROI. LocalizationPipeline
+  also applies the condition ROI through ImageMatcher::setMatchingConditionROI();
+  cropOffsetPoint maps match results back to the matcher input frame.
 end note
 
 note right of LocalizationTaskWidget

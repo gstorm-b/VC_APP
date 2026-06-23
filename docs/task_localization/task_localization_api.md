@@ -54,6 +54,16 @@ Runtime startup order:
 `endRuntime()` and `stopAll()` destroy the runtime controller before entering
 idle, then recreate a fresh controller in the task thread for the next session.
 
+Entering idle is a full teardown. `TaskRunner::enterIdle()` first closes each
+device connection on its own worker thread (`IDeviceRunner::disconnectAndWait()`)
+and only then detaches the device and stops the worker thread. This ordering is
+mandatory: device transports (for example the MC PLC `QTcpSocket`) are created on
+the worker thread and must be closed there. Skipping the disconnect leaks the
+open connection and breaks the supported "stop runtime, edit, start runtime
+again" workflow — the next phase entry cannot reconnect because the previous
+session is still half-open. Device-side connect is therefore idempotent: calling
+`deviceConnect()` while already connected is a no-op, not a re-init.
+
 ### Configuration
 
 ```cpp

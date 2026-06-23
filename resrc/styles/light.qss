@@ -465,6 +465,18 @@ QPushButton#patternDeleteBtn {
 QPushButton#patternDeleteBtn:hover   { background-color: #922015; }
 QPushButton#patternDeleteBtn:pressed { background-color: #6e1010; }
 
+QPushButton#patternEditBtn {
+    background-color: #f2f3f5;
+    color: #1a1c20;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0;
+}
+QPushButton#patternEditBtn:hover   { background-color: #fde8c0; color: #c06400; border-color: #c06400; }
+QPushButton#patternEditBtn:pressed { background-color: #c06400; color: #ffffff; }
+
 /* ═══════════════════════════════════════════════════════════════════
    StatusLamp — Light theme
    ═══════════════════════════════════════════════════════════════════ */
@@ -547,6 +559,7 @@ QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_flag,
 QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_code { color: #c0282a; }
 
 /* KPI cards */
+QFrame#frame_match_view,
 QFrame#frame_kpi_detected,
 QFrame#frame_kpi_sent,
 QFrame#frame_kpi_cycle_time,

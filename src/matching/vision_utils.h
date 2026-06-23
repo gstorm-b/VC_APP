@@ -240,6 +240,42 @@ static cv::Mat cropImageWithBorderOffset(cv::Mat sourceImage, cv::Rect boxBoundi
     return outputMat;
 }
 
+// Binarize a source image the same way ImageMatcher does before contour/area
+// pre-filtering: grayscale -> 5x5 Gaussian blur -> threshold (THRESH_BINARY).
+// threshold < 0   => automatic Otsu (current engine behaviour);
+// threshold 0..255 => fixed manual value.
+// maxValue        => cv::threshold maxval (intensity assigned above threshold);
+//                    applies in both auto and manual modes.
+// `usedThreshold` (optional) receives the value actually applied (the
+// Otsu-computed value in auto mode). Kept here so the patterns-widget binary
+// preview matches what the matcher would compute.
+static cv::Mat binarizeSourceImage(const cv::Mat& src, int threshold = -1,
+                                   int maxValue = 255, double* usedThreshold = nullptr) {
+    if (src.empty()) return cv::Mat();
+
+    cv::Mat gray;
+    if (src.channels() == 3)
+        cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+    else if (src.channels() == 4)
+        cv::cvtColor(src, gray, cv::COLOR_BGRA2GRAY);
+    else
+        gray = src.clone();
+
+    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
+
+    cv::Mat binary;
+    double applied = 0.0;
+    if (threshold < 0) {
+        applied = cv::threshold(gray, binary, 0, maxValue,
+                                cv::THRESH_BINARY | cv::THRESH_OTSU);
+    } else {
+        applied = threshold;
+        cv::threshold(gray, binary, threshold, maxValue, cv::THRESH_BINARY);
+    }
+    if (usedThreshold) *usedThreshold = applied;
+    return binary;
+}
+
 static void drawPickingBox(cv::Mat& matSrc, cv::RotatedRect rectRot, cv::Scalar color) {
     cv::Point2f vertices2f[4];
     rectRot.points(vertices2f);

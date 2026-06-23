@@ -16,6 +16,8 @@
         <file alias="styles/localization_patterns_widget_light.qss">resrc/styles/localization_patterns_widget_light.qss</file>
         <file alias="styles/vision_tcpip_device_widget_dark.qss">resrc/styles/vision_tcpip_device_widget_dark.qss</file>
         <file alias="styles/vision_tcpip_device_widget_light.qss">resrc/styles/vision_tcpip_device_widget_light.qss</file>
+        <file alias="styles/vision_tcpip_client_device_widget_dark.qss">resrc/styles/vision_tcpip_client_device_widget_dark.qss</file>
+        <file alias="styles/vision_tcpip_client_device_widget_light.qss">resrc/styles/vision_tcpip_client_device_widget_light.qss</file>
         <file>resrc/icon/dashboard.svg</file>
         <file>resrc/icon/dashboard_dark.svg</file>
         <file>resrc/icon/edit_file.svg</file>
@@ -50,5 +52,7 @@
         <file>resrc/icon/capture.svg</file>
         <file>resrc/icon/plug_connected.svg</file>
         <file>resrc/icon/plug_disconnected.svg</file>
+        <file>resrc/icon/start.svg</file>
+        <file>resrc/icon/stop.svg</file>
     </qresource>
 </RCC>

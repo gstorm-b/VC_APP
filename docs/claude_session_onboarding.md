@@ -1,5 +1,9 @@
 # Claude Session Onboarding
 
+> **Superseded.** New agents should read [../AGENT.md](../AGENT.md) first.
+> This document is kept as historical onboarding context until all references
+> are migrated.
+
 > **Audience.** Claude (or any AI coding assistant) starting a fresh session on
 > the `ncr_picking` project. Read this first to acquire the minimum context
 > needed before touching code.
@@ -59,6 +63,20 @@ them.
   the calibration points table (6-column editor, signals). Read before
   touching `src/widgets/calibration/calibration_points_table.*`.
 
+### Working on robot kinematics (FK / IK)
+
+- **[robot_kinematics_module.md](robot_kinematics_module.md)** — the reusable
+  `RobotKinematics` component (`components/RobotKinematics/`, `namespace
+  RobotKinematics`): Eigen-based forward/inverse kinematics (`ForwardKinematics`
+  + hybrid analytic/numerical `SerialRobotKinematics`), SI units with mm/deg
+  helpers, the `SerialRobotConfig`/`Tool` model, the `Nachi MZ04D` preset, the
+  optional Coal **mesh** collision backend, and the Phase 2 Vision-Output
+  integration (preset + TCP + reachability + self-collision check). Pulled into
+  the app via `components/RobotKinematics/robotkinematics.pri`. Independent of the
+  `vc::device::robot` comms family. **Note:** this replaced the old standalone
+  `rkin` module under `robot_kinematics/` (removed) — `rkin::*`,
+  `KinematicFactory`, `Tcp`/`TcpLibrary`, and the RS007N/MZ07 presets are gone.
+
 ### Working on a device family (PLC / Camera / VisionOutput / Robot)
 
 - **[design_rules.md](design_rules.md) §12 Device Family Modules** — the
@@ -114,8 +132,13 @@ every interaction:
 Enough orientation to navigate without reading every header:
 
 - **Build.** qmake project, `ncr_picking.pro`. Qt 6, C++17, OpenCV 4
-  (`opencv_world`). The user builds locally; you do **not** run the build
-  unless asked.
+  (`opencv_world`). Prefer the qmake flow documented in
+  [build_and_verification.md](build_and_verification.md). In Codex CLI, use the
+  RobotKinematics script pattern: call `vcvars64.bat` without redirecting its
+  output, run `qmake` in the build directory, then use `nmake /nologo` as the
+  reliable MSVC fallback. Qt Creator may use `jom`, but `jom` did not inherit
+  the modified PATH reliably from the Codex shell during Phase 1 verification.
+  The user builds locally by default; run the build only when asked.
 - **Top-level layout.**
   - `src/device/` — device families (`camera/`, `plc/`, `output_device/`,
     `robot/`). Each family has an abstract header-only base + concrete

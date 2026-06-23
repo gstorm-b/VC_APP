@@ -1,0 +1,60 @@
+# --- Out-of-source build directories ---
+/build/
+/_build*/
+/lib/
+/examples/*/build/
+/agent-skills
+
+# --- qmake / make generated files (in-source) ---
+Makefile
+Makefile.Debug
+Makefile.Release
+.qmake.stash
+.qmake.cache
+.qmake.super
+
+# --- Per-target build subdirectories ---
+.obj/
+.moc/
+.rcc/
+.ui/
+debug/
+release/
+
+# --- Compiled objects / binaries ---
+*.o
+*.obj
+*.lib
+*.a
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# --- Qt moc/rcc/uic outputs ---
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.moc
+
+# --- Qt Creator user/session files ---
+*.pro.user
+*.pro.user.*
+.qtcreator/
+
+# --- Local agent/editor config ---
+/.claude/
+
+# --- Generated mesh-simplification artifacts ---
+# tools/mesh_simplification regenerates these from the original mesh profile.
+/presets/Nachi/MZ04/simplified/
+/presets/Nachi/MZ04/*_simplified*.json
+
+# --- Tracked third-party dependency workspace ---
+# The project intentionally keeps optional mesh-backend dependency sources,
+# build trees, and install outputs under third_party/ for reproducible local
+# Windows/MSVC development.
+!/third_party/
+!/third_party/**

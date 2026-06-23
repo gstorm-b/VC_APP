@@ -34,7 +34,14 @@ package "mtc matching" {
     +m_patternName : wstring
     +m_patternIndex : int
     +m_rawImage : cv::Mat
-    +typeConfig : IMatchTypeConfig
+    +m_minScore : double
+    +m_angle / m_toleranceAngle : double
+    +m_maxOverlap : double
+    +m_pickPosition : cv::Point2f
+    +m_pickingBoxSize : cv::Size2f
+    +m_pickingBoxDistance : double
+    +m_pickingBoxAngle : double
+    +m_pickingOffset : cv::Point3f
   }
 
   class PatternLayer
@@ -55,10 +62,9 @@ package "mtc matching" {
   class MatchGroupConfig {
     +m_groupName : wstring
     +m_groupIndex : int
-    +m_pickingBoxSize : cv::Size2f
-    +m_pickingBoxDistance : double
-    +m_pickingBoxAngle : double
-    +m_pickingOffset : cv::Point3f
+    +typeConfig : IMatchTypeConfig
+    +matchingType() : MatchingType
+    +edgeConfig() : EdgeMatchConfig*
     +m_patterns : vector<MatchPatternConfig>
   }
 
@@ -115,6 +121,9 @@ package "calib calibration" {
     +generateImage(pixelsPerMm) : cv::Mat
     +writePrintableImage(path, dpi) : bool
     +detect(image, imagePoints, cornerImagePoints, debugOverlay) : bool
+    +binarize(image, usedThreshold) : cv::Mat
+    +binarizeThreshold() : int
+    +setBinarizeThreshold(threshold)
     +totalDots() : int
     +objectPoints() : vector<cv::Point3f>
     +objectPointsXY() : vector<cv::Point2f>
@@ -158,7 +167,7 @@ package "calib calibration" {
 }
 
 IMatchTypeConfig <|-- EdgeMatchConfig
-MatchPatternConfig *-- IMatchTypeConfig
+MatchGroupConfig *-- IMatchTypeConfig : shared by all patterns (typeConfig)
 MatchPattern *-- MatchPatternConfig
 MatchPattern *-- "0..*" PatternLayer
 MatchGroup *-- MatchGroupConfig
@@ -177,8 +186,7 @@ LocalizationPipeline ..> MatchPattern : reads train images
 LocalizationPipeline ..> ImageMatcher : creates local matcher
 LocalizationPipeline ..> MatchResult : returns
 
-MatchConfigPropertyAdapter ..> MatchPatternConfig
-MatchConfigPropertyAdapter ..> MatchGroupConfig
+MatchConfigPropertyAdapter ..> MatchGroupConfig : edits shared typeConfig
 
 CalibrationBoard <|-- FanucIRvisionBoard
 CalibrationBoardFactory ..> CalibrationBoard : creates
@@ -189,6 +197,13 @@ Calibrator ..> CalibrationBoard : consumes detected correspondences
 note right of Calibrator
   Fits image px <-> robot XY homography and
   a robot-space work plane for Z estimation.
+end note
+
+note bottom of CalibrationBoard
+  detect() binarizes via binarize(): binarizeThreshold()
+  < 0 => auto (Otsu), 0..255 => fixed manual. Tuned per
+  camera through CalibrationThresholdDialog and persisted
+  in the camera config (CalibBinarizeThreshold).
 end note
 
 note bottom of PatternGroupManager

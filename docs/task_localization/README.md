@@ -71,6 +71,12 @@ At runtime:
   success. Check `bTaskFault` and `nFaultCode`.
 - Runtime pattern and calibration edits are not supported while runtime is
   active. Stop runtime, edit, then start runtime again to refresh snapshots.
+- Phase teardown disconnects devices. `TaskRunner::enterIdle()` closes each
+  device connection on its own worker thread (through
+  `IDeviceRunner::disconnectAndWait()`) before detaching/stopping, so the
+  stop-edit-start cycle reconnects from a clean state. Device `deviceConnect()`
+  is idempotent; the runtime controller may request connect on an already-open
+  device.
 
 ## Related Documents
 

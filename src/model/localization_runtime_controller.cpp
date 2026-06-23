@@ -8,6 +8,7 @@
 #include "logger/app_logger.h"
 #include "matching/match_group.h"
 #include "matching/match_pattern.h"
+#include "model/robot_kinematic_picking_checker.h"
 #include "runtime/camera_runner.h"
 #include "runtime/plc_runner.h"
 #include "runtime/vision_output_runner.h"
@@ -34,6 +35,8 @@ QString connectStatusName(vc::device::ConnectStatus status)
         return QStringLiteral("LostConnected");
     case vc::device::ConnectStatus::ConnectFailed:
         return QStringLiteral("ConnectFailed");
+    case vc::device::ConnectStatus::Connecting:
+        return QStringLiteral("Connecting");
     }
 
     return QStringLiteral("Unknown");
@@ -74,6 +77,10 @@ LocalizationRuntimeController::LocalizationRuntimeController(QObject *parent)
     qRegisterMetaType<LocalizationRuntimeController::TaskLogEntry>(
         "vc::model::LocalizationRuntimeController::TaskLogEntry");
     qRegisterMetaType<LocalizationFaultCode>("vc::model::LocalizationFaultCode");
+    qRegisterMetaType<CameraWorkspace>("CameraWorkspace");
+    qRegisterMetaType<CameraWorkspace>("vc::model::CameraWorkspace");
+    qRegisterMetaType<std::shared_ptr<mtc::IRobotPickingChecker>>(
+        "std::shared_ptr<mtc::IRobotPickingChecker>");
 }
 
 void LocalizationRuntimeController::configure(const TaskLocalizeConfig &config)
@@ -112,6 +119,8 @@ void LocalizationRuntimeController::setActiveCameraNumber(int cameraNumber)
     }
 
     const bool calibrated = validateActiveCameraCalibration();
+    // Rebuild the pickability checker against the new camera's calibration.
+    rebuildPickingChecker();
     publishBoolSignal(QStringLiteral("bCameraValid"), calibrated);
     if (!calibrated) {
         publishBoolSignal(QStringLiteral("bTaskFault"), true);
@@ -128,6 +137,9 @@ void LocalizationRuntimeController::setActiveCameraNumber(int cameraNumber)
     if (allRequiredRolesHealthy()) {
         markRuntimeReady(QStringLiteral("Active camera changed. Runtime ready."));
     }
+
+    m_context.activeCameraWorkspace =  m_config.cameraWorkspace(newRunner->device()->id());
+    m_activeCameraWorkspace = m_context.activeCameraWorkspace;
 }
 
 void LocalizationRuntimeController::setActivePatternGroupNumber(int patternGroupNumber)
@@ -230,6 +242,10 @@ LocalizationRuntimeController::setup(const RuntimeContext &context)
         publishNumberSignal(QStringLiteral("nFaultCode"),
                             localizationFaultCodeValue(LocalizationFaultCode::CalibrationInvalid));
     }
+
+    // Build the robot-pickability checker once for the runtime (active camera +
+    // robot config now established); rebuilt later only on active-camera change.
+    rebuildPickingChecker();
 
     result.valid = result.errors.isEmpty();
     m_valid = result.valid;
@@ -592,6 +608,21 @@ bool LocalizationRuntimeController::validateActiveCameraCalibration(QStringList 
     return true;
 }
 
+void LocalizationRuntimeController::rebuildPickingChecker()
+{
+    m_pickingChecker.reset();
+    if (!m_context.robotCheckConfig.enabled)
+        return;
+
+    const calib::Calibrator calibrator =
+        m_context.cameraCalibrators.value(m_activeCameraNumber);
+    if (!calibrator.isCalibrated())
+        return;
+
+    m_pickingChecker = std::make_shared<RobotKinematicPickingChecker>(
+        calibrator, m_context.robotCheckConfig);
+}
+
 std::shared_ptr<mtc::MatchGroup>
 LocalizationRuntimeController::snapshotActivePatternGroup() const
 {
@@ -630,18 +661,51 @@ LocalizationRuntimeController::buildVisionOutputPositions(
         row.imageY = object.point_Center.y;
         row.imageR = object.point_angle;
 
-        const cv::Point3f worldPoint = calibrator.imageToRobot(object.point_Center);
-        const double worldR = calibrator.rotateImageToRobot(object.point_angle);
+        // image to real world position
+        cv::Point2f pick_center = object.point_Center;
+        if (m_context.activeCameraWorkspace.useWorkspace) {
+            pick_center += matchResult.cropOffsetPoint;
+        }
+
+        cv::Point3f worldPoint = calibrator.imageToRobot(pick_center);
+            const double worldR = calibrator.rotateImageToRobot(object.point_angle);
+            // row.world.r = worldR;
+            row.world.r = -worldR;
+
+        worldPoint = calibrator.translateWithZAxis(
+            worldPoint, object.point_offset, row.world.r, false);
+
         row.world.x = worldPoint.x;
         row.world.y = worldPoint.y;
         row.world.z = worldPoint.z;
-        row.world.r = worldR;
 
-        if (object.hasCollision()) {
-            row.status = QStringLiteral("Skipped: collision");
+        // if (object.hasCollision() && object.isOutsideConditionRoi()) {
+        //     row.status = QStringLiteral("Skipped: collision, outside");
+        // } else if (object.hasCollision()) {
+        //     row.status = QStringLiteral("Skipped: collision");
+        // } else if (object.isOutsideConditionRoi()) {
+        //     row.status = QStringLiteral("Skipped: outside");
+        // }  else {
+        //     row.status = QStringLiteral("Sent");
+        //     positions.append(row.world);
+        // }
+
+        if ((!object.hasCollision()) && (!object.isOutsideConditionRoi()) && object.isPossibleToPick()) {
+            if (positions.size() < 2) {
+                row.status = QStringLiteral("Sent");
+                positions.append(row.world);
+            } else {
+                row.status = QStringLiteral("Skipped");
+            }
         } else {
-            row.status = QStringLiteral("Sent");
-            positions.append(row.world);
+            QString tempstr = object.hasCollision() ? tr("Collision") : "";
+            tempstr += (object.isOutsideConditionRoi()
+                                    ? ((tempstr.isEmpty() ? "" : ", ") + tr("Outside"))
+                                    : "");
+            tempstr += (!object.isPossibleToPick()
+                                    ? ((tempstr.isEmpty() ? "" : ", ") + tr("Unpickable"))
+                                    : "");
+            row.status = QStringLiteral("Skipped: %1").arg(tempstr);
         }
 
         if (rows) {
@@ -973,7 +1037,10 @@ void LocalizationRuntimeController::onCameraGrabFinished(vc::device::GrabResult 
         return;
     }
 
-    emit runtimeMatchingRequested(m_activeCycleId, group, result.frame.clone());
+    // The robot-pickability checker is built once at runtime setup and rebuilt
+    // only on active-camera change (rebuildPickingChecker), not per cycle.
+    emit runtimeMatchingRequested(m_activeCycleId, group, m_activeCameraWorkspace,
+                                  result.frame.clone(), m_pickingChecker);
 }
 
 void LocalizationRuntimeController::onRuntimeMatchingFinished(int cycleId,

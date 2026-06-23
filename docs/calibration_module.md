@@ -218,7 +218,7 @@ Use a `dynamic_cast<const FanucIRvisionBoard*>(...)` if you only hold a `Calibra
 
 ### 5.4 Detection algorithm
 
-1. `cv::threshold(THRESH_BINARY_INV | THRESH_OTSU)` to binarize. When the caller passes a `debugOverlay`, the binarised image is also written to `calib_thresh_image.bmp` for inspection.
+1. `binarize()` to threshold the grayscale into a dot mask (`THRESH_BINARY_INV`). The threshold is configurable via `Params::binarizeThreshold` (exposed through `CalibrationBoard::binarizeThreshold()` / `setBinarizeThreshold()`): `-1` => **auto (Otsu)**, `0..255` => **fixed manual** value. `binarize()` is the single shared routine used by both `detect()` and the threshold-tuning dialog, so a tuned preview matches detection exactly. The per-camera value is persisted in the camera config (`CalibBinarizeThreshold`) and tuned through `CalibrationThresholdDialog` (slider + Auto(Otsu) toggle, live binarized preview + detection overlay).
 2. `cv::findContours(RETR_CCOMP)` to enumerate top-level circular blobs.
 3. **Robustness filters** applied per-contour (this stack matters for real photos, where surrounding bright background can otherwise sneak past circularity):
    - Min contour size and `m00 > 4 px²` (drop noise).
@@ -618,7 +618,28 @@ Tests are a sibling sub-project at `tests/tests.pro`. The tests link the same fo
 
 ---
 
-## 11. Frequently-asked design questions
+## 11. Operational limits and watch-list
+
+- **Board rotation.** Corner output is labelled by image-space convention. Keep
+  the physical board roughly aligned with the camera during calibration; if the
+  board is rotated enough that image-space top-left/top-right intuition breaks,
+  record robot points in the exact order returned by `detect()`.
+- **Inner white targets.** Detection no longer depends on resolving the white
+  inner holes, but the operator still uses the white centres as precise robot
+  touch targets. Tiny inner diameters on low-resolution/noisy images may make
+  overlays less informative even when geometry detection still succeeds.
+- **Partial occlusion.** The detector expects the four large orientation markers
+  to be visible. If any centre/coord marker is missing, recapture the frame
+  instead of trying to calibrate from a partial board.
+- **Print/export format.** `writePrintablePng()` embeds exact physical scale
+  only for PNG. Other formats need their own DPI metadata handling.
+- **Preset validation.** iRVision preset constants mirror the intended physical
+  board families, but each shop-floor printed board should still be checked at
+  actual size before it becomes a production calibration artefact.
+
+---
+
+## 12. Frequently-asked design questions
 
 **Why an abstract base class?** So the rest of the codebase can hold a `CalibrationBoard*` (or `unique_ptr<CalibrationBoard>`) and never have to know whether the board is Fanuc, Halcon, ChArUco or something new. Adding a board family is a localised change.
 
@@ -644,7 +665,7 @@ Tests are a sibling sub-project at `tests/tests.pro`. The tests link the same fo
 
 ---
 
-## 12. Tests
+## 13. Tests
 
 `tests/tst_main.cpp` ships three Qt Test classes (31 cases total at the time of writing):
 
@@ -679,7 +700,7 @@ Run from Qt Creator or the command line via `qmake tests/tests.pro && make && ./
 
 ---
 
-## 13. Extending: adding a new board family
+## 14. Extending: adding a new board family
 
 To add (say) a Halcon-style chessboard:
 

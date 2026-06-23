@@ -22,7 +22,8 @@ enum ConnectStatus {
     Disconnected,
     Connected,
     LostConnected,
-    ConnectFailed
+    ConnectFailed,
+    Connecting   // transport active but the link(s) are not (all) up yet
 };
 
 class IDevice : public QObject {

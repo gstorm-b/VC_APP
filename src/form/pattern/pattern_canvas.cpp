@@ -411,6 +411,13 @@ AddPatternImageCanvas::hitCropHandle(const QPoint &widgetPos) const {
 
 AddPatternImageCanvas::BoxHandle
 AddPatternImageCanvas::hitBoxHandle(const QPoint &widgetPos) const {
+    // Pick crosshair — highest priority so the picking centre can always be
+    // grabbed and dragged (both jaws follow it rigidly).
+    {
+        const QPointF pw = imageToWidget(m_pick);
+        if (QLineF(pw, widgetPos).length() <= kHandleHitSlack + 2)
+            return BH_Pick;
+    }
     // Rotation handle — widget-pixel proximity to the centre of the knob.
     {
         const QPointF rotW = imageToWidget(boxRotationHandle());
@@ -599,16 +606,38 @@ void AddPatternImageCanvas::mouseMoveEvent(QMouseEvent *e) {
                 }
                 break;
             }
+            case BH_Pick: {
+                // Drag the picking centre itself — both jaws follow rigidly
+                // since their centres are derived from (pick + dist·angle).
+                // Clamp to the crop when one is set, otherwise to the image
+                // bounds (mirrors Pick mode).
+                QPointF imgPt = imgNow;
+                if (!m_crop.isNull() && !m_crop.isEmpty()) {
+                    imgPt.setX(qBound<double>(m_crop.left(), imgPt.x(), m_crop.right()));
+                    imgPt.setY(qBound<double>(m_crop.top(),  imgPt.y(), m_crop.bottom()));
+                } else if (!m_pix.isNull()) {
+                    imgPt.setX(qBound<double>(0, imgPt.x(), m_pix.width()  - 1));
+                    imgPt.setY(qBound<double>(0, imgPt.y(), m_pix.height() - 1));
+                }
+                m_pick = imgPt.toPoint();
+                m_pickCurrentPoint = (!m_crop.isNull() && !m_crop.isEmpty())
+                                     ? (m_pick - m_crop.topLeft()) : m_pick;
+                break;
+            }
             default: break;
             }
             update();
-            emit boxChanged(m_boxW, m_boxH, m_boxDist, m_boxAngle);
+            if (m_boxHandle == BH_Pick)
+                emit pickChanged(m_pick, m_pickCurrentPoint);
+            else
+                emit boxChanged(m_boxW, m_boxH, m_boxDist, m_boxAngle);
         } else {
             const BoxHandle h = hitBoxHandle(e->pos());
             switch (h) {
             case BH_TL: case BH_BR: setCursor(Qt::SizeFDiagCursor); break;
             case BH_TR: case BH_BL: setCursor(Qt::SizeBDiagCursor); break;
             case BH_Rotate:         setCursor(Qt::CrossCursor);     break;
+            case BH_Pick:           setCursor(Qt::PointingHandCursor); break;
             case BH_Body:           setCursor(Qt::SizeAllCursor);   break;
             default:                setCursor(Qt::ArrowCursor);     break;
             }

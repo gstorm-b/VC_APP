@@ -18,6 +18,7 @@
 #include "device/camera/camera_device.h"
 #include "device/output_device/vision_output_device.h"
 #include "device/output_device/vision_tcpip_config.h"
+#include "device/output_device/vision_tcpip_client_config.h"
 #include "device/plc/mc_protocol_device.h"
 #include "logger/app_logger.h"
 #include "utils/theme_manager.h"
@@ -236,6 +237,11 @@ QJsonObject AddDeviceWizard::buildDeviceJson(vc::device::DeviceType type) {
         switch (subType) {
         case vc::device::VisionOutputType::VisionTCPIP: {
             vc::device::VisionTcpipDeviceCfg config;
+            obj[DEVICE_JSK_CONFIG] = config.toJson();
+            break;
+        }
+        case vc::device::VisionOutputType::VisionTcpipClient: {
+            vc::device::VisionTcpipClientDeviceCfg config;
             obj[DEVICE_JSK_CONFIG] = config.toJson();
             break;
         }

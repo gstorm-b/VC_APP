@@ -8,6 +8,7 @@
 
 #include "calibration/calibration_board_factory.h"
 #include "widgets/calibration/calibration_board_dialog.h"
+#include "widgets/calibration/calibration_threshold_dialog.h"
 #include "widgets/calibration/calibration_points_table.h"
 
 inline QPixmap cvMatToQPixmap(const cv::Mat& mat) {
@@ -217,9 +218,13 @@ void BaslerCameraWidget::initCameraWiget() {
             this, &BaslerCameraWidget::btn_connect_clicked);
     connect(ui->btn_trigger, &QPushButton::clicked,
             this, &BaslerCameraWidget::btn_trigger_clicked);
+    connect(ui->btn_save_image, &QPushButton::clicked,
+            this, &BaslerCameraWidget::btn_save_image_clicked);
 
     connect(ui->btn_setup_board, &QPushButton::clicked,
             this, &BaslerCameraWidget::btn_setup_board_clicked);
+    connect(ui->btn_calib_threshold, &QPushButton::clicked,
+            this, &BaslerCameraWidget::btn_calib_threshold_clicked);
     connect(ui->btn_calib_detect, &QPushButton::clicked,
             this, &BaslerCameraWidget::btn_calib_detect_clicked);
     connect(ui->btn_calib_apply, &QPushButton::clicked,
@@ -231,18 +236,21 @@ void BaslerCameraWidget::initCameraWiget() {
 
     // connect(ui->btn_baklight_toggle, &QPushButton::clicked,
     //         this, &BaslerCameraWidget::btn_backlight_toggle_clicked);
-    // connect(ui->btn_save_image, &QPushButton::clicked,
-    //         this, &BaslerCameraWidget::btn_save_image_clicked);
 
     if (m_device) {
-        m_camera = static_cast<vc::device::BaslerGigECamera*>(m_device.get());
+        m_camera = qobject_cast<vc::device::BaslerGigECamera*>(m_device.get());
+        if (!m_camera) {
+            LOG_DEV_ERR << "BaslerCameraWidget: expected BaslerGigECamera but got"
+                        << m_device->id();
+            setEnabled(false);
+        } else {
+            m_params = m_camera->baslerGigeConfig();
+            loadConfigToWidget();
+            connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
+                    this, &BaslerCameraWidget::onPropertyValueChanged);
 
-        m_params = m_camera->baslerGigeConfig();
-        loadConfigToWidget();
-        connect(m_variantManager, &QtVariantPropertyManager::valueChanged,
-                this, &BaslerCameraWidget::onPropertyValueChanged);
-
-        initCalibrationUi();
+            initCalibrationUi();
+        }
     }
 
     ui->splitter_main->setStretchFactor(0, 7);
@@ -257,7 +265,7 @@ void BaslerCameraWidget::initCameraWiget() {
     // The runner forwards device signals onto the GUI thread; that is the
     // whole point of routing through TaskRunner.  The Widget never touches
     // QThread or moveToThread().
-    if (m_runner) {
+    if (m_runner && m_camera) {
         connect(m_runner, &vc::runtime::CameraRunner::connectStatusChanged,
                 this,     &BaslerCameraWidget::onCameraConnectStatusChanged);
         connect(m_runner, &vc::runtime::CameraRunner::grabFinished,
@@ -398,6 +406,10 @@ void BaslerCameraWidget::btn_trigger_clicked() {
     m_runner->requestSingleShot();
 }
 
+void BaslerCameraWidget::btn_save_image_clicked() {
+
+}
+
 void BaslerCameraWidget::onCameraConnected() {
     ui->lb_connection_status->setText(tr("Connected"));
     m_params = m_camera->baslerGigeConfig();
@@ -434,7 +446,8 @@ void BaslerCameraWidget::onCameraGrabFinished(vc::device::GrabResult result) {
 
         std::vector<cv::Point2f> allPts;
         std::vector<cv::Point2f> cornerPts;
-        bool ok = m_board->detect(result.frame, allPts, &cornerPts, nullptr);
+        cv::Mat debug_image;
+        bool ok = m_board->detect(result.frame, allPts, &cornerPts, &debug_image);
         if (!ok || cornerPts.empty()) {
             ui->label_calib_status->setText(
                 tr("Calibration status: board detect failed"));
@@ -445,6 +458,15 @@ void BaslerCameraWidget::onCameraGrabFinished(vc::device::GrabResult result) {
         ui->btn_calib_apply->setEnabled(true);
         ui->label_calib_status->setText(
             tr("Calibration status: detected (point changed)"));
+    }
+
+    // Frame requested by the threshold-tuning dialog (initial open or Re-grab):
+    // push it into the open dialog so the preview refreshes.
+    if (m_pendingThresholdGrab) {
+        m_pendingThresholdGrab = false;
+        if (m_thresholdDlg && result.isGrabSuccess) {
+            m_thresholdDlg->setImage(result.frame);
+        }
     }
 }
 
@@ -468,6 +490,10 @@ void BaslerCameraWidget::initCalibrationUi() {
     setCalibBoardPreset(m_params.calibBoardPreset());
     refreshCalibrationStatusLabels();
     ui->btn_calib_apply->setEnabled(false);
+
+    // init table here
+    ui->table_calibration_points->setImagePoints(m_params.calibrator().getImagePts());
+    ui->table_calibration_points->setWorldPoints(m_params.calibrator().getRobotPts());
 }
 
 void BaslerCameraWidget::setCalibBoardPreset(const QString &preset) {
@@ -480,6 +506,7 @@ void BaslerCameraWidget::setCalibBoardPreset(const QString &preset) {
     }
 
     m_params.setCalibBoardPreset(preset);
+    m_board->setBinarizeThreshold(m_params.calibThreshold());
 
     // Default world XY for the 4 corner points comes straight from the board
     // (board-frame mm, z=0). The user edits these to map board frame -> robot
@@ -544,10 +571,59 @@ void BaslerCameraWidget::btn_setup_board_clicked() {
         return;
     }
     m_params.setCalibBoardPreset(preset);
+    m_board->setBinarizeThreshold(m_params.calibThreshold());
     m_camera->setBaslerGigeConfig(m_params);
     refreshBoardInfoLabel();
     ui->btn_calib_apply->setEnabled(true);
     refreshCalibrationStatusLabels(tr("(point changed)"));
+}
+
+void BaslerCameraWidget::btn_calib_threshold_clicked() {
+    if (!m_runner || !m_camera || !m_camera->isDeviceConnected()) {
+        QMessageBox::warning(this, tr("Calibration"),
+                             tr("Camera is not connected."));
+        return;
+    }
+    if (!m_board) {
+        QMessageBox::warning(this, tr("Calibration"),
+                             tr("No calibration board configured."));
+        return;
+    }
+
+    m_thresholdDlg =
+        new CalibrationThresholdDialog(m_board.get(), m_params.calibThreshold(), this);
+
+    // Re-grab button and the initial open both pull a fresh frame from the
+    // camera; the result is routed back via onCameraGrabFinished().
+    connect(m_thresholdDlg, &CalibrationThresholdDialog::regrabRequested,
+            this, [this]() {
+                if (m_runner && m_camera && m_camera->isDeviceConnected()) {
+                    m_pendingThresholdGrab = true;
+                    m_runner->requestSingleShot();
+                }
+            });
+
+    m_pendingThresholdGrab = true;
+    m_runner->requestSingleShot();
+
+    const int rc = m_thresholdDlg->exec();
+
+    if (rc == QDialog::Accepted) {
+        const int threshold = m_thresholdDlg->threshold();
+        m_params.setCalibThreshold(threshold);
+        m_board->setBinarizeThreshold(threshold);
+        m_camera->setBaslerGigeConfig(m_params);
+        refreshCalibrationStatusLabels(tr("(threshold changed)"));
+    } else {
+        // Preview mutated the board's threshold; restore the stored value.
+        m_board->setBinarizeThreshold(m_params.calibThreshold());
+    }
+
+    // Drop the dialog; clear the pointer first so a late grab is ignored.
+    m_pendingThresholdGrab = false;
+    CalibrationThresholdDialog *dlg = m_thresholdDlg;
+    m_thresholdDlg = nullptr;
+    dlg->deleteLater();
 }
 
 void BaslerCameraWidget::btn_calib_detect_clicked() {
@@ -613,4 +689,3 @@ void BaslerCameraWidget::onCalibPointsEdited() {
     ui->btn_calib_apply->setEnabled(true);
     refreshCalibrationStatusLabels(tr("(point changed)"));
 }
-

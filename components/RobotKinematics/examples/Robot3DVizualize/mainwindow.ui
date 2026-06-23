@@ -1,0 +1,1490 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1327</width>
+    <height>885</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>RobotKinematics - Nachi MZ04D Visualizer</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="spacing">
+     <number>10</number>
+    </property>
+    <property name="leftMargin">
+     <number>10</number>
+    </property>
+    <property name="topMargin">
+     <number>10</number>
+    </property>
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>10</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="mainSplitter">
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
+      </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
+      <widget class="QScrollArea" name="controlScrollArea">
+       <property name="minimumSize">
+        <size>
+         <width>430</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="scrollAreaWidgetContents">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>447</width>
+          <height>1090</height>
+         </rect>
+        </property>
+        <layout class="QVBoxLayout" name="controlPanelLayout">
+         <property name="spacing">
+          <number>12</number>
+         </property>
+         <item>
+          <widget class="QGroupBox" name="contextGroupBox">
+           <property name="title">
+            <string>Kinematics Context</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <layout class="QFormLayout" name="contextFormLayout">
+              <property name="labelAlignment">
+               <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="toolLabel">
+                <property name="text">
+                 <string>Active tool</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="toolComboBox"/>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="referenceFrameLabel">
+                <property name="text">
+                 <string>Reference frame</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="referenceFrameComboBox"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QLabel" name="contextHintLabel">
+              <property name="text">
+               <string>FK readout and IK target/solve both use the selected tool and reference frame. Values are displayed in millimeters and degrees, but all core math stays in meters and radians.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTabWidget" name="controlTabWidget">
+           <property name="currentIndex">
+            <number>1</number>
+           </property>
+           <widget class="QWidget" name="fkTab">
+            <attribute name="title">
+             <string>FK</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="fkTabLayout">
+             <property name="spacing">
+              <number>12</number>
+             </property>
+             <item>
+              <widget class="QGroupBox" name="jointGroupBox">
+               <property name="title">
+                <string>Joint Controls (deg)</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_3">
+                <item>
+                 <layout class="QGridLayout" name="jointGridLayout">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="joint1Label">
+                    <property name="text">
+                     <string>J1</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QDoubleSpinBox" name="joint1SpinBox">
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="joint2Label">
+                    <property name="text">
+                     <string>J2</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QDoubleSpinBox" name="joint2SpinBox">
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="joint3Label">
+                    <property name="text">
+                     <string>J3</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QDoubleSpinBox" name="joint3SpinBox">
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="joint4Label">
+                    <property name="text">
+                     <string>J4</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QDoubleSpinBox" name="joint4SpinBox">
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QLabel" name="joint5Label">
+                    <property name="text">
+                     <string>J5</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="1">
+                   <widget class="QDoubleSpinBox" name="joint5SpinBox">
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="0">
+                   <widget class="QLabel" name="joint6Label">
+                    <property name="text">
+                     <string>J6</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="1">
+                   <widget class="QDoubleSpinBox" name="joint6SpinBox">
+                    <property name="decimals">
+                     <number>4</number>
+                    </property>
+                    <property name="singleStep">
+                     <double>1.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QLabel" name="jointLimitHintLabel">
+                  <property name="text">
+                   <string>Spin-box ranges are clamped to the configured Nachi joint limits, so out-of-range values are rejected at input time.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QGridLayout" name="sampleButtonLayout">
+                  <item row="0" column="0">
+                   <widget class="QPushButton" name="homeButton">
+                    <property name="text">
+                     <string>Home</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QPushButton" name="midpointButton">
+                    <property name="text">
+                     <string>Midpoint</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QPushButton" name="teachPoint1Button">
+                    <property name="text">
+                     <string>Teach P1</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QPushButton" name="teachPoint20Button">
+                    <property name="text">
+                     <string>Teach P20</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QLabel" name="jointStatusLabel">
+                  <property name="text">
+                   <string>Joint status will appear here.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="flangePoseGroupBox">
+               <property name="title">
+                <string>Flange Pose (X, Y, Z, RZ, RY, RX)</string>
+               </property>
+               <layout class="QFormLayout" name="flangePoseFormLayout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="flangeXLabel">
+                  <property name="text">
+                   <string>X (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLineEdit" name="flangeXLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="flangeYLabel">
+                  <property name="text">
+                   <string>Y (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLineEdit" name="flangeYLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="flangeZLabel">
+                  <property name="text">
+                   <string>Z (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="flangeZLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="flangeRzLabel">
+                  <property name="text">
+                   <string>RZ (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="flangeRzLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="flangeRyLabel">
+                  <property name="text">
+                   <string>RY (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLineEdit" name="flangeRyLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="flangeRxLabel">
+                  <property name="text">
+                   <string>RX (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLineEdit" name="flangeRxLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="tcpPoseGroupBox">
+               <property name="title">
+                <string>TCP Pose (X, Y, Z, RZ, RY, RX)</string>
+               </property>
+               <layout class="QFormLayout" name="tcpPoseFormLayout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="tcpXLabel">
+                  <property name="text">
+                   <string>X (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLineEdit" name="tcpXLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="tcpYLabel">
+                  <property name="text">
+                   <string>Y (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLineEdit" name="tcpYLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="tcpZLabel">
+                  <property name="text">
+                   <string>Z (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="tcpZLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="tcpRzLabel">
+                  <property name="text">
+                   <string>RZ (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="tcpRzLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="tcpRyLabel">
+                  <property name="text">
+                   <string>RY (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLineEdit" name="tcpRyLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="tcpRxLabel">
+                  <property name="text">
+                   <string>RX (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLineEdit" name="tcpRxLineEdit">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="ikTab">
+            <attribute name="title">
+             <string>IK</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="ikTabLayout">
+             <property name="spacing">
+              <number>12</number>
+             </property>
+             <item>
+              <widget class="QGroupBox" name="targetPoseGroupBox">
+               <property name="title">
+                <string>Target Pose (X, Y, Z, RZ, RY, RX)</string>
+               </property>
+               <layout class="QFormLayout" name="targetPoseFormLayout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="targetXLabel">
+                  <property name="text">
+                   <string>X (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QDoubleSpinBox" name="targetXSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-2000.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>2000.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="targetYLabel">
+                  <property name="text">
+                   <string>Y (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QDoubleSpinBox" name="targetYSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-2000.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>2000.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="targetZLabel">
+                  <property name="text">
+                   <string>Z (mm)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QDoubleSpinBox" name="targetZSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-2000.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>2000.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="targetRzLabel">
+                  <property name="text">
+                   <string>RZ (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QDoubleSpinBox" name="targetRzSpinBox">
+                  <property name="decimals">
+                   <number>4</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-360.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>360.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="targetRyLabel">
+                  <property name="text">
+                   <string>RY (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QDoubleSpinBox" name="targetRySpinBox">
+                  <property name="decimals">
+                   <number>4</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-360.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>360.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="targetRxLabel">
+                  <property name="text">
+                   <string>RX (deg)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QDoubleSpinBox" name="targetRxSpinBox">
+                  <property name="decimals">
+                   <number>4</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-360.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>360.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <layout class="QGridLayout" name="ikActionGridLayout">
+               <item row="0" column="0">
+                <widget class="QPushButton" name="copyCurrentTcpToTargetButton">
+                 <property name="text">
+                  <string>Copy Current TCP</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QPushButton" name="solveBestButton">
+                 <property name="text">
+                  <string>Solve Best</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <widget class="QPushButton" name="solveAllButton">
+                 <property name="text">
+                  <string>Solve All</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="maxSolutionsLabel">
+                 <property name="text">
+                  <string>Max solutions</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QSpinBox" name="maxSolutionsSpinBox">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>16</number>
+                 </property>
+                 <property name="value">
+                  <number>8</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QLabel" name="ikStatusLabel">
+               <property name="text">
+                <string>IK status will appear here.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QTableWidget" name="ikResultsTableWidget">
+               <property name="editTriggers">
+                <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+               </property>
+               <property name="alternatingRowColors">
+                <bool>true</bool>
+               </property>
+               <property name="selectionMode">
+                <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+               </property>
+               <property name="columnCount">
+                <number>13</number>
+               </property>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
+               <column>
+                <property name="text">
+                 <string>#</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>J1</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>J2</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>J3</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>J4</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>J5</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>J6</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Pos err (mm)</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Ori err (deg)</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Shoulder</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Elbow</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Wrist</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Total cost</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="applySelectedSolutionButton">
+               <property name="text">
+                <string>Apply Selected Solution</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="postureTab">
+            <attribute name="title">
+             <string>Posture</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="postureTabLayout">
+             <property name="spacing">
+              <number>12</number>
+             </property>
+             <item>
+              <widget class="QGroupBox" name="currentPostureGroupBox">
+               <property name="title">
+                <string>Current Arm Config</string>
+               </property>
+               <layout class="QFormLayout" name="currentPostureFormLayout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="currentShoulderLabel">
+                  <property name="text">
+                   <string>Shoulder</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="currentShoulderValueLabel">
+                  <property name="text">
+                   <string>Any</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="currentElbowLabel">
+                  <property name="text">
+                   <string>Elbow</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="currentElbowValueLabel">
+                  <property name="text">
+                   <string>Any</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="currentWristLabel">
+                  <property name="text">
+                   <string>Wrist</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLabel" name="currentWristValueLabel">
+                  <property name="text">
+                   <string>Any</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="requestPostureGroupBox">
+               <property name="title">
+                <string>Requested Arm Config For IK</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_4">
+                <item>
+                 <layout class="QFormLayout" name="requestPostureFormLayout">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="shoulderRequestLabel">
+                    <property name="text">
+                     <string>Shoulder</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QComboBox" name="shoulderRequestComboBox"/>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="elbowRequestLabel">
+                    <property name="text">
+                     <string>Elbow</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QComboBox" name="elbowRequestComboBox"/>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="wristRequestLabel">
+                    <property name="text">
+                     <string>Wrist</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QComboBox" name="wristRequestComboBox"/>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="requirePostureCheckBox">
+                  <property name="text">
+                   <string>Require selected posture branches to match</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="postureHintLabel">
+                  <property name="text">
+                   <string>When no branch is selected, that axis stays unconstrained. With “require posture” off, selected branches are treated as a preference instead of a hard filter.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <spacer name="verticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="collisionTab">
+           <attribute name="title">
+            <string>Collision</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="collisionTabLayout">
+            <property name="spacing">
+             <number>12</number>
+            </property>
+            <item>
+             <widget class="QGroupBox" name="collisionBackendGroupBox">
+              <property name="title">
+               <string>Collision Backend</string>
+              </property>
+              <layout class="QFormLayout" name="collisionBackendFormLayout">
+               <item row="0" column="0">
+                <widget class="QLabel" name="collisionBackendLabel">
+                 <property name="text">
+                  <string>Mode</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QComboBox" name="collisionBackendComboBox"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="meshBackendAvailabilityLabel">
+                 <property name="text">
+                  <string>Mesh backend</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="meshBackendAvailabilityValueLabel">
+                 <property name="text">
+                  <string>Unknown</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="meshOriginalProfileLabel">
+                 <property name="text">
+                  <string>Mesh original profile</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="meshOriginalProfileValueLabel">
+                 <property name="text">
+                  <string>Not loaded</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QLabel" name="meshSimplifiedProfileLabel">
+                 <property name="text">
+                  <string>Mesh simplified profile</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="1">
+                <widget class="QLabel" name="meshSimplifiedProfileValueLabel">
+                 <property name="text">
+                  <string>Not loaded</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="collisionProfileGroupBox">
+              <property name="title">
+               <string>Primitive Collision Profile</string>
+              </property>
+              <layout class="QFormLayout" name="collisionProfileFormLayout">
+               <item row="0" column="0">
+                <widget class="QLabel" name="collisionProfileLabel">
+                 <property name="text">
+                  <string>Profile source</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLabel" name="collisionProfileValueLabel">
+                 <property name="text">
+                  <string>Unavailable</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="collisionSafetyMarginLabel">
+                 <property name="text">
+                  <string>Safety margin</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="collisionSafetyMarginSpinBox">
+                 <property name="decimals">
+                  <number>3</number>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>250.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>1.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="enableCollisionCheckBox">
+              <property name="text">
+               <string>Enable collision check</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="showCollisionShapesCheckBox">
+              <property name="text">
+               <string>Show collision shapes for selected backend</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="collisionProfileNoteLabel">
+              <property name="text">
+               <string>Collision truth comes from the selected RobotKinematics backend (primitive or mesh). VTK is only used for rendering and never as the collision oracle.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="collisionStatusLabel">
+              <property name="text">
+               <string>Collision status will appear here.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="collisionPairsTableWidget">
+              <property name="editTriggers">
+               <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+              </property>
+              <property name="alternatingRowColors">
+               <bool>true</bool>
+              </property>
+              <property name="selectionMode">
+               <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+              </property>
+              <property name="columnCount">
+               <number>6</number>
+              </property>
+              <attribute name="horizontalHeaderStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>State</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Geometry A</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Geometry B</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Link A</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Link B</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Clearance (mm)</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+           <widget class="QWidget" name="debugTab">
+            <attribute name="title">
+             <string>Debug</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="debugTabLayout">
+             <property name="spacing">
+              <number>12</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="debugHintLabel">
+               <property name="text">
+                <string>Debug toggles help inspect where each STL local origin lands in the scene.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="debugObjectsGroupBox">
+               <property name="title">
+                <string>Object Visibility And Origins</string>
+               </property>
+               <layout class="QGridLayout" name="debugObjectsGridLayout">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="debugObjectHeaderLabel">
+                  <property name="text">
+                   <string>Object</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="debugVisibleHeaderLabel">
+                  <property name="text">
+                   <string>Visible</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="debugOriginHeaderLabel">
+                  <property name="text">
+                   <string>Origin</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="3">
+                 <widget class="QLabel" name="debugAxisHeaderLabel">
+                  <property name="text">
+                   <string>Axis</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="baseDebugLabel">
+                  <property name="text">
+                   <string>Base</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="baseVisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="baseOriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="3">
+                 <widget class="QCheckBox" name="baseAxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="j1DebugLabel">
+                  <property name="text">
+                   <string>Joint 1</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="j1VisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="j1OriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="3">
+                 <widget class="QCheckBox" name="j1AxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="j2DebugLabel">
+                  <property name="text">
+                   <string>Joint 2</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="j2VisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="j2OriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="3">
+                 <widget class="QCheckBox" name="j2AxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="j3DebugLabel">
+                  <property name="text">
+                   <string>Joint 3</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="j3VisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QCheckBox" name="j3OriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="3">
+                 <widget class="QCheckBox" name="j3AxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="j4DebugLabel">
+                  <property name="text">
+                   <string>Joint 4</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="j4VisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="2">
+                 <widget class="QCheckBox" name="j4OriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="3">
+                 <widget class="QCheckBox" name="j4AxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QLabel" name="j5DebugLabel">
+                  <property name="text">
+                   <string>Joint 5</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QCheckBox" name="j5VisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="2">
+                 <widget class="QCheckBox" name="j5OriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="3">
+                 <widget class="QCheckBox" name="j5AxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0">
+                 <widget class="QLabel" name="j6DebugLabel">
+                  <property name="text">
+                   <string>Joint 6</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="1">
+                 <widget class="QCheckBox" name="j6VisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="2">
+                 <widget class="QCheckBox" name="j6OriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="3">
+                 <widget class="QCheckBox" name="j6AxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="0">
+                 <widget class="QLabel" name="toolDebugLabel">
+                  <property name="text">
+                   <string>Tool Mesh</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="1">
+                 <widget class="QCheckBox" name="toolVisibleCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="2">
+                 <widget class="QCheckBox" name="toolOriginCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="3">
+                 <widget class="QCheckBox" name="toolAxisCheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <spacer name="debugVerticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+         <item>
+          <spacer name="controlPanelSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="vtkHostWidget">
+       <property name="minimumSize">
+        <size>
+         <width>840</width>
+         <height>640</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="vtkHostLayout" stretch="0,1">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="sceneTitleLabel">
+          <property name="text">
+           <string>Simulation scene</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="vtkContainerWidget">
+          <property name="frameShape">
+           <enum>QFrame::Shape::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Shadow::Sunken</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1327</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

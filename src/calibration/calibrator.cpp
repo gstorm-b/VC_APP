@@ -279,7 +279,7 @@ double Calibrator::rotateRobotToImage(double angleRob, bool radians) const
     return radians ? angleImg : angleImg * kRad2Deg;
 }
 
-cv::Point3f Calibrator::translateWithZAxis(cv::Point3f &A, cv::Point3f &offset, double theta, double isRad) const
+cv::Point3f Calibrator::translateWithZAxis(const cv::Point3f &A, const cv::Point3f &offset, double theta, double isRad) const
 {
     double theta_rad = theta;
     if (!isRad) {

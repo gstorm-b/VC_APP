@@ -164,6 +164,7 @@ package "vc::runtime" {
     +stop()
     +attach()
     +detach(dest)
+    +disconnectAndWait(timeoutMs=3000)
     +workerThread() : QThread*
     +device() : IDevice*
     +isAttached() : bool
@@ -286,6 +287,11 @@ note right of TaskRunner
 
   Robot devices are ignored because
   RobotRunner does not exist yet.
+
+  enterIdle() is a full teardown: for each attached runner it calls
+  disconnectAndWait() to close the device connection on the worker
+  thread, then detach() + stop(). Closing before the cross-thread move
+  prevents leaked/half-open connections that block the next phase entry.
 end note
 
 note right of CameraRunner

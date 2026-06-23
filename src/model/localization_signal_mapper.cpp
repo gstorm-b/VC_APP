@@ -84,7 +84,7 @@ QList<LocalizationSignalEvent> LocalizationSignalMapper::mapValues(
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
         const QString signalName = signalNameForTag(it.key());
         if (signalName.isEmpty()) {
-            LOG_DEV_ERR << "LocalizationSignalMapper: unmapped PLC tag" << it.key();
+            // LOG_DEV_ERR << "LocalizationSignalMapper: unmapped PLC tag" << it.key();
             continue;
         }
 

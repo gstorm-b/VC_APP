@@ -6,6 +6,7 @@
 #include <QRegularExpression>
 #include <QThread>
 
+#include "device/output_device/vision_output_config.h"
 #include "matching/match_group.h"
 #include "matching/match_pattern.h"
 #include "model/project.h"
@@ -54,7 +55,11 @@ TaskLocalization::TaskLocalization(QString name, QString id, QObject* parent)
     m_patternManager = new mtc::PatternGroupManager(this);
     qRegisterMetaType<mtc::MatchResult>("mtc::MatchResult");
     qRegisterMetaType<cv::Mat>("cv::Mat");
+    qRegisterMetaType<CameraWorkspace>("CameraWorkspace");
+    qRegisterMetaType<CameraWorkspace>("vc::model::CameraWorkspace");
     qRegisterMetaType<std::shared_ptr<mtc::MatchGroup>>("std::shared_ptr<mtc::MatchGroup>");
+    qRegisterMetaType<std::shared_ptr<mtc::IRobotPickingChecker>>(
+        "std::shared_ptr<mtc::IRobotPickingChecker>");
 
     matchingRunner = new QThread();
     matchingRunner->setObjectName(QStringLiteral("LocalizationMatchingThread"));
@@ -205,18 +210,25 @@ bool TaskLocalization::fromJson(const QJsonObject& obj) {
 
 QMap<QString, cv::Mat> TaskLocalization::getTaskImageMap() {
     QMap<QString, cv::Mat> map;
-    if (!m_patternManager) return map;
 
-    for (const auto &group : m_patternManager->groups()) {
-        if (!group) continue;
-        const int gn = group->number();
-        for (const auto &pattern : group->patterns()) {
-            if (!pattern) continue;
-            const cv::Mat &img = pattern->config().m_rawImage;
-            if (img.empty()) continue;   // skip patterns without a training image
-            map.insert(imageKey(gn, pattern->number()), img);
+    if (m_patternManager) {
+        for (const auto &group : m_patternManager->groups()) {
+            if (!group) continue;
+            const int gn = group->number();
+            for (const auto &pattern : group->patterns()) {
+                if (!pattern) continue;
+                const cv::Mat &img = pattern->config().m_rawImage;
+                if (img.empty()) continue;   // skip patterns without a training image
+                map.insert(imageKey(gn, pattern->number()), img);
+            }
         }
     }
+
+    // Camera workspace reference images (key form "ws_{cameraId}").
+    const QMap<QString, cv::Mat> wsImages = m_config.cameraWorkspaces().getImageMap();
+    for (auto it = wsImages.cbegin(); it != wsImages.cend(); ++it)
+        map.insert(it.key(), it.value());
+
     return map;
 }
 
@@ -226,6 +238,13 @@ bool TaskLocalization::loadTaskImageMap(QMap<QString, cv::Mat> &mapping) {
 
     bool allOk = true;
     for (auto it = mapping.cbegin(); it != mapping.cend(); ++it) {
+        // Camera workspace reference image (key form "ws_{cameraId}").
+        QString workspaceCameraId;
+        if (CameraWorkspaceMap::parseImageKey(it.key(), workspaceCameraId)) {
+            m_config.d->m_cameraWorkspaces.setReferenceImage(workspaceCameraId, it.value());
+            continue;
+        }
+
         int gn = 0, pn = 0;
         if (!parseImageKey(it.key(), gn, pn)) {
             LOG_DEV_ERR << "TaskLocalization::loadTaskImageMap – bad key:" << it.key();
@@ -447,8 +466,25 @@ void TaskLocalization::wireRuntimeControllerSignals()
                 m_matchingWorker,
                 [this, controller](int cycleId,
                                    std::shared_ptr<mtc::MatchGroup> group,
-                                   cv::Mat image) {
-            mtc::MatchResult result = m_pipeline.runMatch(group, image);
+                                   CameraWorkspace workspace,
+                                   cv::Mat image,
+                                   std::shared_ptr<mtc::IRobotPickingChecker> pickingChecker) {
+
+            // Persistent matcher: reused across cycles (runs on the
+            // matchingRunner thread). The matcher + learned model are rebuilt
+            // only when the active pattern group changes, never per cycle.
+            if (!m_runtimeMatcher || m_loadedRuntimeGroup != group) {
+                m_runtimeMatcher = std::make_unique<mtc::ImageMatcher>();
+                m_loadedRuntimeGroup =
+                    m_pipeline.loadModel(*m_runtimeMatcher, group) ? group : nullptr;
+            }
+
+            mtc::MatchResult result;
+            if (m_loadedRuntimeGroup) {
+                result = m_pipeline.runMatchOn(*m_runtimeMatcher, workspace, image,
+                                               pickingChecker.get(),
+                                               LocalizationPipeline::kRuntimeMaxObjects);
+            }
             if (!controller) {
                 return;
             }
@@ -472,6 +508,16 @@ TaskLocalization::buildRuntimeContext() const
     context.primaryPlcRunner = plcRunner(context.primaryPlcDeviceId);
     context.visionOutputRunner = qobject_cast<vc::runtime::VisionOutputRunner *>(
         taskRunner() ? taskRunner()->runnerFor(context.visionOutputDeviceId) : nullptr);
+
+    // Snapshot the robot kinematic check settings from the assigned vision
+    // output device config (drives the per-object robotPossiblePickingCheck).
+    if (auto visionDevice = getTaskDevice(context.visionOutputDeviceId)) {
+        std::unique_ptr<device::IDeviceCfg> visionCfg(visionDevice->deviceConfig());
+        if (auto *voutCfg = dynamic_cast<device::VisionOutputDeviceCfg *>(visionCfg.get())) {
+            context.robotCheckConfig = voutCfg->m_kinematicCheck;
+        }
+    }
+
     context.cameraDeviceIds = m_config.d->m_deviceBindings.cameraNumberMap();
 
     for (auto it = context.cameraDeviceIds.cbegin(); it != context.cameraDeviceIds.cend(); ++it) {
@@ -594,9 +640,9 @@ void TaskLocalization::wireMatchingWorkerSignals() {
 
     // commission matching handle, working on matching worker thread
     connect(this, &TaskLocalization::startCommissionMatchingRequest,
-            m_matchingWorker, [this](std::shared_ptr<mtc::MatchGroup> group, cv::Mat image) {
+            m_matchingWorker, [this](std::shared_ptr<mtc::MatchGroup> group, cv::Mat image, CameraWorkspace workspace) {
 
-        emit this->commissionMatchingFinished(m_pipeline.runMatch(group, image));
+        emit this->commissionMatchingFinished(m_pipeline.runMatchCommision(group, workspace, image));
     });
 }
 

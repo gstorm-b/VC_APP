@@ -14,6 +14,7 @@ INCLUDEPATH += $$ROOT_DIR/src
 
 SOURCES += \
     main.cpp \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_device_base.cpp \
     $$ROOT_DIR/src/device/output_device/vision_tcpip_device.cpp \
     $$ROOT_DIR/src/logger/app_logger.cpp
 
@@ -23,6 +24,8 @@ HEADERS += \
     $$ROOT_DIR/src/device/irequest.h \
     $$ROOT_DIR/src/device/output_device/vision_output_config.h \
     $$ROOT_DIR/src/device/output_device/vision_output_device.h \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_protocol.h \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_device_base.h \
     $$ROOT_DIR/src/device/output_device/vision_tcpip_config.h \
     $$ROOT_DIR/src/device/output_device/vision_tcpip_device.h \
     $$ROOT_DIR/src/device/output_device/vision_output_request.h \

@@ -40,6 +40,8 @@ public:
     bool calibrate(double ransacReprojThreshold = 3.0);
 
     bool isCalibrated() const { return m_calibrated; }
+    std::vector<cv::Point2f>  getImagePts() const { return m_imagePts; };
+    std::vector<cv::Point3f> getRobotPts() const { return m_robotPts; };
 
     // image (px) -> robot (mm). Returned Z lies on the fitted work plane.
     cv::Point3f imageToRobot(const cv::Point2f& imagePx) const;
@@ -57,7 +59,7 @@ public:
     double rotateRobotToImage(double angleRob, bool radians = false) const;
 
     // Translate with Rotated Z axis
-    cv::Point3f translateWithZAxis(cv::Point3f &A, cv::Point3f &offset, double theta, double isRad = true) const;
+    cv::Point3f translateWithZAxis(const cv::Point3f &A, const cv::Point3f &offset, double theta, double isRad = true) const;
 
     // --- Diagnostics ---
     double reprojectionErrorPx()   const { return m_reprojErrorPx; }

@@ -29,8 +29,17 @@ private:
     void initWidget();
     void rebuildDeviceCombos();
     void rebuildCameraList();
+    void rebuildCameraWorkspaceList();
     void refreshCommTags(const QString &deviceId);
     void pushConfigToTask();
+
+    // ── Camera workspace (ROI) ──────────────────────────────────────────
+    void onWorkspaceUseToggled(const QString &cameraId, bool enabled);
+    void onWorkspaceConditionToggled(const QString &cameraId, bool enabled);
+    void onWorkspaceSetRequested(const QString &cameraId);
+
+    // Push the current workspace state of one camera to its row widget.
+    void refreshWorkspaceRow(const QString &cameraId);
 
 private:
     Ui::LocalizationSettingWidget *ui;

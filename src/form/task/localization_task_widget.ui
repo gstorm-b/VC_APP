@@ -192,7 +192,7 @@
             <x>0</x>
             <y>0</y>
             <width>335</width>
-            <height>323</height>
+            <height>305</height>
            </rect>
           </property>
          </widget>
@@ -262,10 +262,10 @@
            </spacer>
           </item>
           <item>
-           <widget class="QToolButton" name="tbtn_bc_save"/>
+           <widget class="QToolButton" name="tbtn_bc_enterRuntime"/>
           </item>
           <item>
-           <widget class="QToolButton" name="tbtn_bc_refresh"/>
+           <widget class="QToolButton" name="tbtn_bc_exitRuntime"/>
           </item>
          </layout>
         </widget>
@@ -307,7 +307,7 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>95</width>
+               <width>80</width>
                <height>476</height>
               </rect>
              </property>

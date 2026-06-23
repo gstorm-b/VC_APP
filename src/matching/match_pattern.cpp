@@ -1,4 +1,5 @@
 #include "match_pattern.h"
+#include "match_group.h"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
 #include "vision_utils.h"
@@ -12,6 +13,10 @@ MatchPattern::MatchPattern() {}
 
 MatchPattern::MatchPattern(const MatchPatternConfig& config, MatchGroup* parent)
     : m_config(config), m_parentGroup(parent) {}
+
+const EdgeMatchConfig* MatchPattern::groupEdgeConfig() const {
+    return m_parentGroup ? m_parentGroup->config().edgeConfig() : nullptr;
+}
 
 // ── Learn ─────────────────────────────────────────────────────────────────────
 
@@ -34,7 +39,7 @@ bool MatchPattern::learnPattern() {
     if (m_image.empty())
         return false;
 
-    const EdgeMatchConfig* ecfg = m_config.edgeConfig();
+    const EdgeMatchConfig* ecfg = groupEdgeConfig();
     if (!ecfg)
         return false;  // only EdgeBased is implemented
 
@@ -109,30 +114,44 @@ bool MatchPattern::learnPattern() {
     if (!m_maskPatternPoint.empty())
         cv::polylines(m_maskPatternPoint, top_layer_contours, true, cv::Scalar(255), 1);
 
-    // ── PCA contour selection (used for area-based pre-filter) ────────────
+    // ── Pattern low workpieces contour selection (used for area-based pre-filter) ────────────
 
-    int binary_threshold_style = cv::THRESH_OTSU;
+
+    Mat threshImage;
+    vector<vector<Point>> maxSizeContours;
+    vector<Vec4i> pcaHierarchy;
+    Mat imgGray = m_image.clone();
+    int binary_threshold_style = cv::THRESH_BINARY;
+
+    GaussianBlur(imgGray, imgGray, cv::Size(ecfg->blurWidth, ecfg->blurHeight), 0);
+
     if (ecfg->invertBinaryThreshold)
         binary_threshold_style |= cv::THRESH_BINARY_INV;
 
-    Mat threshImage;
-    vector<vector<Point>> pcaContours;
-    vector<Vec4i> pcaHierarchy;
-    Mat imgGray = m_image.clone();
-    threshold(imgGray, threshImage, 0, 255, binary_threshold_style);
-    findContours(threshImage, pcaContours, pcaHierarchy,
+    if(ecfg->binaryThreshold >= 0) {
+        threshold(imgGray, threshImage, ecfg->binaryThreshold, ecfg->binaryMaxValue, binary_threshold_style);
+    } else {
+        if (ecfg->invertBinaryThreshold) {
+            binary_threshold_style = cv::THRESH_BINARY_INV + cv::THRESH_OTSU;
+        } else {
+            binary_threshold_style = cv::THRESH_BINARY + cv::THRESH_OTSU;
+        }
+        threshold(imgGray, threshImage, 0, 255, binary_threshold_style);
+    }
+    // threshold(imgGray, threshImage, 0, 255, binary_threshold_style);
+    findContours(threshImage, maxSizeContours, pcaHierarchy,
                  cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
 
     const int limitArea = static_cast<int>(imgGray.cols * imgGray.rows * 0.98);
     int maxArea = 0;
-    for (int ci = 0; ci < static_cast<int>(pcaContours.size()); ++ci) {
-        int area = static_cast<int>(contourArea(pcaContours[ci]));
+    for (int ci = 0; ci < static_cast<int>(maxSizeContours.size()); ++ci) {
+        int area = static_cast<int>(contourArea(maxSizeContours[ci]));
         if (area >= limitArea) continue;
         if (area > maxArea) {
             maxArea = area;
             m_contoursSelectIndex    = ci;
             m_contoursSelectArea     = maxArea;
-            m_contoursSelectRect     = cv::minAreaRect(pcaContours[ci]);
+            m_contoursSelectRect     = cv::minAreaRect(maxSizeContours[ci]);
             m_contoursSelectRectArea = static_cast<int>(
                 m_contoursSelectRect.size.height * m_contoursSelectRect.size.width);
         }
@@ -199,7 +218,7 @@ cv::Mat MatchPattern::getImageWithPickPosition() {
 cv::Mat MatchPattern::getImageWithCannyThreshold() {
     if (m_image.empty()) return cv::Mat();
 
-    const EdgeMatchConfig* ecfg = m_config.edgeConfig();
+    const EdgeMatchConfig* ecfg = groupEdgeConfig();
     const int kernelSize = ecfg ? ecfg->kernelSize : 3;
 
     double cannyRange     = 50;
@@ -223,7 +242,7 @@ void MatchPattern::clearPatternData() {
 }
 
 void MatchPattern::findTopLayer() {
-    const EdgeMatchConfig* ecfg = m_config.edgeConfig();
+    const EdgeMatchConfig* ecfg = groupEdgeConfig();
     const int minLen = ecfg ? ecfg->minReduceLength : 32;
     m_minReduceArea = minLen * minLen;
     m_topLayer = 0;

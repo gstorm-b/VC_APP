@@ -457,6 +457,19 @@ review.
   [device_factory.h](src/device/device_factory.h),
   [device_factory.cpp](src/device/device_factory.cpp).
 
+> **Update (registry-backed dispatch, A42).** Sub-type → concrete-class
+> dispatch no longer lives in a per-family `switch` inside `DeviceFactory`.
+> `DeviceFactory::create*` delegates to
+> [DeviceRegistry](src/device/device_registry.cpp) (`kEntries`), and the wizard
+> sub-type combos read [DeviceRegistry::displayNamesFor()](src/device/device_registry.cpp).
+> Adding a **sub-type** to an existing family is therefore: (1) a new
+> `<Family>Type` enum value + To/FromString, (2) a concrete config + device
+> class, (3) one `DeviceRegistryEntry` (creator + JSON key), (4) the device
+> widget factory case in
+> [device_widget_factory.cpp](src/form/device_widget_factory.cpp). The four
+> top-level touchpoints above still apply only when adding a brand-new
+> **family** (a new `DeviceType` value).
+
 ### 12.3 Device configs are `Q_GADGET` with property macros
 
 **Rule.** Every concrete `IDeviceCfg` must declare `Q_GADGET` and expose
@@ -506,10 +519,13 @@ sub-type pattern keeps `DeviceType` at the "protocol family"
 granularity and lets a sub-dispatcher handle vendors.
 
 **Where applied.**
-- `VisionOutputDevice` currently sits top-level
-  (`DeviceType::VisionOutput`). When a second TCP/IP output device
-  appears it will be refactored the same way Camera was, see
-  [camera_device.h](src/device/camera/camera_device.h).
+- `VisionOutputDevice` sits top-level (`DeviceType::VisionOutput`) and
+  sub-dispatches on `VisionOutputType` exactly like Camera/`CameraType`.
+  The family now has two registered sub-types — `VisionTCPIP` (TCP server,
+  [vision_tcpip_device.h](src/device/output_device/vision_tcpip_device.h)) and
+  `VisionTcpipClient` (TCP client,
+  [vision_tcpip_client_device.h](src/device/output_device/vision_tcpip_client_device.h))
+  — sharing `VisionTcpipDeviceBase` (see §13.5).
 
 ---
 
@@ -586,9 +602,36 @@ packets may land in one `readyRead`. Buffer + delimiter is the only
 correct framing for variable-length protocols.
 
 **Where applied.**
-- `onMainReadyRead` (`;` delimiter) and `onHeartbeatReadyRead`
+- `onMainSocketReadyRead` (`;` delimiter) and `onHeartbeatSocketReadyRead`
   (`.` delimiter) in
-  [vision_output_device.cpp](src/device/output_device/vision_output_device.cpp).
+  [vision_tcpip_device_base.cpp](src/device/output_device/vision_tcpip_device_base.cpp).
+
+### 13.5 Server / client transports share one protocol core; only direction differs
+
+**Rule.** When the same wire protocol must be spoken from both a TCP **server**
+(this side listens) and a TCP **client** (this side dials out), the framing,
+heartbeat, result-write, and lost-connection logic live once in a shared
+abstract base. The base owns the active `QTcpSocket` pair and exposes
+`attachMainSocket()` / `attachHeartbeatSocket()`; concrete transports only
+implement how a socket is obtained (`startTransport()` / `stopTransport()`,
+plus an `onLinkLost()` hook for reconnect). The protocol/heartbeat *role* does
+not flip with the connection direction — e.g. the vision software stays the
+heartbeat master (sends `connection_check.`, expects `ack,{n}.`) and the result
+producer whether it listens or dials.
+
+**Why.** Duplicating ~250 lines of framing + heartbeat across server and client
+means a protocol fix has to be made twice and they drift. Confining the
+difference to socket acquisition keeps the two transports provably identical on
+the wire.
+
+**Where applied.**
+- [vision_tcpip_device_base.h](src/device/output_device/vision_tcpip_device_base.h)
+  / [vision_tcpip_device_base.cpp](src/device/output_device/vision_tcpip_device_base.cpp)
+  — `VisionTcpipDeviceBase` shared core.
+- [vision_tcpip_device.cpp](src/device/output_device/vision_tcpip_device.cpp)
+  — server transport (`QTcpServer::listen` + accept, reject duplicates).
+- [vision_tcpip_client_device.cpp](src/device/output_device/vision_tcpip_client_device.cpp)
+  — client transport (`QTcpSocket::connectToHost` + `reconnectIntervalMs` retry).
 
 ---
 

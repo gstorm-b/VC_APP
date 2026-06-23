@@ -202,6 +202,7 @@ package "VisionOutput" {
   enum VisionOutputType {
     VisionOutputTypeNone
     VisionTCPIP
+    VisionTcpipClient
     VisionSerial
   }
 
@@ -216,6 +217,22 @@ package "VisionOutput" {
     +toJson() : QJsonObject
   }
 
+  abstract class VisionTcpipDeviceBase <<QObject>> {
+    +deviceConnect() : bool
+    +deviceDisconnect() : bool
+    +pushRequest(request) : bool
+    +runtimeState() : VisionTcpipRuntimeState
+    +diagnostics() : VisionTcpipDiagnostics
+    -- shared protocol core --
+    #attachMainSocket(sock) : void
+    #attachHeartbeatSocket(sock) : void
+    #declareLostConnection(reason) : void
+    -- transport hooks (subclass) --
+    #startTransport() : bool
+    #stopTransport() : void
+    #onLinkLost() : void
+  }
+
   class VisionTcpipDeviceCfg <<Q_GADGET>> {
     +visionOutputType() : VisionTCPIP
     +listenAddress : QString
@@ -225,13 +242,29 @@ package "VisionOutput" {
     +heartbeatTimeoutMs : int
   }
 
+  class VisionTcpipClientDeviceCfg <<Q_GADGET>> {
+    +visionOutputType() : VisionTcpipClient
+    +serverAddress : QString
+    +mainPort : int
+    +heartbeatPort : int
+    +heartbeatIntervalMs : int
+    +heartbeatTimeoutMs : int
+    +reconnectIntervalMs : int
+  }
+
   class VisionTcpipDevice <<QObject>> {
     +visionOutputType() : VisionTCPIP
-    +deviceConnect() : bool
-    +deviceDisconnect() : bool
-    +pushRequest(request) : bool
-    +runtimeState() : VisionTcpipRuntimeState
-    +diagnostics() : VisionTcpipDiagnostics
+    -- transport: QTcpServer listen + accept --
+    #startTransport() : bool
+    #stopTransport() : void
+  }
+
+  class VisionTcpipClientDevice <<QObject>> {
+    +visionOutputType() : VisionTcpipClient
+    -- transport: QTcpSocket dial-out + reconnect --
+    #startTransport() : bool
+    #stopTransport() : void
+    #onLinkLost() : void
   }
 
   class VisionTcpipRuntimeState <<Q_GADGET>> {
@@ -313,11 +346,15 @@ McProtocolDevice *-- MCFrameAbstract
 McProtocolDevice *-- McDeviceMap
 
 VisionOutputDeviceCfg <|-- VisionTcpipDeviceCfg
-VisionOutputDevice <|-- VisionTcpipDevice
+VisionOutputDeviceCfg <|-- VisionTcpipClientDeviceCfg
+VisionOutputDevice <|-- VisionTcpipDeviceBase
+VisionTcpipDeviceBase <|-- VisionTcpipDevice
+VisionTcpipDeviceBase <|-- VisionTcpipClientDevice
 IRequest <|-- VisionOutputRequest
 VisionTcpipDevice *-- VisionTcpipDeviceCfg
-VisionTcpipDevice *-- VisionTcpipRuntimeState
-VisionTcpipDevice *-- VisionTcpipDiagnostics
+VisionTcpipClientDevice *-- VisionTcpipClientDeviceCfg
+VisionTcpipDeviceBase *-- VisionTcpipRuntimeState
+VisionTcpipDeviceBase *-- VisionTcpipDiagnostics
 
 RobotCfg <|-- KawasakiRobotCfg
 RobotCfg <|-- NachiRobotCfg
@@ -357,10 +394,13 @@ note right of IPlcIoWriter
   bTaskFault, and nFaultCode.
 end note
 
-note right of VisionTcpipDevice
-  A41 keeps JSON persistence config-only and
-  exposes runtime state / diagnostics as read-only
-  operator-facing data for widgets and tests.
+note right of VisionTcpipDeviceBase
+  Shared TCP/IP protocol core (framing, heartbeat,
+  pushRequest, runtime state / diagnostics). The
+  software is always the heartbeat master.
+  VisionTcpipDevice = TCP server (listen + accept);
+  VisionTcpipClientDevice = TCP client (dial-out +
+  reconnect). JSON persistence stays config-only.
 end note
 
 note bottom of RobotDevice

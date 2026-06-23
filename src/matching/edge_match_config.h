@@ -36,12 +36,17 @@ public:
     int    blurHeight   = 5;      ///< Gaussian pre-blur kernel height (px)
 
     // ── Matching behaviour ────────────────────────────────────────────────
-    double greediness   = 0.0;    ///< Early-exit accumulation ratio (0 = off)
+    double greediness        = 0.0;   ///< Early-exit accumulation ratio (0 = off)
+    double lowWorkpieceRatio = 1.5;   ///< Ratio used to flag low / partially-visible workpieces
 
     // ── Pattern learning ──────────────────────────────────────────────────
     int  minReduceLength       = 32;   ///< Pyramid descent stops when side < this (px)
     int  tSamples              = 3;    ///< Contour point spacing during learn
     bool invertBinaryThreshold = true; ///< Invert binary threshold for PCA contour
+
+    // ── Binarization (source pre-filter & PCA contour) ────────────────────
+    int  binaryThreshold       = -1;   ///< -1 => auto (Otsu); 0..255 => fixed threshold
+    int  binaryMaxValue        = 255;  ///< cv::threshold maxval — intensity assigned above threshold (0..255)
 
     // ── Fine-search options ───────────────────────────────────────────────
     bool subPixelEstimation = false;   ///< Quadratic sub-pixel position refinement

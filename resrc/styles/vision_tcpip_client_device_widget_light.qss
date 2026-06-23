@@ -1,0 +1,190 @@
+/* ═════════════════════════════════════════════════════════════════
+   Vision TCP/IP Client Device Widget - Light theme — Hybrid (Graphite Vision + Orange)
+   bg.window: #f2f3f5  bg.surface: #ffffff  border.default: #c8ccd4
+   accent.primary: #c06400  state.success: #1a7a40  state.error: #c0282a
+   Dynamic property "connectionState" ("connected"/"disconnected") drives
+   dot, label, and button colour variants via attribute selectors.
+   ═════════════════════════════════════════════════════════════════ */
+
+QWidget#VisionTcpipClientDeviceWidget {
+    background-color: #f2f3f5;
+}
+
+/* ── Connection card ─────────────────────────────────────────── */
+
+QFrame#frame_connection {
+    background-color: #ffffff;
+    border: 1px solid #c8ccd4;
+    border-radius: 8px;
+}
+
+/* ── Labels ──────────────────────────────────────────────────── */
+
+QLabel#lbl_conn_title {
+    color: #5a6878;
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+QLabel#lbl_ip,
+QLabel#lbl_port_heartbeat,
+QLabel#lbl_port_data {
+    color: #5a6878;
+    font: 700 8pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+/* ── Input fields ────────────────────────────────────────────── */
+
+QLineEdit#ledit_ip,
+QSpinBox#spb_port_heartbeat,
+QSpinBox#spb_port_data {
+    background-color: #ffffff;
+    color: #1a1c20;
+    border: 1px solid #c8ccd4;
+    border-radius: 5px;
+    padding: 6px 10px;
+    font: 11pt "JetBrains Mono";
+    min-height: 22px;
+}
+QLineEdit#ledit_ip:focus,
+QSpinBox#spb_port_heartbeat:focus,
+QSpinBox#spb_port_data:focus {
+    border-color: #c06400;
+}
+
+/* ── Connection status dot ───────────────────────────────────── */
+
+QLabel#lbl_conn_dot {
+    border-radius: 5px;
+    min-width: 10px; max-width: 10px;
+    min-height: 10px; max-height: 10px;
+}
+QLabel#lbl_conn_dot[connectionState="connected"]    { background-color: #1a7a40; }
+QLabel#lbl_conn_dot[connectionState="connecting"]   { background-color: #b07000; }
+QLabel#lbl_conn_dot[connectionState="disconnected"] { background-color: #c0282a; }
+
+/* ── Connection status text ──────────────────────────────────── */
+
+QLabel#lbl_conn_state {
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+QLabel#lbl_conn_state[connectionState="connected"]    { color: #1a7a40; }
+QLabel#lbl_conn_state[connectionState="connecting"]   { color: #b07000; }
+QLabel#lbl_conn_state[connectionState="disconnected"] { color: #c0282a; }
+
+/* ── Connect / Disconnect button ─────────────────────────────── */
+
+QPushButton#btn_connect {
+    border-radius: 5px;
+    padding: 7px 22px;
+    font: 700 10pt "Segoe UI";
+}
+QPushButton#btn_connect[connectionState="disconnected"] {
+    background-color: #c06400;
+    color: #ffffff;
+    border: none;
+}
+QPushButton#btn_connect[connectionState="disconnected"]:hover   { background-color: #e08020; }
+QPushButton#btn_connect[connectionState="disconnected"]:pressed { background-color: #8a4400; }
+QPushButton#btn_connect[connectionState="connected"] {
+    background-color: rgba(192, 40, 42, 0.10);
+    color: #c0282a;
+    border: 1px solid rgba(192, 40, 42, 0.30);
+}
+QPushButton#btn_connect[connectionState="connected"]:hover   { border-color: #c0282a; }
+QPushButton#btn_connect[connectionState="connected"]:pressed { background-color: rgba(192, 40, 42, 0.18); }
+QPushButton#btn_connect[connectionState="connecting"] {
+    background-color: rgba(176, 112, 0, 0.10);
+    color: #b07000;
+    border: 1px solid rgba(176, 112, 0, 0.30);
+}
+QPushButton#btn_connect[connectionState="connecting"]:hover   { border-color: #b07000; }
+QPushButton#btn_connect[connectionState="connecting"]:pressed { background-color: rgba(176, 112, 0, 0.18); }
+
+/* ── Send result card ────────────────────────────────────────── */
+
+QFrame#frame_send_result {
+    background-color: #ffffff;
+    border: 1px solid #c8ccd4;
+    border-radius: 8px;
+}
+
+QLabel#lbl_send_title {
+    color: #5a6878;
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+QLabel#lbl_send_hint {
+    font: 9pt "Segoe UI";
+}
+QLabel#lbl_send_hint[sendState="ready"] { color: #1a7a40; }
+QLabel#lbl_send_hint[sendState="idle"]  { color: #9aa0aa; }
+
+/* ── Send section buttons (+ Row / - Row) ────────────────────── */
+
+QPushButton#btn_add_row,
+QPushButton#btn_remove_row {
+    background-color: transparent;
+    color: #5a6878;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font: 9pt "Segoe UI";
+}
+QPushButton#btn_add_row:hover,
+QPushButton#btn_remove_row:hover {
+    background-color: #f2f3f5;
+    color: #1a1c20;
+}
+QPushButton#btn_add_row:pressed,
+QPushButton#btn_remove_row:pressed { background-color: #e4e6ea; }
+
+/* ── Send Result primary button ──────────────────────────────── */
+
+QPushButton#btn_send_result {
+    background-color: #c06400;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 22px;
+    font: 700 10pt "Segoe UI";
+}
+QPushButton#btn_send_result:hover   { background-color: #e08020; }
+QPushButton#btn_send_result:pressed { background-color: #8a4400; }
+QPushButton#btn_send_result:disabled {
+    background-color: #e4e6ea;
+    color: #9aa0aa;
+}
+
+/* ── Position table ──────────────────────────────────────────── */
+
+QTableWidget#tbl_positions {
+    background-color: #ffffff;
+    color: #1a1c20;
+    border: 1px solid #c8ccd4;
+    border-radius: 4px;
+    gridline-color: #e4e6ea;
+    selection-background-color: #fde8cc;
+}
+QTableWidget#tbl_positions QHeaderView::section {
+    background-color: #f2f3f5;
+    color: #5a6878;
+    font: 700 8pt "Segoe UI";
+    letter-spacing: 1px;
+    border: none;
+    border-bottom: 1px solid #c8ccd4;
+    padding: 4px;
+}
+QTableWidget#tbl_positions QDoubleSpinBox {
+    background-color: transparent;
+    color: #1a1c20;
+    border: none;
+    font: 10pt "JetBrains Mono";
+    padding: 2px 4px;
+}
+QTableWidget#tbl_positions QDoubleSpinBox:focus {
+    background-color: #fde8cc;
+}

@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QMap>
 #include <QList>
-#include "match_pattern_config.h"
 
 class QtVariantPropertyManager;
 class QtVariantProperty;
@@ -12,17 +11,21 @@ class QtProperty;
 
 namespace mtc {
 
+class MatchGroupConfig;
+
 // ---------------------------------------------------------------------------
 // MatchConfigPropertyAdapter
 //
-// Bridges MatchPatternConfig ↔ QtVariantPropertyManager/Browser.
+// Bridges a group's algorithm config (MatchGroupConfig::typeConfig) ↔
+// QtVariantPropertyManager/Browser.  The edge/algorithm parameters are shared
+// by every pattern in the group, so they are edited at the group level.
 //
 // Usage:
 //   auto* adapter = new MatchConfigPropertyAdapter(variantMgr, this);
-//   adapter->bind(&myConfig);
+//   adapter->bind(&myGroupConfig);
 //   for (auto* p : adapter->rootProperties())
 //       browser->addProperty(p);
-//   // property edits are automatically committed back to the config
+//   // property edits are automatically committed back to the group config
 //   // and configModified() is emitted
 //
 // Extending — adding a new EdgeBased setting requires only two steps:
@@ -43,9 +46,9 @@ public:
                                         QObject* parent = nullptr);
     ~MatchConfigPropertyAdapter() override;
 
-    // Bind to a config object.  Pass nullptr to unbind.
-    // Rebuilds all properties for the new config's matching type.
-    void bind(MatchPatternConfig* cfg);
+    // Bind to a group config object.  Pass nullptr to unbind.
+    // Rebuilds the algorithm-type property group for the config's matching type.
+    void bind(MatchGroupConfig* cfg);
 
     // Re-read all property values from the currently bound config.
     void refresh();
@@ -62,14 +65,12 @@ private slots:
 
 private:
     void build();
-    void buildCommonGroup();
     void buildTypeGroup();
     void destroy();
 
     QtVariantPropertyManager* m_mgr{nullptr};
-    MatchPatternConfig*        m_cfg{nullptr};
+    MatchGroupConfig*          m_cfg{nullptr};
 
-    QtVariantProperty* m_grpCommon{nullptr};  // "Common" expandable group
     QtVariantProperty* m_grpType{nullptr};    // "Edge-Based" / "Correlation" group
 
     QMap<QString, QtVariantProperty *> m_props;     // key  → property

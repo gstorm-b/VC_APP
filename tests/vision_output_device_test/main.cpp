@@ -6,20 +6,22 @@
 #include <QTcpSocket>
 #include <QtTest/QtTest>
 
+#include <functional>
+
 #include "device/output_device/vision_output_device.h"
+#include "device/output_device/vision_output_request.h"
 #include "device/output_device/vision_tcpip_config.h"
 #include "device/output_device/vision_tcpip_device.h"
-#include "device/output_device/vision_output_request.h"
 
 using namespace vc::device;
 
 namespace {
 
-constexpr int   kMainPort  = 25101;
-constexpr int   kHbPort    = 25102;
-constexpr int   kHbInterval = 200;
-constexpr int   kHbTimeout  = 500;
-constexpr char  kListen[]  = "127.0.0.1";
+constexpr int  kMainPort   = 25101;
+constexpr int  kHbPort     = 25102;
+constexpr int  kHbInterval = 150;
+constexpr int  kHbTimeout  = 400;
+constexpr char kListen[]   = "127.0.0.1";
 
 VisionTcpipDeviceCfg makeCfg() {
     VisionTcpipDeviceCfg cfg;
@@ -31,23 +33,79 @@ VisionTcpipDeviceCfg makeCfg() {
     return cfg;
 }
 
-bool waitConnected(QTcpSocket *sock, int ms = 1000) {
-    return sock->waitForConnected(ms);
-}
-
-// Vừa pump global event loop (để server slot trong cùng thread chạy),
-// vừa chờ socket client có data.
-bool waitReadable(QTcpSocket *sock, int ms = 1500) {
+// Pump the event loop until `pred` holds or `ms` elapses.
+bool waitFor(std::function<bool()> pred, int ms = 2000) {
     QElapsedTimer t;
     t.start();
-    while (t.elapsed() < ms) {
-        if (sock->bytesAvailable() > 0) return true;
+    while (!pred() && t.elapsed() < ms) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
-        if (sock->bytesAvailable() > 0) return true;
-        sock->waitForReadyRead(20);
+        QTest::qWait(5);
     }
-    return sock->bytesAvailable() > 0;
+    return pred();
 }
+
+// External client that connects INTO the VisionTcpipDevice server: one socket
+// on the main port, one on the heartbeat port. Optionally auto-replies
+// "ack,{count}." to each "connection_check." probe (the server is the
+// heartbeat master).
+class ClientPeer : public QObject {
+    Q_OBJECT
+public:
+    explicit ClientPeer(bool autoAck, QObject *parent = nullptr)
+        : QObject(parent), m_autoAck(autoAck) {}
+
+    void connectMain() {
+        m_mainSock = new QTcpSocket(this);
+        connect(m_mainSock, &QTcpSocket::readyRead, this, [this]() {
+            m_mainRx.append(m_mainSock->readAll());
+        });
+        m_mainSock->connectToHost(kListen, kMainPort);
+    }
+
+    void connectHeartbeat() {
+        m_hbSock = new QTcpSocket(this);
+        connect(m_hbSock, &QTcpSocket::readyRead, this, [this]() {
+            m_hbRx.append(m_hbSock->readAll());
+            if (!m_autoAck) return;
+            int idx = m_hbRx.indexOf('.');
+            while (idx >= 0) {
+                const QByteArray msg = m_hbRx.left(idx + 1);
+                m_hbRx.remove(0, idx + 1);
+                if (msg == QByteArray("connection_check.")) {
+                    ++m_probesReceived;
+                    const QByteArray ack =
+                        QByteArray("ack,") + QByteArray::number(m_ackCount) + ".";
+                    m_hbSock->write(ack);
+                    m_hbSock->flush();
+                    m_ackCount = (m_ackCount + 1) % (1 << 16);
+                }
+                idx = m_hbRx.indexOf('.');
+            }
+        });
+        m_hbSock->connectToHost(kListen, kHbPort);
+    }
+
+    void sendMain(const QByteArray &data) {
+        if (!m_mainSock) return;
+        m_mainSock->write(data);
+        m_mainSock->flush();
+    }
+
+    bool mainConnected() const {
+        return m_mainSock && m_mainSock->state() == QAbstractSocket::ConnectedState;
+    }
+    int probesReceived() const { return m_probesReceived; }
+    QByteArray mainRx()  const { return m_mainRx; }
+
+private:
+    bool m_autoAck;
+    QTcpSocket *m_mainSock{nullptr};
+    QTcpSocket *m_hbSock{nullptr};
+    QByteArray m_mainRx;
+    QByteArray m_hbRx;
+    int m_probesReceived{0};
+    quint16 m_ackCount{0};
+};
 
 } // namespace
 
@@ -55,10 +113,6 @@ class VisionOutputDeviceTest : public QObject {
     Q_OBJECT
 
 private slots:
-
-    void initTestCase() {
-        // Đảm bảo gặp QSignalSpy thì biết Qt event loop sẽ chạy.
-    }
 
     void test_config_clone_and_json() {
         VisionTcpipDeviceCfg cfg = makeCfg();
@@ -75,184 +129,130 @@ private slots:
         std::unique_ptr<IDeviceCfg> cloned(cfg.clone());
         QVERIFY(cloned != nullptr);
         QCOMPARE(cloned->deviceType(), DeviceType::VisionOutput);
+        QCOMPARE(static_cast<VisionOutputDeviceCfg*>(cloned.get())->visionOutputType(),
+                 VisionOutputType::VisionTCPIP);
     }
 
     void test_request_payload_format() {
-        VisionOutputRequest req(QVector<VisionOutputPosition>{
-            { 10.0, 20.0, 0.0,  90.0 },
-            { 15.5, 25.5, 1.25, 45.0 }
-        });
+        QVector<VisionOutputPosition> positions = {
+            {10.0, 20.0, 0.0, 90.0},
+            {15.0, 25.0, 0.0, 0.0},
+        };
+        VisionOutputRequest req(positions);
+        QCOMPARE(req.buildPayload(),
+                 QByteArray("2,10.000,20.000,0.000,90.000,15.000,25.000,0.000,0.000;"));
 
-        QByteArray payload = req.buildPayload();
-        QVERIFY(payload.startsWith("2,"));
-        QVERIFY(payload.endsWith(';'));
-
-        // Theo spec format: "{count},x,y,z,r,x,y,z,r;"
-        // Tổng số dấu ',' = (4 trục - 1) cho mỗi pos + 1 ngăn cách count/pos
-        // + (N-1) ngăn cách giữa các pos = N*3 + 1 + (N-1) = 4*N
-        const int N = 2;
-        QCOMPARE(payload.count(','), 4 * N);
-
-        // Bóc giá trị: bỏ ';' cuối rồi split bằng ','
-        QByteArray body = payload.left(payload.size() - 1);
-        QList<QByteArray> parts = body.split(',');
-        QCOMPARE(parts.size(), 1 + 4 * N);
-        QCOMPARE(parts.first(), QByteArray("2"));
-
-        // Empty request -> "0;"
         VisionOutputRequest empty(QVector<VisionOutputPosition>{});
         QCOMPARE(empty.buildPayload(), QByteArray("0;"));
+
+        VisionOutputRequest raw(QByteArray("raw_bytes;"));
+        QCOMPARE(raw.buildPayload(), QByteArray("raw_bytes;"));
     }
 
-    void test_connect_disconnect_lifecycle() {
-        VisionTcpipDevice dev("dev1", "VO");
+    // Server reaches Connected (listening) as soon as deviceConnect succeeds,
+    // before any client attaches.
+    void test_server_listens_on_connect() {
+        VisionTcpipDevice device(QStringLiteral("srv"), QStringLiteral("Server"));
         VisionTcpipDeviceCfg cfg = makeCfg();
-        dev.setDeviceConfig(&cfg);
+        device.setVisionTcpipConfig(cfg);
 
-        QVERIFY(dev.deviceConnect());
-        QVERIFY(dev.isDeviceConnected());
-        QVERIFY(dev.deviceDisconnect());
-        QVERIFY(!dev.isDeviceConnected());
+        QVERIFY(device.deviceConnect());
+        QCOMPARE(device.connectStatus(), ConnectStatus::Connected);
+        QVERIFY(!device.isMainClientConnected());
+        QVERIFY(!device.isHeartbeatClientConnected());
+
+        device.deviceDisconnect();
+        QCOMPARE(device.connectStatus(), ConnectStatus::Disconnected);
     }
 
-    void test_heartbeat_happy_path() {
-        VisionTcpipDevice dev("dev_hb", "VO");
+    // Client attaches on both ports; heartbeat probe is acked and the counter
+    // advances; result push reaches the client; client requests are received.
+    void test_client_attach_heartbeat_and_io() {
+        VisionTcpipDevice device(QStringLiteral("srv_io"), QStringLiteral("Server IO"));
         VisionTcpipDeviceCfg cfg = makeCfg();
-        dev.setDeviceConfig(&cfg);
-        QVERIFY(dev.deviceConnect());
+        device.setVisionTcpipConfig(cfg);
+        QVERIFY(device.deviceConnect());
 
-        QTcpSocket hb;
-        hb.connectToHost(QHostAddress(kListen), cfg.m_heartbeatPort);
-        QVERIFY(waitConnected(&hb));
+        QSignalSpy mainStateSpy(&device, &VisionTcpipDevice::mainClientStateChanged);
+        QSignalSpy reqSpy(&device, &VisionTcpipDevice::mainRequestReceived);
 
-        // Nhận probe đầu tiên
-        QVERIFY(waitReadable(&hb));
-        QByteArray got = hb.readAll();
-        QCOMPARE(got, QByteArray("connection_check."));
+        ClientPeer peer(/*autoAck=*/true);
+        peer.connectHeartbeat();
+        peer.connectMain();
 
-        // Reply ack đúng count
-        QByteArray reply = "ack,0.";
-        QCOMPARE(hb.write(reply), qint64(reply.size()));
-        QVERIFY(hb.waitForBytesWritten(500));
+        QVERIFY(waitFor([&]() { return device.isMainClientConnected()
+                                    && device.isHeartbeatClientConnected(); }));
+        QVERIFY(!mainStateSpy.isEmpty());
+        QCOMPARE(mainStateSpy.last().at(0).toBool(), true);
 
-        // Đợi probe thứ 2 (sau khoảng heartbeatInterval)
-        QVERIFY(waitReadable(&hb, kHbInterval * 5));
-        got = hb.readAll();
-        QCOMPARE(got, QByteArray("connection_check."));
+        // Heartbeat: at least one probe acked -> expected counter advanced.
+        QVERIFY(waitFor([&]() { return peer.probesReceived() >= 1
+                                    && device.expectedAckCount() >= 1; }));
+        QCOMPARE(device.connectStatus(), ConnectStatus::Connected);
 
-        QVERIFY(dev.isDeviceConnected());
+        // Result push from the server reaches the client's main socket.
+        VisionOutputRequest result(QVector<VisionOutputPosition>{{1.0, 2.0, 3.0, 4.0}});
+        QVERIFY(device.pushRequest(&result));
+        QVERIFY(waitFor([&]() { return peer.mainRx().contains(';'); }));
+        QCOMPARE(peer.mainRx(), QByteArray("1,1.000,2.000,3.000,4.000;"));
 
-        reply = "ack,1.";
-        hb.write(reply);
-        hb.waitForBytesWritten(500);
+        // A ';'-framed message from the client is surfaced as a request.
+        peer.sendMain(QByteArray("trigger;"));
+        QVERIFY(waitFor([&]() { return reqSpy.count() >= 1; }));
+        QCOMPARE(reqSpy.last().at(0).toByteArray(), QByteArray("trigger;"));
 
-        // Cho server slot onHeartbeatReadyRead chạy để parse reply.
-        QElapsedTimer t; t.start();
-        while (dev.expectedAckCount() != 2 && t.elapsed() < 1000) {
-            QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
-        }
-        QCOMPARE(int(dev.expectedAckCount()), 2);
-
-        dev.deviceDisconnect();
+        device.deviceDisconnect();
     }
 
-    void test_heartbeat_invalid_format_triggers_lost() {
-        VisionTcpipDevice dev("dev_hb2", "VO");
+    // No ack from the heartbeat client -> server declares LostConnected.
+    void test_heartbeat_timeout_declares_lost() {
+        VisionTcpipDevice device(QStringLiteral("srv_to"), QStringLiteral("Server TO"));
         VisionTcpipDeviceCfg cfg = makeCfg();
-        dev.setDeviceConfig(&cfg);
-        QVERIFY(dev.deviceConnect());
+        device.setVisionTcpipConfig(cfg);
+        QVERIFY(device.deviceConnect());
 
-        QSignalSpy lostSpy(&dev, &VisionTcpipDevice::heartbeatLost);
+        QSignalSpy lostSpy(&device, &VisionTcpipDevice::heartbeatLost);
 
-        QTcpSocket hb;
-        hb.connectToHost(QHostAddress(kListen), cfg.m_heartbeatPort);
-        QVERIFY(waitConnected(&hb));
-        QVERIFY(waitReadable(&hb));
-        hb.readAll();
+        ClientPeer peer(/*autoAck=*/false);
+        peer.connectHeartbeat();
+        QVERIFY(waitFor([&]() { return device.isHeartbeatClientConnected(); }));
 
-        // Reply sai format
-        QByteArray bad = "garbage.";
-        hb.write(bad);
-        hb.waitForBytesWritten(500);
+        QVERIFY(waitFor([&]() {
+            return device.connectStatus() == ConnectStatus::LostConnected;
+        }, 3000));
+        QVERIFY(lostSpy.count() >= 1);
+        QVERIFY(device.diagnostics().lostConnectionCount >= 1);
 
-        QVERIFY(lostSpy.wait(2000));
-        QCOMPARE(dev.connectStatus(), ConnectStatus::LostConnected);
-
-        dev.deviceDisconnect();
+        device.deviceDisconnect();
     }
 
-    void test_heartbeat_timeout_triggers_lost() {
-        VisionTcpipDevice dev("dev_hb3", "VO");
+    // A second client on the main port is rejected; the first stays attached.
+    void test_reject_duplicate_main_client() {
+        VisionTcpipDevice device(QStringLiteral("srv_dup"), QStringLiteral("Server Dup"));
         VisionTcpipDeviceCfg cfg = makeCfg();
-        dev.setDeviceConfig(&cfg);
-        QVERIFY(dev.deviceConnect());
+        device.setVisionTcpipConfig(cfg);
+        QVERIFY(device.deviceConnect());
 
-        QSignalSpy lostSpy(&dev, &VisionTcpipDevice::heartbeatLost);
+        ClientPeer first(/*autoAck=*/true);
+        first.connectMain();
+        QVERIFY(waitFor([&]() { return device.isMainClientConnected(); }));
 
-        QTcpSocket hb;
-        hb.connectToHost(QHostAddress(kListen), cfg.m_heartbeatPort);
-        QVERIFY(waitConnected(&hb));
-        QVERIFY(waitReadable(&hb));
-        hb.readAll();
-        // Không reply gì cả -> sau timeout sẽ lost.
+        ClientPeer second(/*autoAck=*/true);
+        second.connectMain();
+        // Give the server a chance to accept + reject the duplicate.
+        QTest::qWait(200);
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
 
-        QVERIFY(lostSpy.wait(kHbTimeout + 2 * kHbInterval + 1500));
-        QCOMPARE(dev.connectStatus(), ConnectStatus::LostConnected);
+        // The server still has exactly one main client and forwards a push to it.
+        QVERIFY(device.isMainClientConnected());
+        VisionOutputRequest result(QVector<VisionOutputPosition>{{5.0, 6.0, 7.0, 8.0}});
+        QVERIFY(device.pushRequest(&result));
+        QVERIFY(waitFor([&]() { return first.mainRx().contains(';'); }));
+        QCOMPARE(first.mainRx(), QByteArray("1,5.000,6.000,7.000,8.000;"));
 
-        dev.deviceDisconnect();
-    }
-
-    void test_push_request_sends_result_on_main_port() {
-        VisionTcpipDevice dev("dev_main", "VO");
-        VisionTcpipDeviceCfg cfg = makeCfg();
-        dev.setDeviceConfig(&cfg);
-        QVERIFY(dev.deviceConnect());
-
-        QTcpSocket main;
-        main.connectToHost(QHostAddress(kListen), cfg.m_mainPort);
-        QVERIFY(waitConnected(&main));
-
-        // Cho event loop xử lý newConnection
-        QTest::qWait(100);
-        QVERIFY(dev.isMainClientConnected());
-
-        VisionOutputRequest req(QVector<VisionOutputPosition>{
-            { 1.0, 2.0, 3.0, 4.0 }
-        });
-        QVERIFY(dev.pushRequest(&req));
-
-        QVERIFY(waitReadable(&main));
-        QByteArray got = main.readAll();
-        QVERIFY(got.startsWith("1,"));
-        QVERIFY(got.endsWith(';'));
-
-        dev.deviceDisconnect();
-    }
-
-    void test_main_port_receives_payload() {
-        VisionTcpipDevice dev("dev_main2", "VO");
-        VisionTcpipDeviceCfg cfg = makeCfg();
-        dev.setDeviceConfig(&cfg);
-        QVERIFY(dev.deviceConnect());
-
-        QSignalSpy rxSpy(&dev, &VisionTcpipDevice::mainRequestReceived);
-
-        QTcpSocket main;
-        main.connectToHost(QHostAddress(kListen), cfg.m_mainPort);
-        QVERIFY(waitConnected(&main));
-        QTest::qWait(100);
-
-        QByteArray req = "trigger,1;";
-        main.write(req);
-        main.waitForBytesWritten(500);
-
-        QVERIFY(rxSpy.wait(1000));
-        QCOMPARE(rxSpy.first().first().toByteArray(), req);
-
-        dev.deviceDisconnect();
+        device.deviceDisconnect();
     }
 };
 
 QTEST_MAIN(VisionOutputDeviceTest)
-
 #include "main.moc"

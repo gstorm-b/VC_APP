@@ -459,6 +459,20 @@ QWidget *AddPatternWizard::buildStepBox() {
                 m_boxW = w; m_boxH = h; m_boxDist = d; m_boxAngle = a;
                 updateFooterStatus();
             });
+    // The picking centre can also be dragged on the box canvas (for
+    // convenience while positioning the jaws).  The box canvas shows the full
+    // frame, so `p` is full-image coords — mirror the Pick-step storage
+    // semantics (crop-relative when the user cropped) and echo the pick spins.
+    connect(m_boxCanvas, &AddPatternImageCanvas::pickChanged,
+            this, [this](const QPoint &p, const QPoint &) {
+                m_pick = m_keepOriginal ? p : (p - m_crop.topLeft());
+                if (m_pickXSpin) {
+                    QSignalBlocker b1(m_pickXSpin), b2(m_pickYSpin);
+                    m_pickXSpin->setValue(m_pick.x());
+                    m_pickYSpin->setValue(m_pick.y());
+                }
+                updateFooterStatus();
+            });
     lay->addWidget(m_boxCanvas, 1);
 
     auto *col = new QWidget; col->setFixedWidth(280);

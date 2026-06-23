@@ -17,8 +17,10 @@
 
 #include "device/idevice_config.h"
 #include "device/camera/camera_device.h"
+#include "device/output_device/vision_output_config.h"
 #include "device/output_device/vision_output_request.h"
 #include "matching/image_matcher.h"
+#include "matching/robot_picking_checker.h"
 #include "model/localization_fault_code.h"
 #include "model/localization_recovery_policy.h"
 #include "model/localization_signal_mapper.h"
@@ -48,6 +50,10 @@ public:
         QMap<int, QPointer<vc::runtime::CameraRunner>> cameraRunners;
         QMap<int, std::shared_ptr<mtc::MatchGroup>> patternGroups;
         QMap<int, calib::Calibrator> cameraCalibrators;
+        // Robot kinematic check settings snapshotted from the assigned vision
+        // output device; drives the per-object robotPossiblePickingCheck.
+        vc::device::RobotKinematicCheckConfig robotCheckConfig;
+        CameraWorkspace activeCameraWorkspace;
         int activeCameraNumber{-1};
         int activePatternGroupNumber{-1};
     };
@@ -115,7 +121,9 @@ signals:
     void runtimeFault(QString message);
     void runtimeMatchingRequested(int cycleId,
                                   std::shared_ptr<mtc::MatchGroup> group,
-                                  cv::Mat image);
+                                  CameraWorkspace workspace,
+                                  cv::Mat image,
+                                  std::shared_ptr<mtc::IRobotPickingChecker> pickingChecker);
 
 private:
     struct RoleRecoveryContext {
@@ -167,6 +175,10 @@ private:
     void appendTaskLog(const QString &severity, const QString &message);
     bool validateActivePatternGroup(QStringList *errors = nullptr) const;
     bool validateActiveCameraCalibration(QStringList *errors = nullptr) const;
+    // (Re)build the robot-pickability checker for the active camera. Called once
+    // at runtime setup and again on active-camera change (calibrator differs per
+    // camera). Null when the kinematic check is disabled or no valid calibration.
+    void rebuildPickingChecker();
     std::shared_ptr<mtc::MatchGroup> snapshotActivePatternGroup() const;
     QVector<vc::device::VisionOutputPosition> buildVisionOutputPositions(
         const mtc::MatchResult &matchResult,
@@ -199,6 +211,10 @@ private:
     QMetaObject::Connection m_visionOutputResultConnection;
     bool m_valid{false};
     int m_activeCameraNumber{-1};
+    // Robot-pickability checker for the active camera (built at setup / camera
+    // change). Passed to the matcher each cycle; null = matching not gated.
+    std::shared_ptr<mtc::IRobotPickingChecker> m_pickingChecker;
+    CameraWorkspace m_activeCameraWorkspace;
     int m_activePatternGroupNumber{-1};
     int m_activeCycleId{0};
     bool m_lastExecuteTrigger{false};
@@ -215,5 +231,6 @@ private:
 Q_DECLARE_METATYPE(vc::model::LocalizationRuntimeController::ResultRow)
 Q_DECLARE_METATYPE(vc::model::LocalizationRuntimeController::CycleResult)
 Q_DECLARE_METATYPE(vc::model::LocalizationRuntimeController::TaskLogEntry)
+Q_DECLARE_METATYPE(std::shared_ptr<mtc::IRobotPickingChecker>)
 
 #endif // LOCALIZATION_RUNTIME_CONTROLLER_H

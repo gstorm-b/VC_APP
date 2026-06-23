@@ -2,6 +2,7 @@
 
 #include <opencv2/core/persistence.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -31,6 +32,30 @@ cv::Mat CalibrationBoard::pointsToMat(const std::vector<cv::Point3f>& pts)
 std::string CalibrationBoard::typeName() const
 {
     return typeid(*this).name();
+}
+
+cv::Mat CalibrationBoard::binarize(const cv::Mat& image, double* usedThreshold) const
+{
+    cv::Mat gray;
+    if (image.channels() == 1) {
+        gray = image;
+    } else {
+        cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    }
+
+    cv::Mat binary;
+    const int t = binarizeThreshold();
+    double applied = 0.0;
+    if (t < 0) {
+        // Auto: Otsu picks the threshold; cv::threshold returns the value used.
+        applied = cv::threshold(gray, binary, 0, 255,
+                                cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
+    } else {
+        applied = static_cast<double>(t);
+        cv::threshold(gray, binary, applied, 255, cv::THRESH_BINARY_INV);
+    }
+    if (usedThreshold) *usedThreshold = applied;
+    return binary;
 }
 
 std::string CalibrationBoard::toJson() const

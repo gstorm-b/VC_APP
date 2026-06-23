@@ -14,6 +14,7 @@
 #include "runtime/vision_output_runner.h"
 
 #include "form/device_widget.h"
+#include "form/vision_output/robot_kinematic_check_widget.h"
 
 namespace Ui {
 class VisionTcpipDeviceWidget;
@@ -60,12 +61,14 @@ private:
     std::shared_ptr<vc::device::IDevice> m_device;
     // This widget is the TCP-transport view of the VisionOutput family; the
     // sibling VisionSerial transport will need its own widget when it lands.
-    vc::device::VisionTcpipDevice* m_output_device;
+    vc::device::VisionTcpipDevice* m_output_device{nullptr};
     ads::CDockWidget *m_dock{nullptr};
 
     vc::device::VisionTcpipDeviceCfg m_config;
 
     vc::runtime::VisionOutputRunner *m_runner{nullptr};
+
+    RobotKinematicCheckWidget *m_kcheckWidget{nullptr};
 
     bool m_populating_browser{false};
 };

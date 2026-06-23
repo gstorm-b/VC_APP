@@ -4,6 +4,7 @@
 #include <pylon/gige/GigETransportLayer.h>
 
 #include <QJsonArray>
+#include <QThread>
 
 using namespace Pylon;
 
@@ -18,6 +19,7 @@ QJsonObject BaslerGigeCfg::toJson() const {
     obj["AutoBacklightControl"]     = m_autoBacklightControl;
     obj["AutoBacklightLine"]        = m_autoBacklightLine;
     obj["AutoBacklightLineInvert"]  = m_autoBacklightInvert;
+    obj["AutoBackLightDelay"]       = m_autoBacklightDelay;
     obj["AutoExposureMode"]         = BaslerExposureTypeToString(m_autoExposureMode);
     obj["ExposureLimitMax"]         = m_paramsExposureMax;
     obj["ExposureLimitMin"]         = m_paramsExposureMin;
@@ -52,6 +54,7 @@ bool BaslerGigeCfg::fromJson(const QJsonObject &obj) {
     m_autoBacklightControl        = obj["AutoBacklightControl"].toBool(false);
     m_autoBacklightLine           = obj["AutoBacklightLine"].toString();
     m_autoBacklightInvert         = obj["AutoBacklightLineInvert"].toBool(false);
+    m_autoBacklightDelay          = obj["AutoBackLightDelay"].toInt(0);
 
     m_autoExposureMode            = BaslerExposureTypeFromString(obj["AutoExposureMode"].toString());
 
@@ -236,6 +239,7 @@ void BaslerGigECamera::setDeviceConfig(IDeviceCfg *cfg) {
     m_config.m_autoBacklightControl = gige_cfg->m_autoBacklightControl;
     m_config.m_autoBacklightLine = gige_cfg->m_autoBacklightLine;
     m_config.m_autoBacklightInvert = gige_cfg->m_autoBacklightInvert;
+    m_config.m_autoBacklightDelay = gige_cfg->m_autoBacklightDelay;
 
     m_config.m_ioCapabilities = gige_cfg->m_ioCapabilities;
 
@@ -395,6 +399,7 @@ GrabResult BaslerGigECamera::grabSingleShot() {
         // enable output before grabbing
         if (m_config.m_autoBacklightControl) {
             setOutputLineState(m_config.m_autoBacklightLine, true);
+            QThread::usleep(m_config.m_autoBacklightDelay);
         }
 
         // smart pointer receive the grab result data
@@ -410,7 +415,7 @@ GrabResult BaslerGigECamera::grabSingleShot() {
             result.isGrabSuccess= true;
             result.msg = "Grab Succesfull";
             emit grabFinished(result);
-        } else {
+        } else {\
             LOG_DEV_ERR << "grab single shot error:"
                          << QString::number(ptrGrabResult->GetErrorCode(), 16)
                          << ptrGrabResult->GetErrorDescription();

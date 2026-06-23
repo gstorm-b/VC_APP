@@ -10,17 +10,18 @@
 namespace mtc {
 
 class MatchGroup;
+class EdgeMatchConfig;
 
 // ---------------------------------------------------------------------------
 // MatchPattern — a single learned template.
 //
-// Carries a MatchPatternConfig (identity + search params + typed algo config)
-// plus the data computed by learnPattern(): image pyramids, edge point arrays,
-// contour masks, etc.
+// Carries a MatchPatternConfig (identity + per-pattern search params) plus the
+// data computed by learnPattern(): image pyramids, edge point arrays, contour
+// masks, etc.  The algorithm (Edge-Based) config is shared at the group level
+// (MatchGroupConfig::typeConfig) and fetched via the parent group.
 //
-// To change algorithm settings after construction, retrieve a copy of the
-// config, modify the relevant fields (including typeConfig), then call
-// setConfig().
+// To change per-pattern settings after construction, retrieve a copy of the
+// config, modify the relevant fields, then call setConfig().
 // ---------------------------------------------------------------------------
 class MatchPattern {
 public:
@@ -75,6 +76,10 @@ public:
 private:
     void clearPatternData();
     void findTopLayer();
+
+    // Edge algorithm config is shared at the group level — fetch it from the
+    // parent group (nullptr if no parent or the group is not EdgeBased).
+    const EdgeMatchConfig* groupEdgeConfig() const;
 
     friend class MatchGroup;
     ManagerResult setConfig(const MatchPatternConfig& cfg);

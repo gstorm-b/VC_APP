@@ -1,4 +1,5 @@
 #include "match_config_property_adapter.h"
+#include "match_group.h"
 #include "edge_match_config.h"
 
 #include "widgets/property_browser/prop_spec.h"
@@ -8,56 +9,14 @@
 namespace mtc {
 
 // ============================================================================
-//  Property spec tables
+//  Property spec table — EdgeBased algorithm parameters (group-level)
 //
 //  Each entry fully describes one editable field.
 //  Adding a new setting = adding ONE entry here. Nothing else changes.
 //  See prop_spec.h for the complete PropSpec<Config> field reference.
+//  (Pattern-level "Common" params live in the patterns widget — they are
+//   per-pattern, not shared at the group level.)
 // ============================================================================
-
-// ── Common (type-agnostic) parameters ────────────────────────────────────────
-
-static const QList<PropSpec<MatchPatternConfig>> kCommonSpecs = {
-    { "patternName",       "Pattern Name",           "Name of pattern.",
-     QMetaType::QString, 0,   -1,   0,  0, false,
-     [](const auto &c){ return QVariant(QString::fromStdWString(c.m_patternName)); },
-     [](auto &c, const auto &v){ c.m_patternName = v.toString().toStdWString(); } },
-
-    { "patternIndex",       "Pattern Number",        "Number of pattern (1 – 16).",
-     QMetaType::Int, 1,   16,   1,  1, false,
-     [](const auto &c){ return QVariant(c.m_patternIndex); },
-     [](auto &c, const auto &v){ c.m_patternIndex = v.toInt(); } },
-
-    { "minScore",       "Min Score",           "Minimum acceptable match score (0 – 1).",
-      QMetaType::Double, 0.0,   1.0,   0.01,  3, false,
-      [](const auto &c){ return QVariant(c.m_minScore); },
-      [](auto &c, const auto &v){ c.m_minScore = v.toDouble(); } },
-
-    { "angle",          "Angle (°)",           "Search center angle in degrees.",
-      QMetaType::Double, -360.0, 360.0, 1.0,  1, false,
-      [](const auto &c){ return QVariant(c.m_angle); },
-      [](auto &c, const auto &v){ c.m_angle = v.toDouble(); } },
-
-    { "toleranceAngle", "Tolerance Angle (°)", "Allowed angle deviation around the center angle.",
-      QMetaType::Double, 0.0,  360.0,  1.0,   1, false,
-      [](const auto &c){ return QVariant(c.m_toleranceAngle); },
-      [](auto &c, const auto &v){ c.m_toleranceAngle = v.toDouble(); } },
-
-    { "maxOverlap",     "Max Overlap",         "Maximum allowed overlap ratio between detections (0 – 1).",
-      QMetaType::Double, 0.0,  1.0,    0.01,  3, false,
-      [](const auto &c){ return QVariant(c.m_maxOverlap); },
-      [](auto &c, const auto &v){ c.m_maxOverlap = v.toDouble(); } },
-
-    { "pickingPosX",     "Picking position (X)", "Picking position offset X on pattern.",
-     QMetaType::Double, -1000000.0,  1000000.0,    0.01,  3, false,
-     [](const auto &c){ return QVariant(c.m_pickPosition.x); },
-     [](auto &c, const auto &v){ c.m_pickPosition.x = v.toDouble(); } },
-
-    { "pickingPosY",     "Picking position (Y)", "Picking position offset Y on pattern.",
-     QMetaType::Double, -1000000.0,  1000000.0,    0.01,  3, false,
-     [](const auto &c){ return QVariant(c.m_pickPosition.y); },
-     [](auto &c, const auto &v){ c.m_pickPosition.y = v.toDouble(); } },
-};
 
 // ── EdgeBased parameters ──────────────────────────────────────────────────────
 
@@ -107,6 +66,16 @@ static const QList<PropSpec<EdgeMatchConfig>> kEdgeSpecs = {
       [](const auto &c){ return QVariant(c.invertBinaryThreshold); },
       [](auto &c, const auto &v){ c.invertBinaryThreshold = v.toBool(); } },
 
+    { "binaryThreshold", "Binary Threshold",     "Source binarization threshold: -1 = auto (Otsu), 0–255 = fixed value.",
+      QMetaType::Int,    -1,   255,    1,      -1, false,
+      [](const auto &c){ return QVariant(c.binaryThreshold); },
+      [](auto &c, const auto &v){ c.binaryThreshold = v.toInt(); } },
+
+    { "binaryMaxValue",  "Binary Max Value",     "Intensity assigned to pixels above the binary threshold (0–255).",
+      QMetaType::Int,    0,    255,    1,      -1, false,
+      [](const auto &c){ return QVariant(c.binaryMaxValue); },
+      [](auto &c, const auto &v){ c.binaryMaxValue = v.toInt(); } },
+
     { "subPixel",        "Sub-Pixel Estimation", "Enable sub-pixel accuracy for pose estimation.",
       QMetaType::Bool,   {},{},{},               -1, false,
       [](const auto &c){ return QVariant(c.subPixelEstimation); },
@@ -135,7 +104,7 @@ MatchConfigPropertyAdapter::~MatchConfigPropertyAdapter()
     destroy();
 }
 
-void MatchConfigPropertyAdapter::bind(MatchPatternConfig *cfg)
+void MatchConfigPropertyAdapter::bind(MatchGroupConfig *cfg)
 {
     if (m_cfg == cfg) return;
     destroy();
@@ -146,7 +115,6 @@ void MatchConfigPropertyAdapter::bind(MatchPatternConfig *cfg)
 QList<QtProperty *> MatchConfigPropertyAdapter::rootProperties() const
 {
     QList<QtProperty *> list;
-    if (m_grpCommon) list.append(m_grpCommon);
     if (m_grpType)   list.append(m_grpType);
     return list;
 }
@@ -155,18 +123,7 @@ QList<QtProperty *> MatchConfigPropertyAdapter::rootProperties() const
 
 void MatchConfigPropertyAdapter::build()
 {
-    buildCommonGroup();
     buildTypeGroup();
-}
-
-void MatchConfigPropertyAdapter::buildCommonGroup()
-{
-    m_grpCommon = m_mgr->addProperty(QtVariantPropertyManager::groupTypeId(),
-                                     tr("Common"));
-    auto sub = PropSpecHelper::buildGroup(m_mgr, m_grpCommon,
-                                          kCommonSpecs, *m_cfg, m_propKeys);
-    for (auto it = sub.cbegin(); it != sub.cend(); ++it)
-        m_props[it.key()] = it.value();
 }
 
 void MatchConfigPropertyAdapter::buildTypeGroup()
@@ -193,8 +150,6 @@ void MatchConfigPropertyAdapter::refresh()
 {
     if (!m_cfg) return;
 
-    PropSpecHelper::refresh(m_mgr, kCommonSpecs, *m_cfg, m_props);
-
     if (m_cfg->matchingType() == MatchingType::EdgeBased) {
         const EdgeMatchConfig *ecfg = m_cfg->edgeConfig();
         if (ecfg) PropSpecHelper::refresh(m_mgr, kEdgeSpecs, *ecfg, m_props);
@@ -213,7 +168,6 @@ void MatchConfigPropertyAdapter::destroy()
     m_props.clear();
     m_propKeys.clear();
 
-    delete m_grpCommon;  m_grpCommon = nullptr;
     delete m_grpType;    m_grpType   = nullptr;
 
     m_cfg = nullptr;
@@ -228,11 +182,6 @@ void MatchConfigPropertyAdapter::onPropertyValueChanged(QtProperty *prop,
 
     const QString key = m_propKeys.value(prop);
     if (key.isEmpty()) return;
-
-    if (PropSpecHelper::dispatch(kCommonSpecs, key, val, *m_cfg)) {
-        emit configModified();
-        return;
-    }
 
     if (m_cfg->matchingType() == MatchingType::EdgeBased) {
         EdgeMatchConfig *ecfg = m_cfg->edgeConfig();

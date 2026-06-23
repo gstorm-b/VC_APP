@@ -1,0 +1,199 @@
+{
+  "schema": "robot-kinematics-collision-mesh/v1",
+  "profile": {
+    "id": "nachi_mz04d_stl_mesh_collision",
+    "robotModel": "MZ04D",
+    "units": { "length": "m", "angle": "rad" },
+    "backendPreference": ["coal", "fcl", "vtk_debug"]
+  },
+  "meshes": [
+    {
+      "id": "base_mesh",
+      "link": "base_link",
+      "path": "MZ04-01_base.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [1.5707963267948966, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "j1_mesh",
+      "link": "link_1",
+      "path": "MZ04-01_j1.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [1.5707963267948966, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "j2_mesh",
+      "link": "link_2",
+      "path": "MZ04-01_j2.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [0.0, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "j3_mesh",
+      "link": "link_3",
+      "path": "MZ04-01_j3.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [0.0, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "j4_mesh",
+      "link": "link_4",
+      "path": "MZ04-01_j4.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, -0.199],
+        "rpy_rad": [-1.5707963267948966, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "j5_mesh",
+      "link": "link_5",
+      "path": "MZ04-01_j5.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [0.0, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "j6_mesh",
+      "link": "flange",
+      "path": "MZ04-01_j6.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [-1.5707963267948966, 0.0, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    },
+    {
+      "id": "centering_tool_mesh",
+      "link": "flange",
+      "path": "Centering_tool.stl",
+      "format": "stl",
+      "sourceUnits": "mm",
+      "scaleToMeters": 0.001,
+      "meshToLink": {
+        "xyz_m": [0.0, 0.0, 0.0],
+        "rpy_rad": [0.0, 3.141592653589793, 0.0]
+      },
+      "margin_m": 0.0,
+      "enabled": true,
+      "quality": {
+        "mode": "original",
+        "triangleCount": null,
+        "simplifiedFrom": null,
+        "maxSimplificationError_m": null
+      }
+    }
+  ],
+  "disabledPairs": [
+    { "a": "base_mesh", "b": "j1_mesh", "reason": "adjacent_joint_contact" },
+    { "a": "j1_mesh", "b": "j2_mesh", "reason": "adjacent_joint_contact" },
+    { "a": "j2_mesh", "b": "j3_mesh", "reason": "adjacent_joint_contact" },
+    { "a": "j3_mesh", "b": "j4_mesh", "reason": "adjacent_joint_contact" },
+    { "a": "j4_mesh", "b": "j5_mesh", "reason": "adjacent_joint_contact" },
+    { "a": "j5_mesh", "b": "j6_mesh", "reason": "adjacent_joint_contact" }
+  ],
+  "sources": [
+    {
+      "type": "visual_cad_stl",
+      "title": "Nachi MZ04D STL visual assets (original mesh resolution)",
+      "reference": "presets/Nachi/MZ04",
+      "appliesTo": ["mesh_collision_geometry"]
+    },
+    {
+      "type": "derived_transform",
+      "title": "meshToLink derived from Robot3DVizualize visualHomeCorrectionForPartKey at home pose",
+      "reference": "examples/Robot3DVizualize/mainwindow.cpp",
+      "appliesTo": ["mesh_to_link_transform"]
+    }
+  ],
+  "metadata": {
+    "approximation": "original_stl_mesh",
+    "safety_rating": "not_safety_rated",
+    "review_notes": "Mesh-to-link transforms reproduce the visualizer home-pose placement; visual QA recommended before relying on this profile for accurate collision.",
+    "tool_mesh_note": "centering_tool_mesh is attached to flange (same link as j6_mesh); the per-link pair filter excludes that intra-link pair automatically."
+  }
+}

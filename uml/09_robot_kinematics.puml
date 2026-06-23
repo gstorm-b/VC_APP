@@ -1,0 +1,120 @@
+@startuml robot_kinematics
+title RobotKinematics component (components/RobotKinematics, Eigen + optional Coal mesh collision)
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2B4C7E
+skinparam ClassBorderColor #2B4C7E
+skinparam ClassBackgroundColor #EEF5FF
+
+package "RobotKinematics (components/RobotKinematics/)" {
+
+  enum JointType {
+    Revolute
+    Prismatic
+    Fixed
+  }
+
+  enum KinematicsStatus {
+    Ok
+    InvalidRobotConfig / InvalidRequest
+    FrameNotFound / ToolNotFound
+    JointDimensionMismatch / JointLimitViolation
+    TargetUnreachable / Singularity
+    MaxIterationsReached / NoConvergedSolution
+    PostureConstraintUnsatisfied
+    UnsupportedSolver / NumericalError
+  }
+
+  class Pose {
+    +fromXYZRPY_mm_deg() / fromXYZRPY_m_rad()
+    +translation_m() / rotationQuaternion()
+    +isometry() / inverse() / operator*
+  }
+
+  class JointVector {
+    +fromDegrees() / fromRadians()
+    +toDegrees() / values()  (SI: rad / m)
+  }
+
+  class SerialRobotConfig {
+    +identity / dof
+    +links / joints : vector
+    +frames : FrameConfig
+    +tools : vector<Tool>  (flange -> TCP)
+    +posture / solver / metadata
+  }
+  class Tool {
+    +id / name
+    +flangeToTcp : Pose
+  }
+  SerialRobotConfig *-- "n" Tool
+
+  struct IKRequest { +targetPose; tool; seedJoint; options }
+  struct IKResult  { +status; solutions[]; ok(); best() }
+
+  class ForwardKinematics <<static>> {
+    +flangePose(config, joints) : Pose
+    +toolPose(config, joints, flangeToTcp) : Pose
+    +computeChain(...) : FkChain
+  }
+
+  class SerialRobotKinematics {
+    +solve(IKRequest) : IKResult
+    +solveAll(IKRequest) : IKResult
+  }
+  note bottom of SerialRobotKinematics
+    Hybrid IK: analytic spherical-wrist
+    solver when supported, else numerical
+    damped-least-squares.
+  end note
+
+  class "Presets" as Presets {
+    +nachiMZ04D() : SerialRobotConfig
+    +virtual6DofTestArm()
+    +PresetJsonLoader::loadFile()
+  }
+
+  package "Collision (optional, Coal backend)" {
+    class MeshCollisionProfile {
+      +meshes : vector<MeshCollisionGeometry>  (STL)
+      +disabledPairs
+    }
+    class CollisionBackends <<static>> {
+      +checkMesh(config, meshProfile, req) : CollisionCheckResult
+      +checkPrimitive(config, profile, req)
+      +meshInfo()
+    }
+    MeshCollisionProfileJsonLoader ..> MeshCollisionProfile : loadFile()
+    CollisionBackends ..> MeshCollisionProfile : Coal BVH
+  }
+
+  Presets ..> SerialRobotConfig : builds
+  SerialRobotKinematics o-- SerialRobotConfig
+  ForwardKinematics ..> SerialRobotConfig
+  SerialRobotKinematics ..> IKRequest
+  SerialRobotKinematics ..> IKResult
+}
+
+note right of SerialRobotKinematics
+  Integrated as source via
+  components/RobotKinematics/robotkinematics.pri
+  (INCLUDEPATH: include + 3rdparty/eigen; Coal wired
+  from 3rdparty/{coal,boost,assimp}).
+
+  Phase 2 (built): VisionOutputDeviceCfg carries a
+  RobotKinematicCheckConfig (enable + collision-enable +
+  preset "Nachi MZ04D" + TCP). RobotKinematicCheckWidget
+  edits it (FK via ForwardKinematics::toolPose, IK via
+  SerialRobotKinematics::solve, top-down pick pose =
+  fromXYZRPY_mm_deg(x,y,z,180,0,r)).
+  VisionTcpipDeviceBase::runKinematicCheck() runs IK per
+  outgoing pick on the send path, and when collision is
+  enabled also runs Coal mesh self-collision on each
+  reachable solution. Advisory: log + kinematicCheckResult
+  signal, never blocks the payload.
+end note
+
+@enduml

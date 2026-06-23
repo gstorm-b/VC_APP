@@ -57,6 +57,10 @@ private:
 
     // ── Navigation ────────────────────────────────────────────────────────
     void rebuildDeviceNav();
+    // (Re)subscribe each device-nav connection dot to its runner's
+    // connectStatusChanged. Called after a nav rebuild and on task-state
+    // changes (runners are created/destroyed across phase transitions).
+    void wireDeviceNavDots();
     void showDashboardPage();
     void showPatternsPage();
     void showSettingsPage();
@@ -78,6 +82,8 @@ private slots:
     void saveConfig();
 
     void onDeviceNavClicked(const QString &deviceId);
+    void onTbtnEnterRuntime();
+    void onTbtnExitRuntime();
 
 private:
     // ── Content stack page indices ─────────────────────────────────────────
@@ -103,11 +109,14 @@ private:
         QFrame *dot{nullptr};
         QLabel *label{nullptr};
     };
-    QList<StatusLamp> m_statusLamps; // READY, CAM, PLC, BOT
+    QList<StatusLamp> m_statusLamps; // READY, CAM, PLC, OUT
 
     // ── Nav: device items ─────────────────────────────────────────────────
     QWidget               *m_devListWidget{nullptr};
     QMap<QString, QFrame*> m_navItems;     // deviceId → frame
+    // Live runner→dot subscriptions for the device-nav connection indicators;
+    // dropped and rebuilt by wireDeviceNavDots().
+    QList<QMetaObject::Connection> m_navDotConns;
 
     // ── Content pages ─────────────────────────────────────────────────────
     QWidget               *m_dashboardPage{nullptr};

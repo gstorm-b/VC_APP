@@ -32,19 +32,23 @@ public:
         double coorDotSizeMm         = 8.0;
         // Inner white circle of target rings and the centre ring.
         double innerTargetDotSizeMm  = 1.0;
+        // Binarization threshold used by detect(): -1 => auto (Otsu),
+        // 0..255 => fixed manual threshold. Defaults to auto so existing
+        // presets / saved JSON keep their previous behaviour.
+        int    binarizeThreshold     = -1;
 
         bool isValid(std::string* errorOut = nullptr) const;
     };
 
     // Built-in presets (named after the physical iRVision part dot pitch).
-    constexpr static const Params iRvisionPattern5mm  {17, 17,  5.0,    10.0,   2.0,    4,      1.0};
-    constexpr static const Params iRvisionPattern11m  {11, 11,  11.5,   10.0,   2.0,    4,      1.0};
-    constexpr static const Params iRvisionPattern15mm {11, 11,  15.0,   10.0,   6.0,    11.0,   1.0};
-    constexpr static const Params iRvisionPattern22mm {11, 11,  22.5,   10.0,   10.0,   16.0,   1.0};
-    constexpr static const Params iRvisionPattern30mm {17, 17,  30.0,   10.0,   2,      4.0,    1.0};
+    constexpr static const Params iRvisionPattern5mm  {17, 17,  5.0,    10.0,   2.0,    4,      1.0,    -1};
+    constexpr static const Params iRvisionPattern11m  {11, 11,  11.5,   10.0,   2.0,    4,      1.0,    -1};
+    constexpr static const Params iRvisionPattern15mm {11, 11,  15.0,   10.0,   6.0,    11.0,   1.0,    -1};
+    constexpr static const Params iRvisionPattern22mm {11, 11,  22.5,   10.0,   10.0,   16.0,   1.0,    -1};
+    constexpr static const Params iRvisionPattern30mm {17, 17,  30.0,   10.0,   2,      4.0,    1.0,    -1};
 
     // Throws std::invalid_argument if params are invalid.
-    explicit FanucIRvisionBoard(const Params& params = Params{11, 11, 15.0, 15.0, 4.0, 8.0, 1.0});
+    explicit FanucIRvisionBoard(const Params& params = Params{11, 11, 15.0, 15.0, 4.0, 8.0, 1.0, -1});
 
     const Params& params() const { return m_params; }
 
@@ -59,6 +63,12 @@ public:
     std::vector<cv::Point3f> objectPoints()         const override;
     std::vector<cv::Point2f> objectPointsXY()       const override;
     std::vector<cv::Point2f> cornerObjectPointsXY() const override;
+
+    int  binarizeThreshold() const override { return m_params.binarizeThreshold; }
+    void setBinarizeThreshold(int threshold) override {
+        m_params.binarizeThreshold =
+            (threshold < 0) ? -1 : (threshold > 255 ? 255 : threshold);
+    }
 
     std::string typeName() const override { return "FanucIRvision"; }
 

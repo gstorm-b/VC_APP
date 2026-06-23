@@ -237,6 +237,14 @@ void MitsubishiMcDeviceWidget::onConnectionStateChanged(vc::device::ConnectStatu
         if (m_monitor_m) m_monitor_m->clearAllStatuses();
         if (m_monitor_d) m_monitor_d->clearAllStatuses();
         break;
+    case vc::device::ConnectStatus::LostConnected:
+        if (m_monitor_m) m_monitor_m->clearAllStatuses();
+        if (m_monitor_d) m_monitor_d->clearAllStatuses();
+        break;
+    case vc::device::ConnectStatus::ConnectFailed:
+        if (m_monitor_m) m_monitor_m->clearAllStatuses();
+        if (m_monitor_d) m_monitor_d->clearAllStatuses();
+        break;
     default:
         break;
     }
@@ -412,7 +420,7 @@ void MitsubishiMcDeviceWidget::onResponseTimeoutEditFinished() {
 }
 
 void MitsubishiMcDeviceWidget::updateConnectionVisual(vc::device::ConnectStatus status) {
-    const bool connected = status == vc::device::ConnectStatus::Connected;
+    const bool connected = (status == vc::device::ConnectStatus::Connected);
     const QString stateVal = connected ? QStringLiteral("connected")
                                        : QStringLiteral("disconnected");
 

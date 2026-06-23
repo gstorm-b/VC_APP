@@ -24,6 +24,8 @@ namespace Ui {
 class BaslerCameraWidget;
 }
 
+class CalibrationThresholdDialog;
+
 class BaslerCameraWidget : public IDeviceWidget
 {
     Q_OBJECT
@@ -62,9 +64,10 @@ private slots:
     void btn_trigger_clicked();
     // void btn_auto_shot_clicked();
     // void btn_backlight_toggle_clicked();
-    // void btn_save_image_clicked();
+    void btn_save_image_clicked();
 
     void btn_setup_board_clicked();
+    void btn_calib_threshold_clicked();
     void btn_calib_detect_clicked();
     void btn_calib_apply_clicked();
     void onCalibPointsEdited();
@@ -83,7 +86,7 @@ private:
 private:
     Ui::BaslerCameraWidget *ui;
     std::shared_ptr<vc::device::IDevice> m_device;
-    vc::device::BaslerGigECamera *m_camera;
+    vc::device::BaslerGigECamera *m_camera{nullptr};
     ads::CDockWidget *m_dock{nullptr};
 
     vc::device::BaslerGigeCfg m_params;
@@ -101,6 +104,11 @@ private:
     // True for the single grabFinished that follows btn_calib_detect_clicked();
     // tells onCameraGrabFinished() to run board detection on that frame.
     bool m_pendingCalibDetect{false};
+
+    // Threshold-tuning dialog (modal, open only while tuning). Frames grabbed
+    // while m_pendingThresholdGrab is set are routed into this dialog.
+    CalibrationThresholdDialog *m_thresholdDlg{nullptr};
+    bool m_pendingThresholdGrab{false};
 };
 
 #endif // BASLER_CAMERA_WIDGET_H

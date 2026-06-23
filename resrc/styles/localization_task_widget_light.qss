@@ -103,6 +103,7 @@ QLabel#lbl_bc_current[breadcrumbRole="accent"]  { color: #c06400; }
 QLabel#lbl_bc_current[breadcrumbRole="muted"]   { color: #5a6878; }
 QLabel#lbl_bc_current[breadcrumbRole="camera"]  { color: #2b8ce8; }
 QLabel#lbl_bc_current[breadcrumbRole="plc"]     { color: #22d17a; }
+QLabel#lbl_bc_current[breadcrumbRole="output"]  { color: #a06cf0; }
 QLabel#lbl_bc_current[breadcrumbRole="robot"]   { color: #f5a623; }
 QLabel#lbl_bc_current[breadcrumbRole="default"] { color: #6b7ea0; }
 
@@ -175,6 +176,10 @@ QFrame[navItem="true"][navActive="true"][deviceType="plc"] {
     background: rgba(34,209,122,28);
     border: 1px solid rgba(34,209,122,89);
 }
+QFrame[navItem="true"][navActive="true"][deviceType="output"] {
+    background: rgba(160,108,240,28);
+    border: 1px solid rgba(160,108,240,89);
+}
 QFrame[navItem="true"][navActive="true"][deviceType="robot"] {
     background: rgba(245,166,35,28);
     border: 1px solid rgba(245,166,35,89);
@@ -194,13 +199,15 @@ QFrame[navItem="true"][navActive="true"] QLabel#devNavName {
 /* ── Device nav type label (device-identity accent) ──────────────────── */
 QFrame[navItem="true"][deviceType="camera"]  QLabel#devNavType { color: #2b8ce8; }
 QFrame[navItem="true"][deviceType="plc"]     QLabel#devNavType { color: #22d17a; }
+QFrame[navItem="true"][deviceType="output"]  QLabel#devNavType { color: #a06cf0; }
 QFrame[navItem="true"][deviceType="robot"]   QLabel#devNavType { color: #f5a623; }
 QFrame[navItem="true"][deviceType="default"] QLabel#devNavType { color: #6b7ea0; }
 
 /* ── Device nav status dot (connection indicator) ─────────────────────── */
-QFrame#devNavDot                  { border-radius: 2px; }
-QFrame#devNavDot[lampState="on"]  { background: #1a7a40; border: 1px solid #f2f3f5; }
-QFrame#devNavDot[lampState="off"] { background: #c0282a; border: 1px solid #f2f3f5; }
+QFrame#devNavDot                   { border-radius: 2px; }
+QFrame#devNavDot[lampState="on"]   { background: #1a7a40; border: 1px solid #f2f3f5; }
+QFrame#devNavDot[lampState="warn"] { background: #9a6800; border: 1px solid #f2f3f5; }
+QFrame#devNavDot[lampState="off"]  { background: #c0282a; border: 1px solid #f2f3f5; }
 
 /* ── Empty state label ────────────────────────────────────────────────── */
 QLabel#devNavEmpty { color: #a0a8b0; font-size: 8.5pt; }

@@ -386,7 +386,16 @@ bool ImageWidget::hadImage() {
 }
 
 void ImageWidget::removeAllRoi() {
-    // m_scene->remo
+    if (!m_scene) return;
+
+    // ROI items are parented to the pixmap item (not tracked in a list), so walk
+    // the scene and delete every ROI item. items() returns a copy, so deleting
+    // while iterating is safe; ~QGraphicsItem detaches it from scene + parent.
+    const QList<QGraphicsItem *> items = m_scene->items();
+    for (QGraphicsItem *item : items) {
+        if (dynamic_cast<ItemRoi *>(item) || dynamic_cast<ItemRoiRotated *>(item))
+            delete item;
+    }
 }
 
 void ImageWidget::removeRoi(QGraphicsItem *item) {
@@ -409,6 +418,7 @@ void ImageWidget::addRoi(ImageWidget::ItemAddType rtype, QRectF rect) {
             if ((new_roi->rect().width() < 10) ||
                 (new_roi->rect().height() < 10)) {
                 this->scene()->removeItem(new_roi);
+                delete new_roi;
                 PRINT_DEBUG_INFO("[IMG ROI Widget] Add new ROI: failed, ROI to small.");
             } else {
                 // new_roi->setPos(temp_pos);
@@ -429,6 +439,7 @@ void ImageWidget::addRoi(ImageWidget::ItemAddType rtype, QRectF rect) {
             if ((new_roi->rect().width() < 10) ||
                 (new_roi->rect().height() < 10)) {
                 this->scene()->removeItem(new_roi);
+                delete new_roi;
                 PRINT_DEBUG_INFO("[IMG ROI Widget] Add new ROI: failed, ROI to small.");
             } else {
                 // new_roi->setPos(temp_pos);
@@ -671,6 +682,7 @@ bool ImageWidget::draw_endROI(QMouseEvent *event) {
 
   if (this->mapToScene(event->pos()) == m_roi_start_point) {
     this->scene()->removeItem(m_temp_roi);
+    delete m_temp_roi;
     m_temp_roi = nullptr;
     return true;
   }
@@ -685,11 +697,13 @@ bool ImageWidget::draw_endROI(QMouseEvent *event) {
                                        &m_scene_interacting);
         QPointF temp_pos = m_temp_roi->pos();
         this->scene()->removeItem(m_temp_roi);
+        delete m_temp_roi;
         m_temp_roi = nullptr;
 
         if ((new_roi->rect().width() < 10) ||
             (new_roi->rect().height() < 10)) {
           this->scene()->removeItem(new_roi);
+          delete new_roi;
           PRINT_DEBUG_INFO("[IMG ROI Widget] Add new ROI: failed, ROI to small.");
         } else {
           new_roi->setPos(temp_pos);
@@ -705,11 +719,13 @@ bool ImageWidget::draw_endROI(QMouseEvent *event) {
                                                      &m_scene_interacting);
         QPointF temp_pos = m_temp_roi->pos();
         this->scene()->removeItem(m_temp_roi);
+        delete m_temp_roi;
         m_temp_roi = nullptr;
 
         if ((new_roi->rect().width() < 10) ||
             (new_roi->rect().height() < 10)) {
           this->scene()->removeItem(new_roi);
+          delete new_roi;
           PRINT_DEBUG_INFO("[IMG ROI Widget] Add new ROI: failed, ROI to small.");
         } else {
           new_roi->setPos(temp_pos);
@@ -746,5 +762,6 @@ void ImageWidget::draw_cancelROI() {
   m_roi_started = false;
   setMouseTracking(false);
   this->scene()->removeItem(m_temp_roi);
+  delete m_temp_roi;
   m_temp_roi = nullptr;
 }

@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RobotKinematicCheckWidget</class>
+ <widget class="QWidget" name="RobotKinematicCheckWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>448</width>
+    <height>232</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="vl_root">
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QCheckBox" name="chk_kinematic_enable">
+     <property name="text">
+      <string>Enable robot kinematic check</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="chk_collision_enable">
+     <property name="toolTip">
+      <string>Additionally run the Coal mesh self-collision check on each reachable solution.</string>
+     </property>
+     <property name="text">
+      <string>Enable self-collision check (mesh)</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="grp_kinematic_check">
+     <property name="title">
+      <string>Robot kinematic check</string>
+     </property>
+     <layout class="QVBoxLayout" name="vl_kcheck">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
+      <item>
+       <layout class="QFormLayout" name="form_kcheck">
+        <property name="horizontalSpacing">
+         <number>10</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>6</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="lbl_robot_preset">
+          <property name="text">
+           <string>Robot preset</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="cbb_robot_preset"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="lbl_tcp_name">
+          <property name="text">
+           <string>TCP name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="ledit_tcp_name"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="lbl_tcp_offset">
+        <property name="text">
+         <string>TCP offset (flange → TCP)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="grid_tcp">
+        <property name="horizontalSpacing">
+         <number>8</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>4</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="lbl_tcp_x">
+          <property name="text">
+           <string>X (mm)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="spb_tcp_x">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-100000.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="lbl_tcp_y">
+          <property name="text">
+           <string>Y (mm)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QDoubleSpinBox" name="spb_tcp_y">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-100000.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QLabel" name="lbl_tcp_z">
+          <property name="text">
+           <string>Z (mm)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="5">
+         <widget class="QDoubleSpinBox" name="spb_tcp_z">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-100000.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="lbl_tcp_roll">
+          <property name="text">
+           <string>Roll (°)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="spb_tcp_roll">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-360.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>360.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="lbl_tcp_pitch">
+          <property name="text">
+           <string>Pitch (°)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QDoubleSpinBox" name="spb_tcp_pitch">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-360.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>360.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="4">
+         <widget class="QLabel" name="lbl_tcp_yaw">
+          <property name="text">
+           <string>Yaw (°)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="5">
+         <widget class="QDoubleSpinBox" name="spb_tcp_yaw">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-360.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>360.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="grp_pick_path">
+     <property name="title">
+      <string>Pick-path offsets (check whole path)</string>
+     </property>
+     <layout class="QVBoxLayout" name="vl_pick_path">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QTableWidget" name="tbl_pick_path">
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="hl_pick_path_btns">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="btn_path_add">
+          <property name="focusPolicy"><enum>Qt::FocusPolicy::NoFocus</enum></property>
+          <property name="text"><string>Add point</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_path_remove">
+          <property name="focusPolicy"><enum>Qt::FocusPolicy::NoFocus</enum></property>
+          <property name="text"><string>Remove selected</string></property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="hl_pick_path_spacer">
+          <property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>20</width><height>10</height></size></property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="chk_show_tester">
+     <property name="text">
+      <string>Show FK / IK tester</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="grp_kinematic_tester">
+     <property name="visible">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>FK / IK tester</string>
+     </property>
+     <layout class="QVBoxLayout" name="vl_tester">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lbl_tester_joints">
+        <property name="text">
+         <string>Joints (°)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="grid_joints">
+        <property name="horizontalSpacing">
+         <number>8</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>4</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="lbl_j1"><property name="text"><string>J1</string></property></widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="spb_j1">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="lbl_j2"><property name="text"><string>J2</string></property></widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QDoubleSpinBox" name="spb_j2">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QLabel" name="lbl_j3"><property name="text"><string>J3</string></property></widget>
+        </item>
+        <item row="0" column="5">
+         <widget class="QDoubleSpinBox" name="spb_j3">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="lbl_j4"><property name="text"><string>J4</string></property></widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="spb_j4">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="lbl_j5"><property name="text"><string>J5</string></property></widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QDoubleSpinBox" name="spb_j5">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="1" column="4">
+         <widget class="QLabel" name="lbl_j6"><property name="text"><string>J6</string></property></widget>
+        </item>
+        <item row="1" column="5">
+         <widget class="QDoubleSpinBox" name="spb_j6">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="hl_tester_btns">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="btn_compute_fk">
+          <property name="focusPolicy"><enum>Qt::FocusPolicy::NoFocus</enum></property>
+          <property name="text"><string>Joints → Pose (FK)</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_compute_ik">
+          <property name="focusPolicy"><enum>Qt::FocusPolicy::NoFocus</enum></property>
+          <property name="text"><string>Pose → Joints (IK)</string></property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="hl_tester_btns_spacer">
+          <property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>20</width><height>10</height></size></property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="lbl_tester_pose">
+        <property name="text">
+         <string>Pose (mm / °)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="grid_pose">
+        <property name="horizontalSpacing">
+         <number>8</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>4</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="lbl_pose_x"><property name="text"><string>X (mm)</string></property></widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="spb_pose_x">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-100000.000000000000000</double></property>
+          <property name="maximum"><double>100000.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="lbl_pose_y"><property name="text"><string>Y (mm)</string></property></widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QDoubleSpinBox" name="spb_pose_y">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-100000.000000000000000</double></property>
+          <property name="maximum"><double>100000.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QLabel" name="lbl_pose_z"><property name="text"><string>Z (mm)</string></property></widget>
+        </item>
+        <item row="0" column="5">
+         <widget class="QDoubleSpinBox" name="spb_pose_z">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-100000.000000000000000</double></property>
+          <property name="maximum"><double>100000.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="lbl_pose_roll"><property name="text"><string>Roll (°)</string></property></widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="spb_pose_roll">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="lbl_pose_pitch"><property name="text"><string>Pitch (°)</string></property></widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QDoubleSpinBox" name="spb_pose_pitch">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+        <item row="1" column="4">
+         <widget class="QLabel" name="lbl_pose_yaw"><property name="text"><string>Yaw (°)</string></property></widget>
+        </item>
+        <item row="1" column="5">
+         <widget class="QDoubleSpinBox" name="spb_pose_yaw">
+          <property name="buttonSymbols"><enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum></property>
+          <property name="decimals"><number>2</number></property>
+          <property name="minimum"><double>-360.000000000000000</double></property>
+          <property name="maximum"><double>360.000000000000000</double></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="lbl_tester_status">
+        <property name="text">
+         <string>—</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

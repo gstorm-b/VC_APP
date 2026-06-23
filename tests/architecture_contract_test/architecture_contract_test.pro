@@ -9,6 +9,9 @@ TARGET    = architecture_contract_test
 ROOT_DIR  = $$PWD/../..
 
 INCLUDEPATH += $$ROOT_DIR/src
+MOC_DIR = $$OUT_PWD/debug
+
+include($$ROOT_DIR/components/RobotKinematics/robotkinematics.pri)
 
 SOURCES += \
     main.cpp \
@@ -23,7 +26,9 @@ SOURCES += \
     $$ROOT_DIR/src/device/plc/mc_device_map.cpp \
     $$ROOT_DIR/src/device/plc/mc_fame_3e.cpp \
     $$ROOT_DIR/src/device/plc/mc_protocol_device.cpp \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_device_base.cpp \
     $$ROOT_DIR/src/device/output_device/vision_tcpip_device.cpp \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_client_device.cpp \
     $$ROOT_DIR/src/device/robot/kawasaki_robot_device.cpp \
     $$ROOT_DIR/src/device/robot/nachi_robot_device.cpp \
     $$ROOT_DIR/src/logger/app_logger.cpp \
@@ -41,6 +46,7 @@ SOURCES += \
     $$ROOT_DIR/src/model/localization_runtime_controller.cpp \
     $$ROOT_DIR/src/model/localization_signal_mapper.cpp \
     $$ROOT_DIR/src/model/project.cpp \
+    $$ROOT_DIR/src/model/robot_kinematic_picking_checker.cpp \
     $$ROOT_DIR/src/model/task_factory.cpp \
     $$ROOT_DIR/src/model/task_localization.cpp \
     $$ROOT_DIR/src/runtime/task_runner.cpp
@@ -63,8 +69,12 @@ HEADERS += \
     $$ROOT_DIR/src/device/output_device/vision_output_config.h \
     $$ROOT_DIR/src/device/output_device/vision_output_device.h \
     $$ROOT_DIR/src/device/output_device/vision_output_request.h \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_protocol.h \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_device_base.h \
     $$ROOT_DIR/src/device/output_device/vision_tcpip_config.h \
     $$ROOT_DIR/src/device/output_device/vision_tcpip_device.h \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_client_config.h \
+    $$ROOT_DIR/src/device/output_device/vision_tcpip_client_device.h \
     $$ROOT_DIR/src/device/plc/mc_context.h \
     $$ROOT_DIR/src/device/plc/mc_context_3e.h \
     $$ROOT_DIR/src/device/plc/mc_context_factory.h \
@@ -102,6 +112,7 @@ HEADERS += \
     $$ROOT_DIR/src/matching/utils_block_max.h \
     $$ROOT_DIR/src/matching/vision_utils.h \
     $$ROOT_DIR/src/model/camera_map_entry.h \
+    $$ROOT_DIR/src/model/camera_workspace.h \
     $$ROOT_DIR/src/model/itask.h \
     $$ROOT_DIR/src/model/itask_config.h \
     $$ROOT_DIR/src/model/localization_fault_code.h \
@@ -110,6 +121,7 @@ HEADERS += \
     $$ROOT_DIR/src/model/localization_runtime_controller.h \
     $$ROOT_DIR/src/model/localization_signal_mapper.h \
     $$ROOT_DIR/src/model/project.h \
+    $$ROOT_DIR/src/model/robot_kinematic_picking_checker.h \
     $$ROOT_DIR/src/model/task_state_machine.h \
     $$ROOT_DIR/src/model/task_device_binding.h \
     $$ROOT_DIR/src/model/task_define.h \

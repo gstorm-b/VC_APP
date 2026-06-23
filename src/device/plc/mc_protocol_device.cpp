@@ -62,37 +62,66 @@ void McProtocolDevice::deviceTerminate() {
 bool McProtocolDevice::deviceConnect() {
     QMutexLocker locker(&m_mutex);
 
+    // Connect requests are idempotent. Re-running the full init while already
+    // connected would build a second transport over the live one, leaking the
+    // open socket and desyncing the single-connection MC session — exactly the
+    // "old connection not closed, cannot reconnect" failure on phase re-entry.
+    // Re-publish Connected so a runner that issued the redundant request still
+    // sees a status event and clears its busy flag.
+    if (connectStatus() == ConnectStatus::Connected) {
+        this->setConnectionStatus(ConnectStatus::Connected);
+        return true;
+    }
+
     if (!this->initialize_mc_device()) {
         return false;
     }
 
     McMsgInterface::MsgIfState msg_port_state = m_msg_interface->ConnectToPort();
     if (msg_port_state != McMsgInterface::MsgIfState::Connected) {
-        LOG_DEV_INFO << "connect error occurred," << m_msg_interface->GetErrorDescription();
-        this->setConnectionStatus(ConnectStatus::ConnectFailed, m_msg_interface->GetErrorDescription());
+        const QString err = m_msg_interface->GetErrorDescription();
+        LOG_DEV_INFO << "connect error occurred," << err;
+        // Free the half-open transport so a later retry starts from a clean
+        // state instead of leaking the failed socket.
+        releaseConnectionResources();
+        this->setConnectionStatus(ConnectStatus::ConnectFailed, err);
         return false;
     }
 
-    LOG_DEV_INFO << "MC Device connected";
+    LOG_USER_INFO << "MC Device connected";
     this->setConnectionStatus(ConnectStatus::Connected);
     m_polling_timer->start();
     return true;
 }
 
 bool McProtocolDevice::deviceDisconnect() {
-    QMutexLocker locker(&m_mutex);
+    teardownConnection(ConnectStatus::Disconnected);
+    LOG_USER_INFO << "MC Device disconnected";
+    return true;
+}
 
-    m_msg_interface->DisconnectFromPort();
-    LOG_DEV_INFO << "MC Device disconnected";
-    this->setConnectionStatus(ConnectStatus::Disconnected);
-
-    m_msg_interface.release();
-    m_frame.release();
-    if (m_polling_timer->isActive()) {
+void McProtocolDevice::releaseConnectionResources() {
+    // Caller holds m_mutex. The polling timer is created once and reused across
+    // connect cycles; only stop it here (never delete) because this can run
+    // from inside the timer's own slot chain (e.g. send/receive failure paths).
+    if (m_polling_timer && m_polling_timer->isActive()) {
         m_polling_timer->stop();
     }
-    m_polling_timer->deleteLater();
-    return false;
+
+    if (m_msg_interface) {
+        // DestroyMsgPort() closes and deletes the socket synchronously on the
+        // device's own thread (see McEthernetTcpPort). reset() then frees the
+        // interface; both are deterministic and run on the correct thread.
+        m_msg_interface->DestroyMsgPort();
+        m_msg_interface.reset();
+    }
+    m_frame.reset();
+}
+
+void McProtocolDevice::teardownConnection(ConnectStatus finalStatus) {
+    QMutexLocker locker(&m_mutex);
+    releaseConnectionResources();
+    this->setConnectionStatus(finalStatus);
 }
 
 void McProtocolDevice::setDeviceConfig(IDeviceCfg *cfg) {
@@ -220,6 +249,10 @@ void McProtocolDevice::onSetCommActiveDevice() {
 }
 
 bool McProtocolDevice::initialize_mc_device() {
+    // Clear any transport left over from a previous (possibly failed) session
+    // before building a fresh one, so connect attempts never stack sockets.
+    releaseConnectionResources();
+
     McFrameType frame_type = m_config.context()->frameType();
     McMsgItfType msg_type = m_config.context()->msgConfig()->type();
 
@@ -249,13 +282,17 @@ bool McProtocolDevice::initialize_mc_device() {
 
 
     McContext *ctx = m_config.context();
-    // setup polling timer
-    m_polling_timer = new QTimer(this);
-    m_polling_timer->setTimerType(Qt::PreciseTimer);
+    // Setup polling timer. Created once and reused across connect cycles so it
+    // is never deleted from inside its own slot chain (see
+    // releaseConnectionResources). Only the interval is refreshed per session.
+    if (!m_polling_timer) {
+        m_polling_timer = new QTimer(this);
+        m_polling_timer->setTimerType(Qt::PreciseTimer);
+        connect(m_polling_timer, &QTimer::timeout,
+                this, &McProtocolDevice::onPollingTimerTimeOut);
+    }
     m_polling_timer->setInterval(ctx->m_refreshInterval);
     LOG_DEV_INFO << "MC Protocol Device refresh interval:" << ctx->m_refreshInterval;
-    connect(m_polling_timer, &QTimer::timeout,
-            this, &McProtocolDevice::onPollingTimerTimeOut);
 
     // setup polling device map
     optimizeDeviceMap();
@@ -265,7 +302,7 @@ bool McProtocolDevice::initialize_mc_device() {
     is_first_time_polling = true;
     m_update_command_index = 0;
     m_data_update_state = DataQueryState::QueryTriggerByTimer;
-    m_retry_by_timeout = 0;
+    // m_retry_by_timeout = false;
     m_retry_count = 0;
 
     m_current_request.reset();
@@ -279,15 +316,13 @@ bool McProtocolDevice::initialize_mc_device() {
 
 void McProtocolDevice::polling_query() {
     if (m_wait_for_response) {
-        std::chrono::high_resolution_clock::time_point current_time_point
-            = std::chrono::high_resolution_clock::now();
-        std::chrono::high_resolution_clock::duration time_lasp =
-            std::chrono::duration_cast<std::chrono::milliseconds>(current_time_point - m_sent_time_point);
+        auto current_time_point = std::chrono::high_resolution_clock::now();
+        auto time_lasp = std::chrono::duration_cast<std::chrono::milliseconds>(current_time_point - m_sent_time_point);
         if (time_lasp.count() > m_config.context()->msgConfig()->m_responseTimeout) {
             // response timeout handle;
             retry_request_handle();
-            return;
         }
+        return;
     }
 
     m_mutex.lock();
@@ -331,13 +366,20 @@ void McProtocolDevice::request_handle() {
             // LOG_DEV_DEBUG << "MC Protocol Device sent message.";
 
             if (send_state != McMsgInterface::MsgErrorState::NoError) {
-                LOG_USER_ERR << "error while send frame";
+
+                LOG_USER_ERR << tr("MC Device error, cannot send request. Retry %1.").arg(m_retry_count);
                 m_current_request.reset();
+                m_retry_count += 1;
+
+                if (m_retry_count >= 5) {
+                    LOG_USER_ERR << tr("Mc Device error, retry send request over 5 times, disconnect.");
+                    deviceDisconnect();
+                }
                 return;
             }
 
-            m_wait_for_response = true;
             m_sent_time_point = std::chrono::high_resolution_clock::now();
+            m_wait_for_response = true;
             // LOG_USER_INFO << "Send frame to PLC:" << send_frame.toHex(' ');
         } else {
             m_current_request.reset();
@@ -386,6 +428,7 @@ void McProtocolDevice::response_handle() {
     }
 
     m_retry_count = 0;
+    // m_retry_by_timeout = false;
     m_wait_for_response = false;
     m_current_request.reset();
 
@@ -398,18 +441,17 @@ void McProtocolDevice::response_handle() {
 void McProtocolDevice::retry_request_handle() {
     m_retry_count += 1;
     if (m_retry_count > 5) {
-        LOG_USER_ERR << "MC Device Error, disconnect to device";
-        deviceDisconnect();
+        // LOG_USER_ERR << "MC Device Error, disconnect to device";
+        setDeviceLostConnect();
         return;
     }
 
-    if (m_current_request) {
-        LOG_USER_ERR << "MC Device Error, request timeout" << m_current_request->type() << m_current_request->m_start_address;
-    }
+    // if (m_current_request) {
+    //     LOG_USER_ERR << "MC Device Error, request timeout" << m_current_request->type();
+    // }
     LOG_USER_INFO << "MC Device Error, timeout, retry" << m_retry_count;
     m_msg_interface->clearBuffer();
     m_wait_for_response = false;
-    // m_sent_time_point = std::chrono::high_resolution_clock::now();
     request_handle();
 }
 
@@ -556,6 +598,11 @@ void McProtocolDevice::update_last_d_map() {
             m_last_device_D_map[it->first] = it->second;
         }
     }
+}
+
+void McProtocolDevice::setDeviceLostConnect() {
+    teardownConnection(ConnectStatus::LostConnected);
+    LOG_USER_ERR << "MC Device lost connect.";
 }
 
 }

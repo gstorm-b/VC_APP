@@ -6,6 +6,7 @@
 
 #include "model/itask_config.h"
 #include "model/task_device_binding.h"
+#include "model/camera_workspace.h"
 #include "matching/pattern_group_manager.h"
 #include "qgadget_marco.h"
 
@@ -36,6 +37,7 @@ public:
     QString m_bTaskFault;
 
     TaskDeviceBindings m_deviceBindings;
+    CameraWorkspaceMap m_cameraWorkspaces;
 };
 
 class TaskLocalizeConfig : public ITaskConfig {
@@ -86,7 +88,8 @@ public:
         obj["bMatchingLowArea"]  = d->m_bMatchingLowArea;
         obj["bTaskFault"]        = d->m_bTaskFault;
 
-        obj["deviceBindings"] = d->m_deviceBindings.toJson();
+        obj["deviceBindings"]   = d->m_deviceBindings.toJson();
+        obj["cameraWorkspaces"] = d->m_cameraWorkspaces.toJson();
 
         return obj;
     }
@@ -116,6 +119,10 @@ public:
             return false;
         }
 
+        // Workspace map is optional (older projects predate it); a parse error
+        // is tolerated as "no workspaces" rather than failing the whole load.
+        d->m_cameraWorkspaces.fromJson(obj["cameraWorkspaces"]);
+
         return true;
     }
 
@@ -130,6 +137,15 @@ public:
         TaskLocalizeConfig *ptr = new TaskLocalizeConfig();
         *ptr = *this;
         return ptr;
+    }
+
+    // ── Camera workspace (ROI) accessors ──────────────────────────────────
+    CameraWorkspaceMap cameraWorkspaces() const { return d->m_cameraWorkspaces; }
+    CameraWorkspace cameraWorkspace(const QString &cameraId) const {
+        return d->m_cameraWorkspaces.workspace(cameraId);
+    }
+    void setCameraWorkspace(const QString &cameraId, const CameraWorkspace &ws) {
+        d->m_cameraWorkspaces.setWorkspace(cameraId, ws);
     }
 
 public:

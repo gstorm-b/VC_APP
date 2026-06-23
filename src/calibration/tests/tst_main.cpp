@@ -76,6 +76,7 @@ void TestCalibrationBoardFactory::toJson_roundTrip_viaFactory()
     calib::FanucIRvisionBoard::Params p;
     p.rows = 7; p.cols = 9; p.dotSpacingMm = 13.0; p.marginMm = 8.0;
     p.normalDotSizeMm = 3.5; p.coorDotSizeMm = 7.0; p.innerTargetDotSizeMm = 1.2;
+    p.binarizeThreshold = 137;
     calib::FanucIRvisionBoard original(p);
 
     const std::string json = original.toJson();
@@ -97,6 +98,7 @@ void TestCalibrationBoardFactory::toJson_roundTrip_viaFactory()
     QVERIFY(std::abs(q.normalDotSizeMm       - p.normalDotSizeMm)       < 1e-9);
     QVERIFY(std::abs(q.coorDotSizeMm         - p.coorDotSizeMm)         < 1e-9);
     QVERIFY(std::abs(q.innerTargetDotSizeMm  - p.innerTargetDotSizeMm)  < 1e-9);
+    QCOMPARE(q.binarizeThreshold, p.binarizeThreshold);
 }
 
 void TestCalibrationBoardFactory::createFromJson_unknownType_returnsNull()

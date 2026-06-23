@@ -82,6 +82,9 @@ private slots:
     void onTreePatternChanged(int groupIndex, int patternIndex,
                               const MatchPatternConfig &cfg);
 
+    //
+    void onCameraGrabFinished(vc::device::GrabResult result);
+
     // ── Toolbar actions ──────────────────────────────────────────────────
     void onTriggerCameraClicked();
     void onChooseImageClicked();
@@ -89,12 +92,14 @@ private slots:
     void onRunMatchingClicked();
     void onActiveGroupChanged(int comboIndex);
 
-    // ── View tab toggle (Raw / Result) ───────────────────────────────────
+    // ── View tab toggle (Raw / Result / Binary) ──────────────────────────
     void onShowRawView();
     void onShowResultView();
+    void onShowBinaryView();
+    void onBinaryThresholdChanged();
 
     // ── Property browser ────────────────────────────────────────────────
-    void onPatternConfigModified();
+    void onGroupTypeConfigModified();   // adapter committed an Edge-Based edit
     void onPropertyValueChanged(QtProperty *property, const QVariant &value);
 
     // ── Matching commission ─────────────────────────────────────────────
@@ -111,14 +116,29 @@ private:
     void rebuildTreeFromManager();   // pull full library state into the tree
     void buildResultTable();         // build & insert result-table widget
     void populateResultTable(const mtc::MatchResult &result);
+    void drawConditionRoiOverlay(int imgW, int imgH);
     void clearResultTable();
     void clearPropertyBrowserState();
 
     // ── Property browser construction ───────────────────────────────────
     void buildGroupProperties();      // group-level (picking box etc.)
-    void rebuildPropertyBrowser();    // re-add group + adapter properties
+    void buildCommonProperties();     // pattern-level identity + search params
+    void rebuildPropertyBrowser();    // re-add group + adapter + common properties
     void bindPatternToBrowser(mtc::MatchPattern *pattern);
     void unbindPattern();
+
+    // Commit m_workingPatternCfg back to the manager (shared by the property
+    // browser Common group).  Returns false and rolls back on failure.
+    bool commitWorkingPatternConfig();
+
+    // Commit m_workingGroupConfig back to the manager (shared by the Group
+    // Settings + Edge-Based property groups and the binary-view controls).
+    // Returns false and rolls back the working copy on failure.
+    bool commitWorkingGroupConfig();
+
+    // Seed the binary-view controls (auto/threshold/maxValue) from the bound
+    // group's shared EdgeMatchConfig; disables them when no group is selected.
+    void seedBinaryControlsFromConfig();
 
     // ── Selection state ─────────────────────────────────────────────────
     void selectGroup(int groupIndex);
@@ -128,6 +148,18 @@ private:
 
     // ── Camera combo ────────────────────────────────────────────────────
     void rebuildCameraCombo();
+    // Active camera device id from the camera combo ("" when none).
+    QString activeCameraId() const;
+
+    // ── Camera workspace (ROI) ──────────────────────────────────────────
+    // Draw the active camera's workspace ROI on the raw image view (read-only
+    // overlay), gated by the "Show ROI" checkbox. Orange when the workspace is
+    // in use, muted when only defined.
+    void updateWorkspaceRoiOverlay();
+    // "Use ROI" checkbox → toggle the active camera workspace's useWorkspace.
+    void onUseRoiToggled(bool enabled);
+    // Reflect the active camera's useWorkspace into the "Use ROI" checkbox.
+    void syncUseRoiCheckbox();
 
     // ── Group combo ─────────────────────────────────────────────────────
     void rebuildGroupCombo();
@@ -142,7 +174,8 @@ private:
     // ── Image display ───────────────────────────────────────────────────
     void displayRawImage(const cv::Mat &image);
     void displayResultImage(const cv::Mat &image);
-    void setMonitorPage(int page);   // 0 = raw, 1 = result
+    void displayBinaryImage();       // binarize m_currentImage at the threshold
+    void setMonitorPage(int page);   // 0 = raw, 1 = result, 2 = binary
 
     // ── Matching test runner ────────────────────────────────────────────
     bool runMatchingTest(mtc::MatchResult &outResult);
@@ -186,6 +219,11 @@ private:
     QtVariantProperty *m_groupVariant{nullptr};
     QMap<QtProperty *, QString> m_groupPropKeys;
     QMap<QString, QtVariantProperty *> m_groupProps;
+
+    // ── Pattern-level "Common" properties on the same property browser ──
+    QtVariantProperty *m_commonVariant{nullptr};
+    QMap<QtProperty *, QString> m_commonPropKeys;
+    QMap<QString, QtVariantProperty *> m_commonProps;
 
 
     // ── Test image ──────────────────────────────────────────────────────

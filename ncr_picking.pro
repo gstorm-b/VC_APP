@@ -23,7 +23,9 @@ SOURCES += \
     src/device/plc/mc_device_map.cpp \
     src/device/plc/mc_fame_3e.cpp \
     src/device/plc/mc_protocol_device.cpp \
+    src/device/output_device/vision_tcpip_device_base.cpp \
     src/device/output_device/vision_tcpip_device.cpp \
+    src/device/output_device/vision_tcpip_client_device.cpp \
     src/device/robot/kawasaki_robot_device.cpp \
     src/device/robot/nachi_robot_device.cpp \
     src/form/add_device_wizard.cpp \
@@ -33,10 +35,10 @@ SOURCES += \
     src/form/new_project_dialog.cpp \
     src/form/new_task_dialog.cpp \
     src/form/pattern/add_pattern_image_dialog.cpp \
+    src/form/task/workspace_setting_dialog.cpp \
     src/form/pattern/pattern_canvas.cpp \
     src/form/pattern/add_pattern_wizard.cpp \
     src/form/pattern/edit_pattern_wizard.cpp \
-    src/form/pattern/pattern_setting_panel.cpp \
     src/form/plc/mitsubishi_mc_device_widget.cpp \
     src/form/plc/plc_mitsu_device_wizard.cpp \
     src/form/project_infor_setting.cpp \
@@ -45,6 +47,8 @@ SOURCES += \
     src/form/task/localization_setting_widget.cpp \
     src/form/task/localization_task_widget.cpp \
     src/form/vision_output/vision_tcpip_device_widget.cpp \
+    src/form/vision_output/vision_tcpip_client_device_widget.cpp \
+    src/form/vision_output/robot_kinematic_check_widget.cpp \
     src/form/widgets/status_lamp.cpp \
     src/libwg/group_frame.cpp \
     src/logger/app_logger.cpp \
@@ -64,11 +68,13 @@ SOURCES += \
     src/model/localization_signal_mapper.cpp \
     src/model/project.cpp \
     src/model/project_repository.cpp \
+    src/model/robot_kinematic_picking_checker.cpp \
     src/model/task_factory.cpp \
     src/model/task_localization.cpp \
     src/runtime/task_runner.cpp \
     src/system_log_form.cpp \
     src/widgets/camera_mapping_widget.cpp \
+    src/widgets/camera_workspace_widget.cpp \
     src/widgets/clamp.cpp \
     src/widgets/group_frame_widget.cpp \
     src/widgets/image_widget/image_view_only.cpp \
@@ -93,6 +99,7 @@ SOURCES += \
     src/widgets/property_browser/custom_property_managers.cpp \
     src/widgets/property_browser/property_browser_widget.cpp \
     src/widgets/calibration/calibration_board_dialog.cpp \
+    src/widgets/calibration/calibration_threshold_dialog.cpp \
     src/widgets/calibration/calibration_points_table.cpp \
     src/widgets/signals_map_widget.cpp \
     src/widgets/signals_monitor_widget.cpp \
@@ -138,8 +145,12 @@ HEADERS += \
     src/device/output_device/vision_output_config.h \
     src/device/output_device/vision_output_device.h \
     src/device/output_device/vision_output_request.h \
+    src/device/output_device/vision_tcpip_protocol.h \
+    src/device/output_device/vision_tcpip_device_base.h \
     src/device/output_device/vision_tcpip_config.h \
     src/device/output_device/vision_tcpip_device.h \
+    src/device/output_device/vision_tcpip_client_config.h \
+    src/device/output_device/vision_tcpip_client_device.h \
     src/device/robot/robot_device.h \
     src/device/robot/kawasaki_robot_config.h \
     src/device/robot/kawasaki_robot_device.h \
@@ -153,12 +164,12 @@ HEADERS += \
     src/form/new_project_dialog.h \
     src/form/new_task_dialog.h \
     src/form/pattern/add_pattern_image_dialog.h \
+    src/form/task/workspace_setting_dialog.h \
     src/form/pattern/pattern_manager_dialog.h \
     src/form/pattern/pattern_theme.h \
     src/form/pattern/pattern_canvas.h \
     src/form/pattern/add_pattern_wizard.h \
     src/form/pattern/edit_pattern_wizard.h \
-    src/form/pattern/pattern_setting_panel.h \
     src/form/plc/mitsubishi_mc_device_widget.h \
     src/form/plc/plc_mitsu_device_wizard.h \
     src/form/project_infor_setting.h \
@@ -169,6 +180,8 @@ HEADERS += \
     src/form/task_widget.h \
     src/form/widgets/status_lamp.h \
     src/form/vision_output/vision_tcpip_device_widget.h \
+    src/form/vision_output/vision_tcpip_client_device_widget.h \
+    src/form/vision_output/robot_kinematic_check_widget.h \
     src/libwg/group_frame.h \
     src/libwg/validating_line_edit.h \
     src/logger/app_logger.h \
@@ -186,6 +199,7 @@ HEADERS += \
     src/matching/match_pattern_layer.h \
     src/matching/matching_types.h \
     src/matching/pattern_group_manager.h \
+    src/matching/robot_picking_checker.h \
     src/matching/utils_block_max.h \
     src/matching/vision_utils.h \
     src/model/camera_map_entry.h \
@@ -208,6 +222,8 @@ HEADERS += \
     src/model/pick_and_place_task.h \
     src/model/project.h \
     src/model/project_repository.h \
+    src/model/robot_kinematic_picking_checker.h \
+    src/model/camera_workspace.h \
     src/model/task_device_binding.h \
     src/model/task_define.h \
     src/model/task_factory.h \
@@ -220,6 +236,7 @@ HEADERS += \
     src/utils/meta_utils.h \
     src/utils/theme_manager.h \
     src/widgets/camera_mapping_widget.h \
+    src/widgets/camera_workspace_widget.h \
     src/widgets/clamp.h \
     src/widgets/group_frame_widget.h \
     src/widgets/image_widget/image_view_only.h \
@@ -298,6 +315,7 @@ HEADERS += \
     src/widgets/property_browser/custom_property_managers.h \
     src/widgets/property_browser/property_browser_widget.h \
     src/widgets/calibration/calibration_board_dialog.h \
+    src/widgets/calibration/calibration_threshold_dialog.h \
     src/widgets/calibration/calibration_points_table.h \
     src/widgets/signals_map_widget.h \
     src/widgets/signals_monitor_widget.h \
@@ -312,6 +330,7 @@ FORMS += \
     src/form/new_project_dialog.ui \
     src/form/new_task_dialog.ui \
     src/form/pattern/add_pattern_image_dialog.ui \
+    src/form/task/workspace_setting_dialog.ui \
     src/form/plc/mitsubishi_mc_device_widget.ui \
     src/form/plc/plc_mitsu_device_wizard.ui \
     src/form/project_infor_setting.ui \
@@ -320,6 +339,8 @@ FORMS += \
     src/form/task/localization_setting_widget.ui \
     src/form/task/localization_task_widget.ui \
     src/form/vision_output/vision_tcpip_device_widget.ui \
+    src/form/vision_output/vision_tcpip_client_device_widget.ui \
+    src/form/vision_output/robot_kinematic_check_widget.ui \
     src/system_log_form.ui
 
 TRANSLATIONS += \
@@ -331,6 +352,19 @@ INCLUDEPATH += \
     third_party/advance_docking/inlcude \
     src/
 
+# Robot kinematics component (forward / inverse kinematics + optional Coal
+# mesh-collision). Reusable library under components/RobotKinematics/, consumed
+# here as source via its integration .pri. It pulls in the header-only Eigen
+# and the prebuilt Coal/Boost/Assimp install trees under the repo-root 3rdparty
+# folder. The .pri auto-copies the mesh-collision runtime DLL set and the
+# Nachi MZ04D mesh assets next to the built binary after link. Customer installer
+# packaging is still tracked in docs/later_todo_list.md #27.
+include(components/RobotKinematics/robotkinematics.pri)
+
+# Default rules for deployment.
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

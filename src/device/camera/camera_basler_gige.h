@@ -32,6 +32,7 @@ class BaslerGigeCfg : public CameraCfg {
 
     G_PROPERTY_BOOL_READWRITE(bool, autoBacklightControl, "Enable auto backlight")
     G_PROPERTY_STRING_READWRITE(QString, autoBacklightLine, "Backlight line")
+    G_PROPERTY_NUMBER_READWRITE(int, autoBacklightDelay, 0, 10000000, "Back light delay (us)")
     G_PROPERTY_BOOL_READWRITE(bool, autoBacklightInvert, "Line invert")
 
 public:
@@ -144,9 +145,11 @@ public:
     bool m_autoBacklightControl{false};
     QString m_autoBacklightLine;
     bool m_autoBacklightInvert{false};
+    int m_autoBacklightDelay{0};
 
     QList<BaslerIOLine> m_ioCapabilities;
     Pylon::CDeviceInfo m_deviceInfo;
+
 };
 
 class BaslerGigECamera : public vc::device::CameraDevice {

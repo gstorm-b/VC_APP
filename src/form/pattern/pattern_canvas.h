@@ -35,8 +35,9 @@
 //             read-only so the user knows the crop region.
 //    Box    — symmetric jaw pair around the pick point.  Box A is interactive:
 //             body drag → move (changes dist + angle), corner handles → resize
-//             (W and H, mirrored to box B), rotation handle → rotate.  Boxes
-//             may extend beyond the image bounds.
+//             (W and H, mirrored to box B), rotation handle → rotate.  The pick
+//             crosshair itself is draggable too — both jaws follow it rigidly.
+//             Boxes may extend beyond the image bounds.
 //    Finish — read-only review (pick crosshair + jaw pair).
 //
 //  Signals
@@ -110,7 +111,7 @@ private:
     // ── Hit-test enums ───────────────────────────────────────────────────
     enum CropHandle { CH_None=-1, CH_TL=0, CH_TR=1, CH_BL=2, CH_BR=3, CH_Body=4 };
     enum BoxHandle  { BH_None=-1, BH_TL=0, BH_TR=1, BH_BL=2, BH_BR=3,
-                      BH_Body=4, BH_Rotate=5 };
+                      BH_Body=4, BH_Rotate=5, BH_Pick=6 };
 
     // ── View transform helpers ───────────────────────────────────────────
     // Image-pixel → widget-pixel

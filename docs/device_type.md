@@ -20,7 +20,8 @@ Cấu trúc device type muốn thay đổi:
         - PLC
             - McDevice (current McDevice at top level)
         - VisionOutput:
-            - VisionTCPIP (port from current VisionOutput)
+            - VisionTCPIP (TCP/IP server — software listens, done)
+            - VisionTcpipClient (TCP/IP client — software dials out + reconnect, done)
             - VisionSerial (future update)
         - Robot:
             - Kawasaki (future update)

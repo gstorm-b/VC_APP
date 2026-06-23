@@ -267,12 +267,6 @@
       </item>
       <item>
        <widget class="QTableWidget" name="tbl_positions">
-        <property name="minimumHeight">
-         <number>80</number>
-        </property>
-        <property name="maximumHeight">
-         <number>200</number>
-        </property>
         <property name="selectionBehavior">
          <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
         </property>
@@ -328,14 +322,14 @@
         </item>
         <item>
          <widget class="QPushButton" name="btn_send_result">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="cursor">
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
            <enum>Qt::FocusPolicy::NoFocus</enum>
-          </property>
-          <property name="enabled">
-           <bool>false</bool>
           </property>
           <property name="text">
            <string>Send Result</string>
@@ -343,6 +337,36 @@
          </widget>
         </item>
        </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="frame_kinematic_check">
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Plain</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="RobotKinematicCheckWidget" name="widget_kinematic_check" native="true"/>
       </item>
      </layout>
     </widget>
@@ -362,6 +386,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>RobotKinematicCheckWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">form/vision_output/robot_kinematic_check_widget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

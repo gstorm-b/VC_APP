@@ -11,7 +11,10 @@
 #include <QFont>
 #include <QFile>
 
+#include <algorithm>
+
 #include "windows_helper.h"
+#include "runtime/idevice_runner.h"
 #include "form/device_widget_factory.h"
 #include "form/device_widget.h"
 #include "device/idevice_config.h"
@@ -23,30 +26,33 @@
 static QString deviceTypeString(vc::device::DeviceType t)
 {
     switch (t) {
-    case vc::device::DeviceType::Camera: return QStringLiteral("camera");
-    case vc::device::DeviceType::PLC:    return QStringLiteral("plc");
-    case vc::device::DeviceType::Robot:  return QStringLiteral("robot");
-    default:                             return QStringLiteral("default");
+    case vc::device::DeviceType::Camera:       return QStringLiteral("camera");
+    case vc::device::DeviceType::PLC:          return QStringLiteral("plc");
+    case vc::device::DeviceType::VisionOutput: return QStringLiteral("output");
+    case vc::device::DeviceType::Robot:        return QStringLiteral("robot");
+    default:                                   return QStringLiteral("default");
     }
 }
 
 static QString typeShortLabel(vc::device::DeviceType t)
 {
     switch (t) {
-    case vc::device::DeviceType::Camera:   return "CAM";
-    case vc::device::DeviceType::PLC:      return "PLC";
-    case vc::device::DeviceType::Robot:    return "BOT";
-    default:                               return "DEV";
+    case vc::device::DeviceType::Camera:       return "CAM";
+    case vc::device::DeviceType::PLC:          return "PLC";
+    case vc::device::DeviceType::VisionOutput: return "OUT";
+    case vc::device::DeviceType::Robot:        return "BOT";
+    default:                                   return "DEV";
     }
 }
 
 static QString deviceIconPath(vc::device::DeviceType t)
 {
     switch (t) {
-    case vc::device::DeviceType::Camera:   return ":/resrc/icon/camera.svg";
-    case vc::device::DeviceType::PLC: return ":/resrc/icon/plc_icon.svg";
-    case vc::device::DeviceType::Robot:    return ":/resrc/icon/robot_movement.svg";
-    default:                               return ":/resrc/icon/setting.svg";
+    case vc::device::DeviceType::Camera:       return ":/resrc/icon/camera.svg";
+    case vc::device::DeviceType::PLC:          return ":/resrc/icon/plc_icon.svg";
+    case vc::device::DeviceType::VisionOutput: return ":/resrc/icon/plug_connected.svg";
+    case vc::device::DeviceType::Robot:        return ":/resrc/icon/robot_movement.svg";
+    default:                                   return ":/resrc/icon/setting.svg";
     }
 }
 
@@ -148,6 +154,9 @@ void LocalizationTaskWidget::initWidget()
                 this, [this](vc::model::TaskState) {
             updateTaskStateUi();
             updateStatusLamps();
+            // Runners are created/destroyed across phase transitions, so the
+            // per-device connection dots must re-bind to the new runner set.
+            wireDeviceNavDots();
         });
     }
 
@@ -155,10 +164,10 @@ void LocalizationTaskWidget::initWidget()
     //         this, &LocalizationTaskWidget::onPropertyManagerValueChanged);
 
     // Toolbar buttons in breadcrumb
-    connect(ui->tbtn_bc_save,    &QToolButton::clicked,
-            this, &LocalizationTaskWidget::saveConfig);
-    // connect(ui->tbtn_bc_refresh, &QToolButton::clicked,
-    //         this, [this]() { populateBrowser(); });
+    connect(ui->tbtn_bc_enterRuntime,    &QToolButton::clicked,
+            this, &LocalizationTaskWidget::onTbtnEnterRuntime);
+    connect(ui->tbtn_bc_exitRuntime,    &QToolButton::clicked,
+            this, &LocalizationTaskWidget::onTbtnExitRuntime);
 
     // Add device button
     connect(ui->tbtn_add_device, &QToolButton::clicked, this, [this]() {
@@ -292,13 +301,12 @@ void LocalizationTaskWidget::initNavPanel()
     ui->lbl_bc_task->setText(m_task ? m_task->name() : QString());
 
     // Breadcrumb toolbar buttons
-    ui->tbtn_bc_save->setIcon(svgIcon(":/resrc/icon/task_save.svg", 14));
-    ui->tbtn_bc_save->setIconSize({14, 14});
-    ui->tbtn_bc_save->setToolTip(tr("Save"));
+    ui->tbtn_bc_enterRuntime->setIcon(svgIcon(":/resrc/icon/start.svg", 20));
+    ui->tbtn_bc_enterRuntime->setToolTip(tr("Start"));
 
-    ui->tbtn_bc_refresh->setIcon(svgIcon(":/resrc/icon/reload.svg", 14));
-    ui->tbtn_bc_refresh->setIconSize({14, 14});
-    ui->tbtn_bc_refresh->setToolTip(tr("Refresh"));
+    ui->tbtn_bc_exitRuntime->setIcon(svgIcon(":/resrc/icon/stop.svg", 20));
+    ui->tbtn_bc_exitRuntime->setIconSize({20, 20});
+    ui->tbtn_bc_exitRuntime->setToolTip(tr("Stop"));
 
     rebuildDeviceNav();
 }
@@ -348,8 +356,10 @@ void LocalizationTaskWidget::initStatusLamps()
 
 void LocalizationTaskWidget::updateStatusLamps()
 {
-    // States: [0]=READY, [1]=CAM, [2]=PLC, [3]=BOT
-    bool hasCam = false, hasPlc = false, hasBot = false;
+    // States: [0]=READY, [1]=CAM, [2]=PLC, [3]=OUT
+    // The localization task has no robot; the fourth lamp tracks the assigned
+    // Vision Output device instead.
+    bool hasCam = false, hasPlc = false, hasOutput = false;
     QString readyLampState = QStringLiteral("off");
 
     if (m_localizeTask && m_localizeTask->project()) {
@@ -358,9 +368,9 @@ void LocalizationTaskWidget::updateStatusLamps()
             auto dev = mgr->deviceById(id);
             if (!dev) continue;
             switch (dev->deviceType()) {
-            case vc::device::DeviceType::Camera:   hasCam = true; break;
-            case vc::device::DeviceType::PLC: hasPlc = true; break;
-            case vc::device::DeviceType::Robot:    hasBot = true; break;
+            case vc::device::DeviceType::Camera:       hasCam = true; break;
+            case vc::device::DeviceType::PLC:          hasPlc = true; break;
+            case vc::device::DeviceType::VisionOutput: hasOutput = true; break;
             default: break;
             }
         }
@@ -385,7 +395,7 @@ void LocalizationTaskWidget::updateStatusLamps()
         } else if (i == 2) {
             state = hasPlc ? QStringLiteral("on") : QStringLiteral("off");
         } else if (i == 3) {
-            state = hasBot ? QStringLiteral("on") : QStringLiteral("off");
+            state = hasOutput ? QStringLiteral("on") : QStringLiteral("off");
         }
         m_statusLamps[i].dot->setProperty("lampState", state);
         m_statusLamps[i].label->setProperty("lampState", state);
@@ -473,12 +483,27 @@ void LocalizationTaskWidget::rebuildDeviceNav()
     if (!m_localizeTask || !m_localizeTask->project()) return;
 
     auto *mgr = m_localizeTask->project()->deviceManager().get();
-    bool anyDevice = false;
 
+    // Resolve and sort assigned devices by type (Camera → PLC → VisionOutput →
+    // Robot, matching the DeviceType enum order), then by name within a type, so
+    // the nav order is grouped and stable across rebuilds.
+    QList<std::shared_ptr<vc::device::IDevice>> devices;
     for (const QString &devId : m_localizeTask->assignedDeviceIds()) {
-        auto device = mgr->deviceById(devId);
-        if (!device) continue;
-        anyDevice = true;
+        if (auto device = mgr->deviceById(devId))
+            devices.append(device);
+    }
+    std::sort(devices.begin(), devices.end(),
+              [](const std::shared_ptr<vc::device::IDevice> &a,
+                 const std::shared_ptr<vc::device::IDevice> &b) {
+                  if (a->deviceType() != b->deviceType())
+                      return a->deviceType() < b->deviceType();
+                  return a->name().localeAwareCompare(b->name()) < 0;
+              });
+
+    const bool anyDevice = !devices.isEmpty();
+
+    for (const auto &device : devices) {
+        const QString devId = device->id();
 
         auto *item = new QFrame(m_devListWidget);
         item->setAttribute(Qt::WA_Hover);
@@ -559,6 +584,67 @@ void LocalizationTaskWidget::rebuildDeviceNav()
     static_cast<QVBoxLayout*>(lay)->addStretch();
     refreshNavItemStyles();
     updateStatusLamps();
+    wireDeviceNavDots();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  Device nav connection dots
+// ──────────────────────────────────────────────────────────────────────────────
+void LocalizationTaskWidget::wireDeviceNavDots()
+{
+    // Map a device link state onto the dot's [lampState] QSS variant.
+    auto dotStateFor = [](vc::device::ConnectStatus status) -> QString {
+        using CS = vc::device::ConnectStatus;
+        switch (status) {
+        case CS::Connected:    return QStringLiteral("on");
+        case CS::Connecting:   return QStringLiteral("warn");
+        case CS::LostConnected:
+        case CS::ConnectFailed:
+        case CS::Disconnected:
+        case CS::NoConnection:
+        default:               return QStringLiteral("off");
+        }
+    };
+
+    auto applyDotState = [](QFrame *dot, const QString &state) {
+        if (!dot) return;
+        dot->setProperty("lampState", state);
+        dot->style()->unpolish(dot);
+        dot->style()->polish(dot);
+        dot->update();
+    };
+
+    // Drop previous subscriptions before re-binding (dots may have been
+    // recreated by a rebuild, or runners replaced by a phase change).
+    for (const auto &conn : std::as_const(m_navDotConns))
+        QObject::disconnect(conn);
+    m_navDotConns.clear();
+
+    auto *taskRunner = m_localizeTask ? m_localizeTask->taskRunner() : nullptr;
+
+    for (auto it = m_navItems.cbegin(); it != m_navItems.cend(); ++it) {
+        const QString &devId = it.key();
+        QFrame *item = it.value();
+        auto *dot = item->findChild<QFrame *>(QStringLiteral("devNavDot"));
+        if (!dot) continue;
+
+        auto *runner = taskRunner ? taskRunner->runnerFor(devId) : nullptr;
+        if (!runner || !runner->device()) {
+            applyDotState(dot, QStringLiteral("off"));
+            continue;
+        }
+
+        // Seed from current status (plain enum read; corrected by the next
+        // forwarded change). The runner forwards connectStatusChanged onto the
+        // GUI thread, and the dot is the connection context so it auto-detaches
+        // when the dot is destroyed.
+        applyDotState(dot, dotStateFor(runner->device()->connectStatus()));
+        m_navDotConns.append(connect(
+            runner, &vc::runtime::IDeviceRunner::connectStatusChanged, dot,
+            [dot, applyDotState, dotStateFor](vc::device::ConnectStatus status) {
+                applyDotState(dot, dotStateFor(status));
+            }));
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -672,6 +758,19 @@ void LocalizationTaskWidget::showDeviceConfigPage(const QString &deviceId)
 void LocalizationTaskWidget::onDeviceNavClicked(const QString &deviceId)
 {
     showDeviceConfigPage(deviceId);
+}
+
+void LocalizationTaskWidget::onTbtnEnterRuntime() {
+    if (m_localizeTask->taskState() == vc::model::TaskState::Commission) {
+        m_localizeTask->beginRuntime(false);
+    }
+}
+
+void LocalizationTaskWidget::onTbtnExitRuntime() {
+    if (m_localizeTask->taskState() != vc::model::TaskState::Commission) {
+        m_localizeTask->endRuntime();
+    }
+    m_localizeTask->beginCommission();
 }
 
 void LocalizationTaskWidget::refreshNavItemStyles()

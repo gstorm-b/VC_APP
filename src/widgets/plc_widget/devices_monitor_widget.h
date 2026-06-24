@@ -77,6 +77,7 @@ private slots:
 
 private:
     void setupUi();
+    void reloadStyleSheet();
     void rebuildRows();
     void buildRow(int row, int address);
     void recountActive();

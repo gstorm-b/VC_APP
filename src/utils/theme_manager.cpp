@@ -1,8 +1,12 @@
 #include "theme_manager.h"
 #include "app_settings/app_settings.h"
+#include "logger/app_logger.h"
 
 #include <QApplication>
 #include <QFile>
+#include <QHash>
+#include <QRegularExpression>
+#include <QSet>
 #include <QStyle>
 #include <QStyleFactory>
 
@@ -72,6 +76,142 @@ bool ThemeManager::isDark() const {
     return currentStyle().isDark;
 }
 
+namespace {
+
+// Canonical §5 design tokens (ui_design_rules.md). The {dark, light} value pair
+// for each token is the single source of truth for QSS colour resolution; it must
+// stay in sync with the §5 table and with buildDark/LightPalette() per §11.2.
+struct TokenValue { const char* dark; const char* light; };
+
+const QHash<QString, TokenValue>& tokenTable() {
+    static const QHash<QString, TokenValue> table = {
+        // §5.1 Background
+        {"bg.window",             {"#1a1c20", "#f2f3f5"}},
+        {"bg.surface",            {"#22252a", "#ffffff"}},
+        {"bg.elevated",           {"#2c3038", "#e8eaee"}},
+        {"bg.input",              {"#2c3038", "#ffffff"}},
+        {"bg.disabled",           {"#1e2024", "#eeeff1"}},
+        // §5.2 Border
+        {"border.default",        {"#3a3f48", "#c8ccd4"}},
+        {"border.strong",         {"#4e5562", "#a8adb8"}},
+        {"border.focus",          {"#e87c00", "#c06400"}},
+        {"border.disabled",       {"#2e3238", "#dddfe3"}},
+        // §5.3 Text
+        {"text.primary",          {"#e0e4ea", "#1a1c20"}},
+        {"text.muted",            {"#7a8898", "#5a6878"}},
+        {"text.disabled",         {"#4a5260", "#a0a8b0"}},
+        {"text.on-accent",        {"#ffffff", "#ffffff"}},
+        {"text.link",             {"#ffa040", "#9a5000"}},
+        // §5.4 Accent + Selection
+        {"accent.primary",        {"#e87c00", "#c06400"}},
+        {"accent.bright",         {"#ffa040", "#e08020"}},
+        {"accent.pressed",        {"#b05a00", "#8a4400"}},
+        {"accent.pressed.deep",   {"#7a3c00", "#5a3800"}},
+        {"accent.subtle",         {"rgba(232,124,0,0.12)", "rgba(192,100,0,0.09)"}},
+        {"selection.bg",          {"#3d2e10", "#fde8c0"}},
+        {"selection.text",        {"#e0e4ea", "#1a1c20"}},
+        // §5.5 State + State surface
+        {"state.error",           {"#ff5252", "#c0282a"}},
+        {"state.warning",         {"#ffb020", "#9a6800"}},
+        {"state.success",         {"#40c870", "#1a7a40"}},
+        {"state.info",            {"#40a8e0", "#0060a0"}},
+        {"state.error.surface",   {"rgba(255,82,82,0.10)",  "rgba(192,40,42,0.08)"}},
+        {"state.warning.surface", {"rgba(255,176,32,0.10)", "rgba(154,104,0,0.08)"}},
+        {"state.success.surface", {"rgba(64,200,112,0.10)", "rgba(26,122,64,0.08)"}},
+        {"state.info.surface",    {"rgba(64,168,224,0.10)", "rgba(0,96,160,0.08)"}},
+        // §5.6 Panel accent
+        {"panel.accent.deep",     {"#1e1c16", "#f5ede0"}},
+        {"panel.accent.mid",      {"#252118", "#faebd0"}},
+        {"panel.accent.surface",  {"#2e2a1e", "#f5e4c0"}},
+        {"panel.accent.border",   {"#403a28", "#d8c89a"}},
+        // §5.7 Device identity
+        {"device.camera",         {"#3a9bd9", "#1f6fb8"}},
+        {"device.camera.bright",  {"#5cb3e8", "#3a8ad0"}},
+        {"device.camera.deep",    {"#2278b8", "#155a98"}},
+        {"device.camera.tint.bg", {"rgba(58,155,217,0.12)", "rgba(31,111,184,0.08)"}},
+        {"device.camera.tint.bd", {"rgba(58,155,217,0.40)", "rgba(31,111,184,0.36)"}},
+        {"device.plc",            {"#3ac98a", "#1a8a55"}},
+        {"device.plc.bright",     {"#5cdca2", "#28a468"}},
+        {"device.plc.deep",       {"#22a070", "#0e6a40"}},
+        {"device.plc.tint.bg",    {"rgba(58,201,138,0.12)", "rgba(26,138,85,0.08)"}},
+        {"device.plc.tint.bd",    {"rgba(58,201,138,0.40)", "rgba(26,138,85,0.36)"}},
+        {"device.output",         {"#a87de0", "#7a4ec0"}},
+        {"device.output.bright",  {"#bf98ea", "#9168d0"}},
+        {"device.output.deep",    {"#8458c0", "#5e389a"}},
+        {"device.output.tint.bg", {"rgba(168,125,224,0.12)", "rgba(122,78,192,0.08)"}},
+        {"device.output.tint.bd", {"rgba(168,125,224,0.40)", "rgba(122,78,192,0.36)"}},
+        {"device.robot",          {"#e0b020", "#a07000"}},
+        {"device.robot.bright",   {"#f0c850", "#b88810"}},
+        {"device.robot.deep",     {"#b88a10", "#7a5400"}},
+        {"device.robot.tint.bg",  {"rgba(224,176,32,0.12)", "rgba(160,112,0,0.08)"}},
+        {"device.robot.tint.bd",  {"rgba(224,176,32,0.40)", "rgba(160,112,0,0.36)"}},
+        {"device.default",        {"#7a8ca8", "#4a5868"}},
+        {"device.default.bright", {"#94a4be", "#5e6c80"}},
+        {"device.default.deep",   {"#5a6c88", "#36404e"}},
+        {"device.default.tint.bg",{"rgba(122,140,168,0.12)", "rgba(74,88,104,0.08)"}},
+        {"device.default.tint.bd",{"rgba(122,140,168,0.40)", "rgba(74,88,104,0.36)"}},
+        // §5.8 State bright/deep stops
+        {"state.success.bright",  {"#2eff98", "#44c878"}},
+        {"state.error.bright",    {"#ff8a8a", "#e84848"}},
+        {"state.warning.bright",  {"#ffd060", "#d09020"}},
+        {"state.error.deep",      {"#922015", "#6e1010"}},
+        // §5.9 Overlay helpers
+        {"overlay.scrim.weak",    {"rgba(0,0,0,0.08)", "rgba(0,0,0,0.08)"}},
+        {"overlay.scrim.med",     {"rgba(0,0,0,0.16)", "rgba(0,0,0,0.16)"}},
+        {"overlay.scrim.strong",  {"rgba(0,0,0,0.32)", "rgba(0,0,0,0.32)"}},
+        {"overlay.tint.weak",     {"rgba(255,255,255,0.04)", "rgba(255,255,255,0.04)"}},
+        {"overlay.tint.med",      {"rgba(255,255,255,0.10)", "rgba(255,255,255,0.10)"}},
+        {"overlay.tint.strong",   {"rgba(255,255,255,0.24)", "rgba(255,255,255,0.24)"}},
+    };
+    return table;
+}
+
+} // namespace
+
+QString ThemeManager::tokenValue(const QString& name, bool dark) {
+    const auto it = tokenTable().constFind(name);
+    if (it == tokenTable().cend())
+        return QString();
+    return QString::fromLatin1(dark ? it->dark : it->light);
+}
+
+QString ThemeManager::resolveTokens(const QString& qss, bool dark) {
+    // Match "@{group.token}" placeholders. Token names use lower-case words joined
+    // by '.' or '-'; the brace boundary keeps the match unambiguous next to QSS
+    // punctuation (';', ')', '}').
+    static const QRegularExpression rx(QStringLiteral(R"(@\{([a-z0-9.\-]+)\})"));
+    static QSet<QString> warnedUnknown;
+
+    QString out;
+    out.reserve(qss.size());
+    qsizetype last = 0;
+    auto it = rx.globalMatch(qss);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+        out += qss.mid(last, m.capturedStart() - last);
+        const QString name = m.captured(1);
+        const QString value = tokenValue(name, dark);
+        if (value.isEmpty()) {
+            // Unknown token: leave the placeholder verbatim so the defect is
+            // visible rather than silently rendering a wrong colour.
+            out += m.captured(0);
+            if (!warnedUnknown.contains(name)) {
+                warnedUnknown.insert(name);
+                LOG_DEV_ERR << "ThemeManager: unknown QSS design token" << name;
+            }
+        } else {
+            out += value;
+        }
+        last = m.capturedEnd();
+    }
+    out += qss.mid(last);
+    return out;
+}
+
+QString ThemeManager::resolveTokens(const QString& qss) const {
+    return resolveTokens(qss, isDark());
+}
+
 QString ThemeManager::themedIcon(const QString& basePath) const {
     if (isDark()) return basePath;
     const int dot = basePath.lastIndexOf('.');
@@ -90,7 +230,10 @@ void ThemeManager::apply(const ThemeStyle& style) {
         if (f.open(QFile::ReadOnly | QFile::Text))
             qss = QString::fromUtf8(f.readAll());
     }
-    qApp->setStyleSheet(qss);
+    // Resolve §5 design tokens for the style being installed. style.isDark is used
+    // (not isDark()) because m_currentId may not yet point at this style when
+    // registerStyle() applies an updated definition.
+    qApp->setStyleSheet(resolveTokens(qss, style.isDark));
 }
 
 QPalette ThemeManager::buildLightPalette() {

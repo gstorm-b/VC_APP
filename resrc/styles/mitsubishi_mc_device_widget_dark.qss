@@ -7,33 +7,33 @@
    ═════════════════════════════════════════════════════════════════ */
 
 QWidget#MitsubishiMcDeviceWidget {
-    background-color: #1a1c20;
+    background-color: @{bg.window};
 }
 
 /* ── Connection card ─────────────────────────────────────────── */
 
 QFrame#frame_connection {
-    background-color: #22252a;
-    border: 1px solid #3a3f48;
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 8px;
 }
 
 /* ── Labels ──────────────────────────────────────────────────── */
 
 QLabel#lbl_conn_title {
-    color: #7a8898;
+    color: @{text.muted};
     font: 700 9pt "Segoe UI";
     letter-spacing: 1px;
 }
 
 QLabel#lbl_meta_frame {
-    color: #7a8898;
+    color: @{text.muted};
     font: 9pt "JetBrains Mono";
     letter-spacing: 1px;
 }
 
 QLabel#lbl_meta_hint {
-    color: #4a5260;
+    color: @{text.disabled};
     font: italic 9pt "Segoe UI";
 }
 
@@ -41,7 +41,7 @@ QLabel#lbl_ip,
 QLabel#lbl_port,
 QLabel#lbl_conn_timeout,
 QLabel#lbl_resp_timeout {
-    color: #7a8898;
+    color: @{text.muted};
     font: 700 8pt "Segoe UI";
     letter-spacing: 1px;
 }
@@ -52,9 +52,9 @@ QLineEdit#ledit_ip,
 QSpinBox#spb_port,
 QSpinBox#spb_conn_timeout,
 QSpinBox#spb_resp_timeout {
-    background-color: #1a1c20;
-    color: #e0e4ea;
-    border: 1px solid #4e5562;
+    background-color: @{bg.window};
+    color: @{text.primary};
+    border: 1px solid @{border.strong};
     border-radius: 5px;
     padding: 6px 10px;
     font: 11pt "JetBrains Mono";
@@ -64,7 +64,7 @@ QLineEdit#ledit_ip:focus,
 QSpinBox#spb_port:focus,
 QSpinBox#spb_conn_timeout:focus,
 QSpinBox#spb_resp_timeout:focus {
-    border-color: #e87c00;
+    border-color: @{accent.primary};
 }
 
 /* ── Connection status dot ───────────────────────────────────── */
@@ -74,8 +74,8 @@ QLabel#lbl_conn_dot {
     min-width: 10px; max-width: 10px;
     min-height: 10px; max-height: 10px;
 }
-QLabel#lbl_conn_dot[connectionState="connected"]    { background-color: #40c870; }
-QLabel#lbl_conn_dot[connectionState="disconnected"] { background-color: #ff5252; }
+QLabel#lbl_conn_dot[connectionState="connected"]    { background-color: @{state.success}; }
+QLabel#lbl_conn_dot[connectionState="disconnected"] { background-color: @{state.error}; }
 
 /* ── Connection status text ──────────────────────────────────── */
 
@@ -83,8 +83,8 @@ QLabel#lbl_conn_state {
     font: 700 9pt "Segoe UI";
     letter-spacing: 1px;
 }
-QLabel#lbl_conn_state[connectionState="connected"]    { color: #40c870; }
-QLabel#lbl_conn_state[connectionState="disconnected"] { color: #ff5252; }
+QLabel#lbl_conn_state[connectionState="connected"]    { color: @{state.success}; }
+QLabel#lbl_conn_state[connectionState="disconnected"] { color: @{state.error}; }
 
 /* ── Connect / Disconnect button ─────────────────────────────── */
 
@@ -94,21 +94,21 @@ QPushButton#btn_connect {
     font: 700 10pt "Segoe UI";
 }
 QPushButton#btn_connect[connectionState="disconnected"] {
-    background-color: #e87c00;
-    color: #ffffff;
+    background-color: @{accent.primary};
+    color: @{text.on-accent};
     border: none;
 }
-QPushButton#btn_connect[connectionState="disconnected"]:hover   { background-color: #ffa040; }
-QPushButton#btn_connect[connectionState="disconnected"]:pressed { background-color: #b05a00; }
+QPushButton#btn_connect[connectionState="disconnected"]:hover   { background-color: @{accent.bright}; }
+QPushButton#btn_connect[connectionState="disconnected"]:pressed { background-color: @{accent.pressed}; }
 QPushButton#btn_connect[connectionState="connected"] {
     background-color: rgba(255, 82, 82, 0.12);
-    color: #ff5252;
+    color: @{state.error};
     border: 1px solid rgba(255, 82, 82, 0.27);
 }
-QPushButton#btn_connect[connectionState="connected"]:hover   { border-color: #ff5252; }
+QPushButton#btn_connect[connectionState="connected"]:hover   { border-color: @{state.error}; }
 QPushButton#btn_connect[connectionState="connected"]:pressed { background-color: rgba(255, 82, 82, 0.22); }
 
 /* ── Splitter ────────────────────────────────────────────────── */
 
-QSplitter#splitter_device_table::handle       { background-color: #1a1c20; }
-QSplitter#splitter_device_table::handle:hover { background-color: #e87c00; }
+QSplitter#splitter_device_table::handle       { background-color: @{bg.window}; }
+QSplitter#splitter_device_table::handle:hover { background-color: @{accent.primary}; }

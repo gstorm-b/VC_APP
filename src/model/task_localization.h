@@ -45,7 +45,13 @@ public:
     void startCommissionMatching(
         std::shared_ptr<mtc::MatchGroup> group, cv::Mat image, vc::model::CameraWorkspace workspace) {
 
-        emit startCommissionMatchingRequest(group, image.clone(), workspace);
+        // Deep-copy the live group on the caller's (GUI) thread before handing
+        // it to the matching worker thread. MatchGroup is non-QObject and
+        // unlocked, so the worker must read an isolated snapshot — otherwise it
+        // races concurrent pattern edits (addPattern/removePattern/
+        // setPatternImage). See snapshotPatternGroup().
+        emit startCommissionMatchingRequest(
+            snapshotPatternGroup(group), image.clone(), workspace);
     }
 
     mtc::PatternGroupManager* patternManager() const {
@@ -90,6 +96,15 @@ private:
     void wireRuntimeControllerSignals();
     void wireMatchingWorkerSignals();
     LocalizationRuntimeController::RuntimeContext buildRuntimeContext() const;
+
+    // Deep-copies a pattern group (group config + per-pattern config incl. the
+    // raw training image) into an independent MatchGroup. Worker threads read
+    // this snapshot instead of the live PatternGroupManager group, so GUI-thread
+    // mutations cannot race the matcher. Used by both the runtime context build
+    // and the commission matching path. Returns nullptr for a null source.
+    static std::shared_ptr<mtc::MatchGroup>
+    snapshotPatternGroup(const std::shared_ptr<mtc::MatchGroup> &source);
+
     LocalizationRuntimeController::SetupResult setupRuntimeController();
     void queueConfigureRuntimeController();
     void queueSetActiveCameraNumber(int number);
@@ -118,9 +133,9 @@ private:
     QObject *m_matchingWorker{nullptr};
 
 public:
-    const int limit_comm_device = 1;
-    const int limit_vision_output_device = 1;
-    const int limit_num_camera = 16;
+    static constexpr int kLimitCommDevice = 1;
+    static constexpr int kLimitVisionOutputDevice = 1;
+    static constexpr int kLimitNumCamera = 16;
 
 private:
     QMap<device::DeviceType, int> m_limitDeviceMap;
@@ -133,9 +148,6 @@ private:
     // Typed cached pointers below are populated in setupTask() after
     // commission has confirmed which deviceId plays each role.
     QString m_plcDeviceId;
-
-    mtc::MatchResult m_lastMatchResult;
-    QString m_lastVisionOutput;
 
     LocalizationPipeline m_pipeline;
     LocalizationRuntimeController *m_runtimeController{nullptr};

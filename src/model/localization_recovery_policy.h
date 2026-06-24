@@ -86,7 +86,9 @@ inline QString buildRecoveryFaultMessage(
     vc::device::ConnectStatus status,
     int performedRetries)
 {
-    QString statusText;
+    // Fallback covers any future ConnectStatus value; every current value is
+    // enumerated (no default:) so -Wswitch / C4062 flags additions.
+    QString statusText = QStringLiteral("UnknownStatus");
     switch (status) {
     case vc::device::ConnectStatus::LostConnected:
         statusText = QStringLiteral("LostConnected");
@@ -103,8 +105,8 @@ inline QString buildRecoveryFaultMessage(
     case vc::device::ConnectStatus::Connected:
         statusText = QStringLiteral("Connected");
         break;
-    default:
-        statusText = QStringLiteral("UnknownStatus");
+    case vc::device::ConnectStatus::Connecting:
+        statusText = QStringLiteral("Connecting");
         break;
     }
 

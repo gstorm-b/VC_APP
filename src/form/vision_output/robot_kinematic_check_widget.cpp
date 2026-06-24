@@ -230,12 +230,19 @@ RobotKinematicCheckWidget::RobotKinematicCheckWidget(QWidget *parent)
     // ── FK / IK tester (scratchpad, not part of the saved config) ───────────
     // The tester group is hidden until requested. Its spin boxes do NOT emit
     // configChanged — they only drive the manual forward/inverse computations.
+    // connect(ui->chk_show_tester, &QCheckBox::toggled,
+    //         ui->grp_kinematic_tester, &QWidget::setVisible);
     connect(ui->chk_show_tester, &QCheckBox::toggled,
-            ui->grp_kinematic_tester, &QWidget::setVisible);
+            this, [this]() {
+        ui->grp_kinematic_tester->setVisible(ui->chk_show_tester->isChecked());
+        emit testerWidgetVisibleChanged();
+    });
     connect(ui->btn_compute_fk, &QPushButton::clicked,
             this, &RobotKinematicCheckWidget::onComputeForward);
     connect(ui->btn_compute_ik, &QPushButton::clicked,
             this, &RobotKinematicCheckWidget::onComputeInverse);
+
+    ui->grp_kinematic_tester->setVisible(ui->chk_show_tester->isChecked());
 }
 
 RobotKinematicCheckWidget::~RobotKinematicCheckWidget() {

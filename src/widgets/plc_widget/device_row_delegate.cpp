@@ -1,10 +1,11 @@
 #include "device_row_delegate.h"
-#include "form/pattern/pattern_theme.h"
+#include "utils/theme_manager.h"
 
 #include <QAbstractItemModel>
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QFont>
+#include <QFontInfo>
 #include <QFontMetrics>
 #include <QMouseEvent>
 #include <QPainter>
@@ -44,13 +45,9 @@ QFont sansFont(int pointSize, bool bold = false, qreal letterSpacing = 0.0) {
     return f;
 }
 
-QColor color(const char *hex) { return QColor(QString::fromLatin1(hex)); }
-
-QColor mix(const QColor &a, const QColor &b, qreal t) {
-    return QColor::fromRgbF(a.redF()   * (1 - t) + b.redF()   * t,
-                            a.greenF() * (1 - t) + b.greenF() * t,
-                            a.blueF()  * (1 - t) + b.blueF()  * t,
-                            1.0);
+QColor tokenColor(const char *name) {
+    return QColor(ThemeManager::tokenValue(QString::fromLatin1(name),
+                                           ThemeManager::instance()->isDark()));
 }
 
 } // namespace
@@ -134,17 +131,17 @@ void DeviceRowDelegate::paintBackground(QPainter *p,
                                         const QStyleOptionViewItem &opt,
                                         const QModelIndex &idx) const {
     p->save();
-    const QColor bgBase = color(ptn::BG);
-    const QColor bgAlt  = color(ptn::SURF);
+    const QColor bgBase = tokenColor("bg.window");
+    const QColor bgAlt  = tokenColor("bg.surface");
     const bool   alt    = (idx.row() % 2) == 1;
     p->fillRect(opt.rect, alt ? bgAlt : bgBase);
 
     if (opt.state & QStyle::State_Selected) {
-        p->fillRect(opt.rect, QColor(9, 71, 113));   // #094771
+        p->fillRect(opt.rect, tokenColor("selection.bg"));
     }
 
     // Bottom row separator
-    p->setPen(color(ptn::SURF));
+    p->setPen(tokenColor("border.default"));
     p->drawLine(opt.rect.bottomLeft(), opt.rect.bottomRight());
     p->restore();
 }
@@ -152,7 +149,7 @@ void DeviceRowDelegate::paintBackground(QPainter *p,
 void DeviceRowDelegate::paintAddress(QPainter *p, const QRect &cell,
                                      int address) const {
     p->save();
-    p->setPen(color(ptn::OUTPUT));
+    p->setPen(tokenColor("device.plc"));
     p->setFont(monoFont(10, /*bold*/ true));
     const QChar prefix = m_mode == Bit ? QLatin1Char('M') : QLatin1Char('D');
     const QString text = QString("%1%2").arg(prefix)
@@ -174,13 +171,13 @@ void DeviceRowDelegate::paintChip(QPainter *p, const QRect &cell,
 
     QColor bg, fg, border;
     if (on) {
-        bg     = QColor(34, 209, 122,  33);     // ~13 % alpha
-        border = QColor(34, 209, 122,  68);     // ~27 % alpha
-        fg     = color(ptn::OK);
+        bg     = tokenColor("state.success.surface");
+        border = tokenColor("device.plc.tint.bd");
+        fg     = tokenColor("state.success");
     } else {
-        bg     = color(ptn::SURF2);
-        border = color(ptn::BD2);
-        fg     = color(ptn::TXT3);
+        bg     = tokenColor("bg.elevated");
+        border = tokenColor("border.default");
+        fg     = tokenColor("text.muted");
     }
 
     QPainterPath path;
@@ -200,7 +197,7 @@ void DeviceRowDelegate::paintChip(QPainter *p, const QRect &cell,
 void DeviceRowDelegate::paintWordVal(QPainter *p, const QRect &cell,
                                      int value) const {
     p->save();
-    p->setPen(color(ptn::TXT));
+    p->setPen(tokenColor("text.primary"));
     p->setFont(monoFont(11, /*bold*/ true));
     p->drawText(cell, Qt::AlignCenter, QString::number(value));
     p->restore();
@@ -215,15 +212,17 @@ void DeviceRowDelegate::paintButton(QPainter *p, const QRect &r,
 
     QColor bg, border, fg;
     if (primary) {
-        bg     = pressed ? color("#1f74c7")
-               : hovered ? color("#3a9ef5")
-                         : color(ptn::ACC);
+        bg     = pressed ? tokenColor("accent.pressed")
+               : hovered ? tokenColor("accent.bright")
+                         : tokenColor("accent.primary");
         border = bg;
-        fg     = Qt::white;
+        fg     = tokenColor("text.on-accent");
     } else {
-        bg     = pressed ? color(ptn::BG) : color(ptn::SURF2);
-        border = hovered ? color(ptn::ACC) : color(ptn::BD2);
-        fg     = hovered ? color(ptn::TXT) : color(ptn::TXT2);
+        bg     = pressed ? tokenColor("bg.window") : tokenColor("bg.elevated");
+        border = hovered ? tokenColor("accent.primary")
+                         : tokenColor("border.default");
+        fg     = hovered ? tokenColor("text.primary")
+                         : tokenColor("text.muted");
     }
 
     QPainterPath path;
@@ -263,11 +262,11 @@ void DeviceRowDelegate::paintWordAction(QPainter *p, const QRect &cell,
     const QRect valueRect = wordValueRect(cell);
     QPainterPath valPath;
     valPath.addRoundedRect(QRectF(valueRect).adjusted(0.5, 0.5, -0.5, -0.5), 3, 3);
-    p->fillPath(valPath, color(ptn::BG));
-    p->setPen(QPen(color(ptn::BD2), 1));
+    p->fillPath(valPath, tokenColor("bg.input"));
+    p->setPen(QPen(tokenColor("border.default"), 1));
     p->drawPath(valPath);
 
-    p->setPen(color(ptn::TXT));
+    p->setPen(tokenColor("text.primary"));
     p->setFont(monoFont(10));
     p->drawText(valueRect.adjusted(8, 0, -8, 0),
                 Qt::AlignVCenter | Qt::AlignRight,
@@ -298,7 +297,7 @@ void DeviceRowDelegate::paint(QPainter *p,
         // Default text drawing — the QTableWidgetItem already holds the
         // user's editable description string under Qt::DisplayRole.
         p->save();
-        p->setPen(color("#bfbfbf"));
+        p->setPen(tokenColor("text.primary"));
         p->setFont(monoFont(10));
         p->drawText(opt.rect.adjusted(10, 0, -10, 0),
                     Qt::AlignVCenter | Qt::AlignLeft,
@@ -439,7 +438,14 @@ QWidget *DeviceRowDelegate::createEditor(QWidget *parent,
         "  border: 1px solid %3; border-radius: 3px;"
         "  padding: 0 6px; font: 10pt 'JetBrains Mono'; }"
         "QSpinBox:focus { border-color: %4; }"
-    ).arg(ptn::BG, ptn::TXT, ptn::ACC, ptn::ACC));
+    ).arg(ThemeManager::tokenValue(QStringLiteral("bg.input"),
+                                   ThemeManager::instance()->isDark()),
+          ThemeManager::tokenValue(QStringLiteral("text.primary"),
+                                   ThemeManager::instance()->isDark()),
+          ThemeManager::tokenValue(QStringLiteral("border.default"),
+                                   ThemeManager::instance()->isDark()),
+          ThemeManager::tokenValue(QStringLiteral("accent.primary"),
+                                   ThemeManager::instance()->isDark())));
     spin->setFocusPolicy(Qt::StrongFocus);
     return spin;
 }

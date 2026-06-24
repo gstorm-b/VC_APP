@@ -14,28 +14,29 @@
 
 #include "model/task_localization.h"
 #include "logger/app_logger.h"
+#include "utils/theme_manager.h"
 #include "windows_helper.h"
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Chip appearance helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-struct ChipInfo { QString text; QString color; };
+struct ChipInfo { QString text; QString token; };
 
 static ChipInfo chipForDeviceType(vc::device::DeviceType t) {
     switch (t) {
-    case vc::device::DeviceType::Camera:   return { "CAM", "#2b8ce8" };
-    case vc::device::DeviceType::PLC:      return { "PLC", "#22d17a" };
-    default:                               return { "DEV", "#f5a623" };
+    case vc::device::DeviceType::Camera:   return { "CAM", QStringLiteral("device.camera") };
+    case vc::device::DeviceType::PLC:      return { "PLC", QStringLiteral("device.plc") };
+    default:                               return { "DEV", QStringLiteral("device.robot") };
     }
 }
 
 static ChipInfo chipForTaskType(vc::model::TaskType t) {
     switch (t) {
-    case vc::model::TaskType::LocalizationTask: return { "LOC",  "#2b8ce8" };
-    case vc::model::TaskType::PickPlaceTask:    return { "PICK", "#22d17a" };
-    case vc::model::TaskType::InspectTask:      return { "INSP", "#f5a623" };
-    default:                                    return { "?",    "#6b7ea0" };
+    case vc::model::TaskType::LocalizationTask: return { "LOC",  QStringLiteral("device.camera") };
+    case vc::model::TaskType::PickPlaceTask:    return { "PICK", QStringLiteral("device.plc") };
+    case vc::model::TaskType::InspectTask:      return { "INSP", QStringLiteral("device.robot") };
+    default:                                    return { "?",    QStringLiteral("device.default") };
     }
 }
 
@@ -51,7 +52,7 @@ void ProjectTreeDelegate::paint(QPainter *painter,
                                 const QModelIndex &index) const
 {
     const QString chip      = index.data(TreeItemRole::ChipText).toString();
-    const QString chipColor = index.data(TreeItemRole::ChipColor).toString();
+    const QString chipToken = index.data(TreeItemRole::ChipColor).toString();
 
     QStyleOptionViewItem opt = option;
     initStyleOption(&opt, index);
@@ -73,7 +74,11 @@ void ProjectTreeDelegate::paint(QPainter *painter,
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
-    QColor base(chipColor);
+    const QString tokenValue = ThemeManager::tokenValue(
+        chipToken, ThemeManager::instance()->isDark());
+    QColor base(tokenValue);
+    if (!base.isValid())
+        base = option.palette.color(QPalette::Highlight);
     QColor bg = base;
     bg.setAlpha(30);
 
@@ -140,6 +145,11 @@ ProjectTreeWidget::ProjectTreeWidget(QWidget *parent)
             this, &ProjectTreeWidget::onItemDoubleClicked);
     connect(m_treeView, &QTreeView::customContextMenuRequested,
             this, &ProjectTreeWidget::showContextMenu);
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, [this](const QString &, bool) {
+        if (m_treeView)
+            m_treeView->viewport()->update();
+    });
 
     setEnabled(false);
 }
@@ -221,7 +231,7 @@ void ProjectTreeWidget::buildTaskItem(vc::model::ITask *task)
     item->setData(task->id(),                       TreeItemRole::ItemId);
     item->setData(static_cast<int>(TreeItemKind::Task), TreeItemRole::ItemKind);
     item->setData(chip.text,                        TreeItemRole::ChipText);
-    item->setData(chip.color,                       TreeItemRole::ChipColor);
+    item->setData(chip.token,                       TreeItemRole::ChipColor);
 
     m_rootItem->appendRow(item);
     m_taskItems.insert(task->id(), item);
@@ -259,7 +269,7 @@ void ProjectTreeWidget::buildDeviceItem(QStandardItem *taskItem,
     item->setData(static_cast<int>(TreeItemKind::Device), TreeItemRole::ItemKind);
     item->setData(taskId,                               TreeItemRole::ParentId);
     item->setData(chip.text,                            TreeItemRole::ChipText);
-    item->setData(chip.color,                           TreeItemRole::ChipColor);
+    item->setData(chip.token,                           TreeItemRole::ChipColor);
 
     taskItem->appendRow(item);
 }

@@ -9,14 +9,14 @@
 
 /* ── Root ─────────────────────────────────────────────────────────────── */
 QWidget#LocalizationPatternsWidget {
-    background: #1a1c20;
-    color: #e0e4ea;
+    background: @{bg.window};
+    color: @{text.primary};
 }
 
 /* ── Toolbar bar ──────────────────────────────────────────────────────── */
 QFrame#frame_toolbar {
-    background: #22252a;
-    border-bottom: 1px solid #3a3f48;
+    background: @{bg.surface};
+    border-bottom: 1px solid @{border.default};
 }
 
 QToolButton#btn_trigger_camera,
@@ -24,30 +24,30 @@ QToolButton#btn_choose_image,
 QToolButton#btn_set_workspace,
 QToolButton#btn_run_match {
     background: transparent;
-    border: 1px solid #3a3f48;
+    border: 1px solid @{border.default};
     border-radius: 4px;
     padding: 4px 10px;
-    color: #e0e4ea;
+    color: @{text.primary};
     font: 9pt 'Segoe UI';
 }
 QToolButton#btn_trigger_camera:hover,
 QToolButton#btn_choose_image:hover,
 QToolButton#btn_set_workspace:hover,
 QToolButton#btn_run_match:hover {
-    background: #2c3038;
-    border-color: #4e5562;
+    background: @{bg.elevated};
+    border-color: @{border.strong};
 }
 QToolButton#btn_trigger_camera:pressed,
 QToolButton#btn_choose_image:pressed,
 QToolButton#btn_set_workspace:pressed,
 QToolButton#btn_run_match:pressed {
-    background: rgba(232,124,0,0.12);
-    border-color: #e87c00;
+    background: @{accent.subtle};
+    border-color: @{accent.primary};
 }
 QToolButton#btn_run_match {
-    background: rgba(232,124,0,0.12);
-    border-color: #e87c00;
-    color: #ffa040;
+    background: @{accent.subtle};
+    border-color: @{accent.primary};
+    color: @{accent.bright};
     font-weight: 700;
 }
 QToolButton#btn_run_match:hover   { background: rgba(232,124,0,0.20); }
@@ -55,9 +55,9 @@ QToolButton#btn_run_match:pressed { background: rgba(176,90,0,0.25); }
 
 /* ── State pill ───────────────────────────────────────────────────────── */
 QLabel#label_state_pill {
-    background: #2c3038;
-    color: #7a8898;
-    border: 1px solid #3a3f48;
+    background: @{bg.elevated};
+    color: @{text.muted};
+    border: 1px solid @{border.default};
     border-radius: 4px;
     font: 700 8pt 'Segoe UI';
     letter-spacing: 1px;
@@ -66,32 +66,32 @@ QLabel#label_state_pill {
 
 /* ── Operate bar ──────────────────────────────────────────────────────── */
 QFrame#frame_operate {
-    background: #1a1c20;
-    border-bottom: 1px solid #2c3038;
+    background: @{bg.window};
+    border-bottom: 1px solid @{bg.elevated};
 }
 
 /* ── View header (monitor pane) ───────────────────────────────────────── */
 QFrame#frame_view_header {
-    background: #22252a;
-    border-bottom: 1px solid #3a3f48;
+    background: @{bg.surface};
+    border-bottom: 1px solid @{border.default};
 }
 
 QPushButton#btn_view_raw,
 QPushButton#btn_view_result {
     background: transparent;
-    border: 1px solid #3a3f48;
+    border: 1px solid @{border.default};
     border-radius: 3px;
     padding: 3px 10px;
-    color: #7a8898;
+    color: @{text.muted};
     font: 9pt 'Segoe UI';
 }
 QPushButton#btn_view_raw:hover,
-QPushButton#btn_view_result:hover   { background: #2c3038; color: #e0e4ea; }
+QPushButton#btn_view_result:hover   { background: @{bg.elevated}; color: @{text.primary}; }
 QPushButton#btn_view_raw:checked,
 QPushButton#btn_view_result:checked {
-    background: rgba(232,124,0,0.12);
-    border-color: #e87c00;
-    color: #ffa040;
+    background: @{accent.subtle};
+    border-color: @{accent.primary};
+    color: @{accent.bright};
 }
 
 /* ── Section header labels ────────────────────────────────────────────── */
@@ -99,9 +99,9 @@ QLabel#label_monitor_title,
 QLabel#label_library_title,
 QLabel#label_inspector_title,
 QLabel#label_property_title {
-    background: #22252a;
-    color: #7a8898;
-    border-bottom: 1px solid #3a3f48;
+    background: @{bg.surface};
+    color: @{text.muted};
+    border-bottom: 1px solid @{border.default};
     font: 700 7.5pt 'Segoe UI';
     letter-spacing: 1.2px;
     padding: 0px 4px;
@@ -109,23 +109,23 @@ QLabel#label_property_title {
 
 /* ── KPI bar ──────────────────────────────────────────────────────────── */
 QFrame#frame_kpi {
-    background: #22252a;
-    border-top: 1px solid #3a3f48;
+    background: @{bg.surface};
+    border-top: 1px solid @{border.default};
 }
 
 QLabel[role="kpi-label"] {
-    color: #7a8898;
+    color: @{text.muted};
     font: 700 7pt 'Segoe UI';
     letter-spacing: 1.2px;
     background: transparent;
 }
 QLabel[role="kpi-value"] {
-    color: #e0e4ea;
+    color: @{text.primary};
     font: 700 14pt 'JetBrains Mono';
     background: transparent;
 }
 QLabel[role="sep"] {
-    background: #3a3f48;
+    background: @{border.default};
     min-width: 1px;
     max-width: 1px;
     margin: 6px 0px;
@@ -133,13 +133,13 @@ QLabel[role="sep"] {
 
 /* ── Status bar ───────────────────────────────────────────────────────── */
 QFrame#frame_status {
-    background: #22252a;
-    border-top: 1px solid #3a3f48;
+    background: @{bg.surface};
+    border-top: 1px solid @{border.default};
 }
 QLabel#label_status_text,
 QLabel#label_status_image,
 QLabel#label_status_groups {
-    color: #7a8898;
+    color: @{text.muted};
     font: 8pt 'Segoe UI';
     background: transparent;
 }

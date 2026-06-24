@@ -48,9 +48,9 @@ TaskLocalization::TaskLocalization(QString name, QString id, QObject* parent)
     this->setTaskConfig(&m_config);
     this->blockSignals(false);
 
-    m_limitDeviceMap.insert(device::DeviceType::PLC, limit_comm_device);
-    m_limitDeviceMap.insert(device::DeviceType::VisionOutput, limit_vision_output_device);
-    m_limitDeviceMap.insert(device::DeviceType::Camera, limit_num_camera);
+    m_limitDeviceMap.insert(device::DeviceType::PLC, kLimitCommDevice);
+    m_limitDeviceMap.insert(device::DeviceType::VisionOutput, kLimitVisionOutputDevice);
+    m_limitDeviceMap.insert(device::DeviceType::Camera, kLimitNumCamera);
 
     m_patternManager = new mtc::PatternGroupManager(this);
     qRegisterMetaType<mtc::MatchResult>("mtc::MatchResult");
@@ -498,6 +498,27 @@ void TaskLocalization::wireRuntimeControllerSignals()
     }
 }
 
+std::shared_ptr<mtc::MatchGroup>
+TaskLocalization::snapshotPatternGroup(const std::shared_ptr<mtc::MatchGroup> &source)
+{
+    if (!source) {
+        return nullptr;
+    }
+
+    // Independent deep copy: own MatchGroupConfig (with cloned typeConfig) plus
+    // an own pattern vector whose configs carry the training image (m_rawImage).
+    // The worker can learn/match from this snapshot without touching — or racing
+    // — the live PatternGroupManager group on the GUI thread.
+    auto snapshot = std::make_shared<mtc::MatchGroup>();
+    source->cloneConfigTo(*snapshot);
+    for (const auto &pattern : source->patterns()) {
+        if (pattern) {
+            snapshot->addPattern(pattern->config());
+        }
+    }
+    return snapshot;
+}
+
 LocalizationRuntimeController::RuntimeContext
 TaskLocalization::buildRuntimeContext() const
 {
@@ -542,17 +563,9 @@ TaskLocalization::buildRuntimeContext() const
     if (m_patternManager) {
         const auto groups = m_patternManager->groups();
         for (const auto &source : groups) {
-            if (!source) {
-                continue;
+            if (auto snapshot = snapshotPatternGroup(source)) {
+                context.patternGroups.insert(snapshot->number(), snapshot);
             }
-            auto snapshot = std::make_shared<mtc::MatchGroup>();
-            source->cloneConfigTo(*snapshot);
-            for (const auto &pattern : source->patterns()) {
-                if (pattern) {
-                    snapshot->addPattern(pattern->config());
-                }
-            }
-            context.patternGroups.insert(snapshot->number(), snapshot);
         }
         if (!context.patternGroups.isEmpty()) {
             context.activePatternGroupNumber = context.patternGroups.firstKey();

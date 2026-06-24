@@ -222,6 +222,9 @@ void VisionTcpipClientDeviceWidget::initWidget() {
         m_config.m_kinematicCheck = m_kcheckWidget->config();
         saveConfig();
     });
+    connect(m_kcheckWidget, &RobotKinematicCheckWidget::testerWidgetVisibleChanged, this, [this]() {
+        this->parentWidget()->setMinimumSize(this->minimumSizeHint());
+    });
 
     updateConnectionVisual(m_device && m_device->isDeviceConnected()
                                ? vc::device::ConnectStatus::Connected
@@ -249,6 +252,8 @@ void VisionTcpipClientDeviceWidget::onPropertyValueChanged(QtProperty *property,
             }
 
             if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
+                LOG_USER_WARN << tr("Cannot rename device to \"%1\": the name is "
+                                    "already in use.").arg(new_name);
                 m_variantManager->setValue(property, m_device->name());
             }
         }

@@ -9,6 +9,7 @@
 #include "model/camera_workspace.h"
 #include "matching/pattern_group_manager.h"
 #include "qgadget_marco.h"
+#include "logger/app_logger.h"
 
 namespace vc::model {
 
@@ -63,6 +64,11 @@ public:
     explicit TaskLocalizeConfig()
         : ITaskConfig(), d(new TaskLocalizeConfigPrivate()) {}
 
+    // Persistence schema version. Bump when the on-disk shape changes in a way
+    // older readers cannot parse; add migration logic in fromJson(). A document
+    // with no "version" key is the pre-versioning legacy baseline (version 0).
+    static constexpr int kSchemaVersion = 1;
+
     TaskType taskType() const override {
         return TaskType::LocalizationTask;
     }
@@ -73,6 +79,7 @@ public:
 
     QJsonObject toJson() const override {
         QJsonObject obj;
+        obj["version"]             = kSchemaVersion;
         obj["nActiveCamera"]       = d->m_nActiveCamera;
         obj["nActivePatternGroup"] = d->m_nActivePatternGroup;
         obj["nDetectedNumber"]     = d->m_nDetectedNumber;
@@ -97,6 +104,20 @@ public:
 
     bool fromJson(const QJsonObject& obj) override {
         if (obj.empty()) {
+            return false;
+        }
+
+        // Schema/version gate: a document written by a newer app (version above
+        // what this build understands) is refused rather than silently loaded
+        // with partial-default state. A missing "version" key is the legacy
+        // pre-versioning baseline (treated as version 0) and is accepted.
+        const int version = obj.value("version").toInt(0);
+        if (version > kSchemaVersion) {
+            LOG_USER_ERR << QStringLiteral(
+                                "TaskLocalizeConfig: document schema version %1 is newer "
+                                "than supported %2; refusing to load.")
+                                .arg(version)
+                                .arg(kSchemaVersion);
             return false;
         }
 

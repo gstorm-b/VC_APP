@@ -133,7 +133,8 @@ void AddDeviceWizard::reloadStyleSheet() {
 
     QFile f(path);
     if (f.open(QFile::ReadOnly | QFile::Text)) {
-        setStyleSheet(QString::fromUtf8(f.readAll()));
+        setStyleSheet(ThemeManager::instance()->resolveTokens(
+            QString::fromUtf8(f.readAll())));
     } else {
         LOG_USER_WARN << QString("AddDeviceWizard: cannot load stylesheet %1").arg(path);
     }

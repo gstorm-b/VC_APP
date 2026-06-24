@@ -260,18 +260,16 @@ void VisionTcpipDeviceWidget::onPropertyValueChanged(QtProperty *property, const
             }
 
             if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
+                LOG_USER_WARN << tr("Cannot rename device to \"%1\": the name is "
+                                    "already in use.").arg(new_name);
                 m_variantManager->setValue(property, m_device->name());
             }
         }
         return;
     }
 
-    // output config
-    index = meta_cfg.indexOfProperty(propName.toUtf8());
-    if (index != -1) {
-        QMetaProperty mProp = meta_cfg.property(index);
-        mProp.writeOnGadget(&m_config, variant);
-        // qDebug() << "Updated context: " << propName << "to" << variant;
+    // output config — dispatch the edit through the shared gadget_meta helper.
+    if (vc::gadget_meta::writeProperty(meta_cfg, &m_config, propName, variant)) {
         this->saveConfig();
         return;
     }
@@ -279,7 +277,10 @@ void VisionTcpipDeviceWidget::onPropertyValueChanged(QtProperty *property, const
 
 void VisionTcpipDeviceWidget::saveConfig() {
     if (!m_output_device) return;
-    m_output_device->setVisionTcpipConfig(m_config);
+    if (!m_output_device->setVisionTcpipConfig(m_config)) {
+        LOG_USER_WARN << tr("Cannot save Vision Output settings while the device "
+                            "is connected. Disconnect first, then retry.");
+    }
 }
 
 void VisionTcpipDeviceWidget::refreshConfig() {

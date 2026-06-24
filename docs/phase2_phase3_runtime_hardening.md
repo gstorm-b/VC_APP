@@ -51,15 +51,63 @@ Warnings observed are existing non-blocking warnings: unused parameters,
 deprecated `ads::CDockWidget` constructor usage, and the existing Qt moc
 interface warning.
 
+## Runtime Threading Model Decision (2026-06-24)
+
+Decision: `LocalizationRuntimeController` runs on the `TaskRunner` coordinator
+thread (`TaskRunner::m_runtimeThread`), devices keep their own per-device
+threads, and template matching is offloaded to the dedicated `matchingRunner`
+worker thread. This is the supported runtime design — the open
+"decide whether the controller must move into `m_runtimeThread`" question is
+resolved in the affirmative, and no further threading change is planned.
+
+Rationale:
+
+- The controller owns the cycle state machine (`m_cycleState`), recovery
+  bookkeeping (`m_recoveryContexts`), active camera/pattern bindings, and PLC
+  signal dispatch. All of these must be serialized against asynchronous PLC
+  value events and active-camera/pattern changes. Pinning the controller to one
+  coordinator thread provides that serialization for free: every entry point
+  (`setup`, `execute`, `handlePlcValues`, `setActiveCameraNumber`,
+  `setActivePatternGroupNumber`, `configure`) is marshalled onto that thread
+  (`setup` via `BlockingQueuedConnection`, the rest via `QueuedConnection` from
+  `TaskLocalization::queue*`), so there are no locks and no data races on the
+  controller's mutable state.
+- Devices keep their own `HighPriority` threads (camera grab, PLC polling,
+  vision TCP I/O). The controller never blocks on device I/O; it coordinates
+  through queued runner signals and the `DeviceCommand` queue.
+- The expensive work — template matching — is already off the controller call
+  stack. `runtimeMatchingRequested` is delivered to `m_matchingWorker` on the
+  `matchingRunner` thread, and the result is posted back via a queued
+  `onRuntimeMatchingFinished`. A long match therefore cannot stall the PLC
+  handshake or the GUI.
+- `TaskRunner::enterRuntime(mergeToTaskThread = true)` (collapse all devices
+  onto the coordinator thread) is explicitly rejected for Localization:
+  `beginRuntime` logs a warning and ignores the flag.
+
+Revisit criteria: re-open only if Product Verification measures cycle latency or
+PLC-handshake jitter that traces to the coordinator thread being a bottleneck.
+Until then, "measure first" — no speculative re-threading.
+
 ## Still Open
 
 - Operator UI verification against a real or simulated runtime cycle: dashboard
   lamps, fault panel, KPIs, result table, task-local log, and read-only
   dashboard behavior.
 - Runtime matching latency/UI responsiveness measurement.
-- Fully runner-based runtime active-camera switching. The controller guards
-  camera changes while running, but the broader `TaskLocalization` camera switch
-  path still needs review/refactor before declaring the item closed.
+- ~~Fully runner-based runtime active-camera switching.~~ Resolved
+  (2026-06-24). Reviewed the full switch path: `TaskLocalization::setCameraNumber`
+  → `queueSetActiveCameraNumber` (queued onto the controller thread) →
+  `LocalizationRuntimeController::setActiveCameraNumber`, which is fully
+  runner-coordinated — it guards mid-cycle changes, rebinds the active camera
+  role, disconnects the previous camera via `previousRunner->requestDisconnect()`
+  and connects the new one via `newRunner->requestConnect()` (both through the
+  per-device command queue), and per-cycle grab/command connections always target
+  the current `activeCameraRunner()`. Fixed one latent defect in the process: the
+  active-workspace resolution dereferenced the new runner unguarded after an
+  early-return path, inconsistent with the `requestConnect` guard above it; the
+  deref is now inside the `if (newRunner)` block and the workspace is refreshed
+  before the runtime is marked ready. Verified by the architecture contract suite
+  (38 passed).
 - Customer installer clean-machine verification, tracked separately in
   [customer_installer_packaging.md](customer_installer_packaging.md).
 

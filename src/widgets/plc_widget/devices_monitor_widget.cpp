@@ -1,7 +1,8 @@
 #include "devices_monitor_widget.h"
 #include "device_row_delegate.h"
-#include "form/pattern/pattern_theme.h"
+#include "utils/theme_manager.h"
 
+#include <QFile>
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -14,78 +15,20 @@
 
 namespace vc::widgets {
 
-namespace {
-
-QString headerStyle() {
-    return QString(
-        "QFrame#dmHeader { background-color: %1; "
-        "  border: 1px solid %2; border-bottom: none; "
-        "  border-top-left-radius: 6px; border-top-right-radius: 6px; }")
-        .arg(ptn::SURF, ptn::BD);
-}
-
-QString titleStyle() {
-    return QString(
-        "color: %1; font: 700 9pt \"Segoe UI\"; letter-spacing: 1.4px;")
-        .arg(ptn::TXT3);
-}
-
-QString subtitleStyle() {
-    return QString("color: %1; font: 9pt \"%2\";")
-        .arg(ptn::TXT4, ptn::FONT_MONO);
-}
-
-QString countBadgeStyle() {
-    return QString(
-        "QLabel { color: %1; font: 700 8pt \"%2\"; "
-        "  background-color: %3; border: 1px solid %4; "
-        "  padding: 4px 10px; border-radius: 3px; "
-        "  letter-spacing: 1px; }")
-        .arg(ptn::OUTPUT, ptn::FONT_MONO, ptn::BG, ptn::BD);
-}
-
-QString searchStyle() {
-    return QString(
-        "QLineEdit#dmSearch { "
-        "  background-color: %1; color: %2; "
-        "  border: 1px solid %3; border-radius: 4px; "
-        "  padding: 4px 10px; font: 10pt \"%4\"; min-width: 180px; }"
-        "QLineEdit#dmSearch:focus { border-color: %5; }")
-        .arg(ptn::BG, ptn::TXT, ptn::BD2, ptn::FONT_MONO, ptn::ACC);
-}
-
-QString tableStyle() {
-    return QString(
-        "QTableWidget#dmTable {"
-        "  background-color: %1; alternate-background-color: %2;"
-        "  gridline-color: transparent;"
-        "  selection-background-color: #094771; selection-color: %3;"
-        "  border: 1px solid %4; border-top: none;"
-        "  border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;"
-        "  font-family: \"%5\"; font-size: 11px; }"
-        "QHeaderView::section {"
-        "  background-color: %1; color: %6;"
-        "  padding: 7px 12px; border: none;"
-        "  border-bottom: 1px solid %4;"
-        "  font: 700 8pt \"Segoe UI\";"
-        "  text-transform: uppercase; letter-spacing: 1px; }"
-        "QHeaderView { background-color: %1; }"
-        "QTableCornerButton::section { background-color: %1;"
-        "  border-bottom: 1px solid %4; }")
-        .arg(ptn::BG, ptn::SURF, ptn::TXT, ptn::BD, ptn::FONT_MONO, ptn::TXT3);
-}
-
-} // namespace
-
 
 DevicesMonitorWidget::DevicesMonitorWidget(Mode mode, QWidget *parent)
     : QWidget(parent), m_mode(mode) {
     setupUi();
+    reloadStyleSheet();
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, [this](const QString &, bool) { reloadStyleSheet(); });
 }
 
 DevicesMonitorWidget::~DevicesMonitorWidget() = default;
 
 void DevicesMonitorWidget::setupUi() {
+    setObjectName(QStringLiteral("DevicesMonitorWidget"));
+
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
@@ -93,7 +36,6 @@ void DevicesMonitorWidget::setupUi() {
     // ── Header ────────────────────────────────────────────────────────────
     m_header = new QFrame(this);
     m_header->setObjectName("dmHeader");
-    m_header->setStyleSheet(headerStyle());
     m_header->setFrameShape(QFrame::NoFrame);
 
     auto *hLay = new QHBoxLayout(m_header);
@@ -105,13 +47,13 @@ void DevicesMonitorWidget::setupUi() {
     titleBlock->setContentsMargins(0, 0, 0, 0);
 
     m_titleLabel = new QLabel(this);
-    m_titleLabel->setStyleSheet(titleStyle());
+    m_titleLabel->setObjectName(QStringLiteral("dmTitle"));
     m_titleLabel->setText(m_mode == Mode::Bit
                               ? tr("M DEVICES — BIT REGISTERS")
                               : tr("D DEVICES — WORD REGISTERS"));
 
     m_subtitleLabel = new QLabel(this);
-    m_subtitleLabel->setStyleSheet(subtitleStyle());
+    m_subtitleLabel->setObjectName(QStringLiteral("dmSubtitle"));
     m_subtitleLabel->setText(m_mode == Mode::Bit
                                  ? tr("ON/OFF flags polled live from PLC")
                                  : tr("16-bit signed values polled live from PLC"));
@@ -122,13 +64,12 @@ void DevicesMonitorWidget::setupUi() {
     hLay->addStretch();
 
     m_countLabel = new QLabel(this);
-    m_countLabel->setStyleSheet(countBadgeStyle());
+    m_countLabel->setObjectName(QStringLiteral("dmCount"));
     m_countLabel->setText("0 / 0");
     hLay->addWidget(m_countLabel);
 
     m_search = new QLineEdit(this);
     m_search->setObjectName("dmSearch");
-    m_search->setStyleSheet(searchStyle());
     m_search->setPlaceholderText(tr("Filter address or description…"));
     m_search->setClearButtonEnabled(true);
     connect(m_search, &QLineEdit::textChanged,
@@ -140,7 +81,6 @@ void DevicesMonitorWidget::setupUi() {
     // ── Table ─────────────────────────────────────────────────────────────
     m_table = new QTableWidget(this);
     m_table->setObjectName("dmTable");
-    m_table->setStyleSheet(tableStyle());
     m_table->setColumnCount(4);
     m_table->setHorizontalHeaderLabels({
         tr("Address"),
@@ -182,6 +122,21 @@ void DevicesMonitorWidget::setupUi() {
             this,        &DevicesMonitorWidget::wordWriteRequested);
 
     root->addWidget(m_table, 1);
+}
+
+void DevicesMonitorWidget::reloadStyleSheet() {
+    const QString path = ThemeManager::instance()->isDark()
+        ? QStringLiteral(":/styles/devices_monitor_widget_dark.qss")
+        : QStringLiteral(":/styles/devices_monitor_widget_light.qss");
+    QFile f(path);
+    if (f.open(QFile::ReadOnly | QFile::Text)) {
+        setStyleSheet(ThemeManager::instance()->resolveTokens(
+            QString::fromUtf8(f.readAll())));
+    }
+    if (m_table) {
+        m_table->viewport()->update();
+        m_table->update();
+    }
 }
 
 void DevicesMonitorWidget::setTitle(const QString &title) {

@@ -42,6 +42,24 @@ public:
     // Icons named "foo_dark.svg" carry BLACK paths (for light bg).
     QString themedIcon(const QString& basePath) const;
 
+    // QSS design-token resolution.
+    //
+    // Qt has no native QSS variables, so stylesheets reference design tokens by
+    // name through the placeholder syntax "@{group.token}" (e.g. "@{accent.primary}",
+    // "@{bg.surface}"). resolveTokens() substitutes every placeholder with the hex /
+    // rgba value the §5 token table (ui_design_rules.md) assigns it for the given
+    // theme. This is the one place tokens turn into literals; renaming a token is a
+    // single-table edit. Unknown tokens are left untouched (and logged once).
+    //
+    // The no-argument overload resolves for the active theme; the bool overload is
+    // used by ThemeManager::apply() while a specific style is being installed.
+    QString resolveTokens(const QString& qss) const;
+    static QString resolveTokens(const QString& qss, bool dark);
+
+    // Raw token lookup. Returns the value string for a token in the requested
+    // theme, or an empty string if the token name is not in the §5 table.
+    static QString tokenValue(const QString& name, bool dark);
+
 signals:
     void themeChanged(QString styleId, bool isDark);
     void styleRegistered(ThemeStyle style);

@@ -71,9 +71,12 @@ bool Project::addTask(ITask* task) {
     m_tasks.insert(task_ptr->id(), task_ptr);
     m_occupiedTaskNames.insert(task_ptr->name());
 
-    // connect signal
-    connect(task_ptr.get(), &vc::model::ITask::configChanged, this, [this, task_ptr]() {
-        emit this->taskModified(task_ptr->id());
+    // connect signal — capture the task id by value, NOT the shared_ptr, so this
+    // connection does not keep the task alive past removeTask(). The connection
+    // auto-disconnects when the task (the sender) is destroyed.
+    const QString taskId = task_ptr->id();
+    connect(task_ptr.get(), &vc::model::ITask::configChanged, this, [this, taskId]() {
+        emit this->taskModified(taskId);
     });
 
     connect(task_ptr.get(), &vc::model::ITask::configChanged,

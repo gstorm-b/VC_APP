@@ -187,9 +187,6 @@ void LocalizationTaskWidget::initWidget()
     ui->nav_splitter->setStretchFactor(0, 3);
     ui->nav_splitter->setStretchFactor(1, 7);
 
-    ui->splitter_main_content->setStretchFactor(0, 7);
-    ui->splitter_main_content->setStretchFactor(1, 3);
-
     // Dashboard tab (default active)
     showDashboardPage();
     updateTaskStateUi();
@@ -445,17 +442,23 @@ void LocalizationTaskWidget::initContentStack()
 
 void LocalizationTaskWidget::onTaskDevicesChanged() {
     QStringList deviceIds = m_localizeTask->assignedDeviceIds();
-    for (int idx=0;idx<ui->content_stack->count();idx++) {
+    // Iterate from the top down: removeWidget() shifts higher indices, so a
+    // forward loop would skip the page that slides into a just-vacated slot
+    // (two consecutive removed device pages left a stale widget behind).
+    for (int idx = ui->content_stack->count() - 1; idx >= 0; --idx) {
         QWidget *w = ui->content_stack->widget(idx);
         IDeviceWidget *dw = qobject_cast<IDeviceWidget*>(w);
         if (dw) {
             const QString deviceId = dw->deviceId();
+            // Only tear down pages for devices that are no longer assigned.
+            // These calls used to run for every page found — including still-live
+            // ones — desyncing m_devicePages from the stack and orphaning pages.
             if (!deviceIds.contains(deviceId)) {
                 ui->content_stack->removeWidget(w);
                 w->deleteLater();
+                removePropertyBrowserWidget(dw->getPropertyBrowser());
+                m_devicePages.remove(deviceId);
             }
-            removePropertyBrowserWidget(dw->getPropertyBrowser());
-            m_devicePages.remove(deviceId);
         }
     }
 
@@ -595,15 +598,17 @@ void LocalizationTaskWidget::wireDeviceNavDots()
     // Map a device link state onto the dot's [lampState] QSS variant.
     auto dotStateFor = [](vc::device::ConnectStatus status) -> QString {
         using CS = vc::device::ConnectStatus;
+        // No default: — every ConnectStatus value is enumerated so -Wswitch /
+        // C4062 flags a new value; the trailing return satisfies the return type.
         switch (status) {
         case CS::Connected:    return QStringLiteral("on");
         case CS::Connecting:   return QStringLiteral("warn");
         case CS::LostConnected:
         case CS::ConnectFailed:
         case CS::Disconnected:
-        case CS::NoConnection:
-        default:               return QStringLiteral("off");
+        case CS::NoConnection: return QStringLiteral("off");
         }
+        return QStringLiteral("off");
     };
 
     auto applyDotState = [](QFrame *dot, const QString &state) {
@@ -665,11 +670,13 @@ void LocalizationTaskWidget::showDashboardPage()
     }
 
     m_activeDeviceId.clear();
-    ui->content_stack->setCurrentIndex(kDashboardPage);
+    // Navigate by widget pointer (not the fixed kDashboardPage index): pages are
+    // inserted lazily in click order, so a page's real index can differ from its
+    // preferred slot. setCurrentWidget() is always correct.
+    ui->content_stack->setCurrentWidget(m_dashboardPage);
     ui->btn_nav_dashboard->setChecked(true);
     refreshNavItemStyles();
     updateBreadcrumb(tr("Dashboard"), QStringLiteral("accent"));
-    // populateBrowser();
     ui->wg_property_browser->setVisible(false);
 }
 
@@ -688,7 +695,9 @@ void LocalizationTaskWidget::showSettingsPage()
     }
 
     m_activeDeviceId.clear();
-    ui->content_stack->setCurrentIndex(kSettingsPage);
+    // Navigate by widget pointer (not the fixed kSettingsPage index) — see
+    // showDashboardPage() for why the real index can differ from the slot.
+    ui->content_stack->setCurrentWidget(m_settingPage);
     ui->btn_nav_settings->setChecked(true);
     refreshNavItemStyles();
     updateBreadcrumb(tr("Settings"), QStringLiteral("muted"));
@@ -751,8 +760,12 @@ void LocalizationTaskWidget::showDeviceConfigPage(const QString &deviceId)
 
     ui->wg_property_browser->setVisible(true);
 
-    ui->scrollAreaWidgetContents->setMinimumSize(page->minimumSizeHint());
+    // QSize property_browser_base_size = ui->wg_property_browser->baseSize();
+    // property_browser_base_size.setWidth(300);
+    // ui->wg_property_browser->setBaseSize(property_browser_base_size);
+
     ui->content_stack->setMinimumSize(page->minimumSizeHint());
+    ui->scrollArea->setWidgetResizable(true);
 }
 
 void LocalizationTaskWidget::onDeviceNavClicked(const QString &deviceId)

@@ -90,17 +90,31 @@ Historical docs:
 This is a qmake project. In command-line MSVC verification, use qmake first and
 `nmake /nologo` as the reliable fallback.
 
-Known-good baseline:
+Local machine paths must come from environment variables. Do not add new
+hard-coded absolute paths for Qt, OpenCV, Basler Pylon, Visual Studio, or
+third-party libraries.
 
-- Qt: `C:\Qt\6.8.2\msvc2022_64`
-- MSVC: Visual Studio 2022, initialized by `vcvars64.bat`
-- OpenCV: `C:\opencv\build`
-- Basler Pylon: `C:\Program Files\Basler\pylon`
+Expected local variables:
+
+- `NCR_PICKING_ROOT`
+- `QT_MSVC_DIR`
+- `VCVARS`
+- `OPENCV_ROOT`, `OPENCV_BIN`, `OPENCV_INCLUDE_DIR`, `OPENCV_LIB_DIR`
+- `PYLON_ROOT`, `PYLON_RUNTIME_DIR`, `PYLON_INCLUDE_DIR`, `PYLON_LIB_DIR`
+- `VCTOOLS_DEBUG_CRT_DIR` when running Debug test binaries outside Visual Studio
+- third-party/component roots such as RobotKinematics dependencies
 
 Important:
 
 - Call `vcvars64.bat` directly. Do not redirect its output.
 - Run `qmake` from the build directory before compiling.
+- Build output location follows the `.pro` owner:
+  - root app `ncr_picking.pro`: `%NCR_PICKING_ROOT%\build\<build-name>`;
+  - tests: `build\<build-name>` next to the test `.pro`;
+  - examples/components: `build\<build-name>` next to that `.pro`.
+- Do not put test/example/component build outputs under root `build\`.
+  Root `build\` is reserved for the root application and root release/package
+  verification.
 - For `tests/architecture_contract_test`, run
   `nmake /nologo -f Makefile.Debug compiler_moc_source_make_all` before the
   normal `nmake /nologo`.
@@ -143,4 +157,3 @@ slices are:
   permission.
 - Do not create broad abstractions before a second concrete implementation
   proves the shape.
-

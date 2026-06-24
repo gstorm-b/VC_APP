@@ -42,15 +42,17 @@ void VisionTcpipDevice::setDeviceConfig(IDeviceCfg *cfg) {
     IDevice::setDeviceConfig(&m_config);
 }
 
-void VisionTcpipDevice::setVisionTcpipConfig(VisionTcpipDeviceCfg& cfg) {
+bool VisionTcpipDevice::setVisionTcpipConfig(VisionTcpipDeviceCfg& cfg) {
     if (this->isDeviceConnected()) {
-        return;
+        // Config is locked while the link is live; caller must disconnect first.
+        return false;
     }
 
     QMutexLocker locker(&m_mutex);
     m_config = cfg;
     // change and emit signal
     IDevice::setDeviceConfig(&m_config);
+    return true;
 }
 
 bool VisionTcpipDevice::fromJson(const QJsonObject &obj) {

@@ -32,7 +32,9 @@ public:
     }
 
     void setDeviceConfig(IDeviceCfg *cfg) override;
-    void setVisionTcpipConfig(VisionTcpipDeviceCfg& cfg);
+    // Returns false (config unchanged) when the device is connected — the
+    // config is locked while the link is live. Caller should surface this.
+    bool setVisionTcpipConfig(VisionTcpipDeviceCfg& cfg);
     VisionTcpipDeviceCfg visionTcpipConfig() const { return m_config; }
 
     bool fromJson(const QJsonObject &obj) override;

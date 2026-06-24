@@ -313,6 +313,8 @@ void BaslerCameraWidget::onPropertyValueChanged(QtProperty *property, const QVar
             }
 
             if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
+                LOG_USER_WARN << tr("Cannot rename device to \"%1\": the name is "
+                                    "already in use.").arg(new_name);
                 m_variantManager->setValue(property, m_device->name());
             }
         }
@@ -346,7 +348,11 @@ void BaslerCameraWidget::onCameraConnectStatusChanged(vc::device::ConnectStatus 
                              tr("Connect error"),
                              m_camera->lastMsg());
         break;
-    default:
+    // Enumerate the rest explicitly (no default:) so adding a ConnectStatus
+    // value surfaces a -Wswitch / C4062 warning here.
+    case vc::device::ConnectStatus::NoConnection:
+    case vc::device::ConnectStatus::LostConnected:
+    case vc::device::ConnectStatus::Connecting:
         break;
     }
 

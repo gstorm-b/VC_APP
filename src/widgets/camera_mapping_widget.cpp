@@ -213,7 +213,8 @@ void CameraMappingWidget::reloadStyleSheet() {
         : QStringLiteral(":/styles/camera_mapping_widget_light.qss");
     QFile f(path);
     if (f.open(QFile::ReadOnly | QFile::Text)) {
-        setStyleSheet(QString::fromUtf8(f.readAll()));
+        setStyleSheet(ThemeManager::instance()->resolveTokens(
+            QString::fromUtf8(f.readAll())));
     }
 }
 

@@ -43,6 +43,14 @@ inline TaskDeviceRole taskDeviceRoleFromString(const QString &value)
 
 class TaskDeviceBinding {
 public:
+    // Camera bindings use 1..16 numbers — the task enforces the same bound at
+    // runtime via TaskLocalization::kLimitNumCamera. Device ids are short
+    // (numeric or short tokens); cap the length to reject malformed/hostile
+    // input. Kept local to avoid a dependency on TaskLocalization here.
+    static constexpr int kMinCameraNumber = 1;
+    static constexpr int kMaxCameraNumber = 16;
+    static constexpr int kMaxDeviceIdLength = 64;
+
     TaskDeviceBinding() = default;
 
     TaskDeviceBinding(TaskDeviceRole role, QString deviceId, int cameraNumber = 0)
@@ -67,7 +75,21 @@ public:
         m_role = taskDeviceRoleFromString(obj["role"].toString());
         m_deviceId = obj["deviceId"].toString();
         m_cameraNumber = obj["cameraNumber"].toInt(0);
-        return m_role != TaskDeviceRole::Unknown;
+
+        if (m_role == TaskDeviceRole::Unknown)
+            return false;
+
+        // Reject malformed/hostile imports: over-long device ids and out-of-range
+        // camera numbers. Invalid bindings are dropped by the bool-return
+        // convention in TaskDeviceBindings::fromJson().
+        if (m_deviceId.size() > kMaxDeviceIdLength)
+            return false;
+
+        if (m_role == TaskDeviceRole::CameraNumber &&
+            (m_cameraNumber < kMinCameraNumber || m_cameraNumber > kMaxCameraNumber))
+            return false;
+
+        return true;
     }
 
 private:

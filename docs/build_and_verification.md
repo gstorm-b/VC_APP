@@ -24,24 +24,71 @@ failed to find `cl`, even though `where cl` succeeded immediately before
 launching `jom`. Use `jom` when launching through Qt Creator's configured kit;
 otherwise prefer the `nmake` fallback below.
 
+## Build Directory Policy
+
+Build output location follows the owner of the `.pro` file:
+
+- Root application build: use `%NCR_PICKING_ROOT%\build\<build-name>` for
+  `ncr_picking.pro`.
+- Test build: use a `build\<build-name>` folder next to the test `.pro`, for
+  example `%NCR_PICKING_ROOT%\tests\architecture_contract_test\build\msvc_debug`.
+- Example or component build: use a `build\<build-name>` folder next to that
+  example/component `.pro`.
+
+Do not put test, example, or component build folders under the repository root
+`build\` directory. Root `build\` is reserved for the root application and
+root-level release/package verification only.
+
+Legacy root-level folders such as `build\phase1_architecture_contract_*` and
+`build_contract_test` are not canonical. Treat them as disposable generated
+artifacts and clean them only when the user explicitly approves cleanup.
+
+## Local Environment Variables
+
+Machine-local paths must come from environment variables in docs, scripts, and
+project files. Do not add new hard-coded absolute paths such as `C:\Qt\...`,
+`C:\opencv\...`, or `C:\Program Files\Basler\...`.
+
+Use these names for local configuration:
+
+- `NCR_PICKING_ROOT`: repository root.
+- `QT_MSVC_DIR`: Qt MSVC kit root, for example the directory that contains
+  `bin\qmake.exe`.
+- `VCVARS`: full path to Visual Studio `vcvars64.bat`.
+- `OPENCV_ROOT`, `OPENCV_BIN`, `OPENCV_INCLUDE_DIR`, `OPENCV_LIB_DIR`: OpenCV
+  install/build paths.
+- `PYLON_ROOT`, `PYLON_RUNTIME_DIR`, `PYLON_INCLUDE_DIR`, `PYLON_LIB_DIR`:
+  Basler Pylon paths.
+- `VCTOOLS_DEBUG_CRT_DIR`: optional Debug CRT runtime directory when running
+  Debug test binaries outside Visual Studio.
+- RobotKinematics and third-party dependencies should follow the component
+  scripts' pattern: define the dependency root once, then derive include, lib,
+  bin, and runtime folders from that root.
+
+Existing hard-coded paths in old `.pro` files are technical debt. New work
+should migrate touched project files to environment-variable based paths.
+
 ## MSVC App Build
 
 ```bat
-set "QT_MSVC_DIR=C:\Qt\6.8.2\msvc2022_64"
-set "VCVARS=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-set "ROOT=D:\Project\ncr_picking"
-set "BUILD=%ROOT%\build\phase1_ncr_picking_20260623_debug"
+if not defined NCR_PICKING_ROOT exit /b 1
+if not defined QT_MSVC_DIR exit /b 1
+if not defined VCVARS exit /b 1
+if not defined OPENCV_BIN exit /b 1
+if not defined PYLON_RUNTIME_DIR exit /b 1
+
+set "BUILD=%NCR_PICKING_ROOT%\build\msvc_debug"
 
 call "%VCVARS%"
 if not defined VCToolsInstallDir exit /b 1
 if not defined INCLUDE exit /b 1
 
-set "PATH=%QT_MSVC_DIR%\bin;%BUILD%\debug;C:\opencv\build\x64\vc16\bin;C:\Program Files\Basler\pylon\Runtime\x64;%PATH%"
+set "PATH=%QT_MSVC_DIR%\bin;%BUILD%\debug;%OPENCV_BIN%;%PYLON_RUNTIME_DIR%;%PATH%"
 
 if not exist "%BUILD%" mkdir "%BUILD%"
 cd /d "%BUILD%" || exit /b 1
 
-qmake -o Makefile "%ROOT%\ncr_picking.pro" -spec win32-msvc CONFIG+=debug || exit /b 1
+qmake -o Makefile "%NCR_PICKING_ROOT%\ncr_picking.pro" -spec win32-msvc CONFIG+=debug || exit /b 1
 nmake /nologo || exit /b 1
 ```
 
@@ -51,21 +98,25 @@ The architecture contract target contains an inline `main.moc`, so run the moc
 target before the normal build when using command-line qmake/nmake:
 
 ```bat
-set "QT_MSVC_DIR=C:\Qt\6.8.2\msvc2022_64"
-set "VCVARS=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-set "ROOT=D:\Project\ncr_picking"
-set "BUILD=%ROOT%\build\phase1_architecture_contract_20260623_debug"
+if not defined NCR_PICKING_ROOT exit /b 1
+if not defined QT_MSVC_DIR exit /b 1
+if not defined VCVARS exit /b 1
+if not defined OPENCV_BIN exit /b 1
+if not defined PYLON_RUNTIME_DIR exit /b 1
+
+set "TEST_DIR=%NCR_PICKING_ROOT%\tests\architecture_contract_test"
+set "BUILD=%TEST_DIR%\build\msvc_debug"
 
 call "%VCVARS%"
 if not defined VCToolsInstallDir exit /b 1
 if not defined INCLUDE exit /b 1
 
-set "PATH=%QT_MSVC_DIR%\bin;%BUILD%\debug;C:\opencv\build\x64\vc16\bin;C:\Program Files\Basler\pylon\Runtime\x64;%PATH%"
+set "PATH=%QT_MSVC_DIR%\bin;%BUILD%\debug;%OPENCV_BIN%;%PYLON_RUNTIME_DIR%;%PATH%"
 
 if not exist "%BUILD%" mkdir "%BUILD%"
 cd /d "%BUILD%" || exit /b 1
 
-qmake -o Makefile "%ROOT%\tests\architecture_contract_test\architecture_contract_test.pro" -spec win32-msvc CONFIG+=debug || exit /b 1
+qmake -o Makefile "%TEST_DIR%\architecture_contract_test.pro" -spec win32-msvc CONFIG+=debug || exit /b 1
 nmake /nologo -f Makefile.Debug compiler_moc_source_make_all || exit /b 1
 nmake /nologo || exit /b 1
 ```
@@ -75,8 +126,9 @@ Debug CRT on PATH:
 
 ```powershell
 $env:QT_QPA_PLATFORM = 'minimal'
-$env:Path = 'D:\Project\ncr_picking\build\phase1_architecture_contract_20260623_debug\debug;C:\Qt\6.8.2\msvc2022_64\bin;C:\opencv\build\x64\vc16\bin;C:\Program Files\Basler\pylon\Runtime\x64;C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Redist\MSVC\14.42.34433\debug_nonredist\x64\Microsoft.VC143.DebugCRT;C:\Windows\System32;' + $env:Path
-Set-Location 'D:\Project\ncr_picking\build\phase1_architecture_contract_20260623_debug\debug'
+$testBuild = Join-Path $env:NCR_PICKING_ROOT 'tests\architecture_contract_test\build\msvc_debug\debug'
+$env:Path = "$testBuild;$($env:QT_MSVC_DIR)\bin;$($env:OPENCV_BIN);$($env:PYLON_RUNTIME_DIR);$($env:VCTOOLS_DEBUG_CRT_DIR);C:\Windows\System32;" + $env:Path
+Set-Location $testBuild
 .\architecture_contract_test.exe -silent
 ```
 

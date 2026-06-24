@@ -45,7 +45,8 @@ protected:
         if (path.isEmpty()) return;
         QFile f(path);
         if (f.open(QFile::ReadOnly | QFile::Text))
-            setStyleSheet(QString::fromUtf8(f.readAll()));
+            setStyleSheet(ThemeManager::instance()->resolveTokens(
+                QString::fromUtf8(f.readAll())));
     }
 
     // ── Initialisation ────────────────────────────────────────────────────

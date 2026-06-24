@@ -89,3 +89,9 @@ desktop.ini
 
 # Project-specific: keep build configs that are checked in separately
 !3rdparty/**
+
+# Local Codex config for this machine only
+.codex/
+
+# Local Codex config for this machine only
+.codex/

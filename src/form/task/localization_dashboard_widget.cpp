@@ -271,8 +271,9 @@ void LocalizationDashboardWidget::applyConnectStatusToLamp(
     case CS::Disconnected:
         lamp->setStatus(StatusLamp::Status::Off, tr("Disconnected"));
         break;
+    // No default: — all ConnectStatus values are enumerated so -Wswitch / C4062
+    // flags a new value here.
     case CS::NoConnection:
-    default:
         lamp->setStatus(StatusLamp::Status::Off, tr("—"));
         break;
     }

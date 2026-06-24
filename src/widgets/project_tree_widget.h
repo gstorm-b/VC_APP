@@ -21,7 +21,7 @@ namespace TreeItemRole {
     constexpr int ItemKind  = Qt::UserRole + 1;  // int — 0:root  1:task  2:device
     constexpr int ParentId  = Qt::UserRole + 2;  // QString — parent task ID (devices only)
     constexpr int ChipText  = Qt::UserRole + 3;  // QString — "LOC" / "CAM" / "PLC"
-    constexpr int ChipColor = Qt::UserRole + 4;  // QString — "#2b8ce8"
+    constexpr int ChipColor = Qt::UserRole + 4;  // QString — token name, e.g. "device.camera"
 }
 
 enum class TreeItemKind { Root = 0, Task = 1, Device = 2 };

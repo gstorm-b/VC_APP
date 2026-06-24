@@ -133,13 +133,15 @@ void LocalizationRuntimeController::setActiveCameraNumber(int cameraNumber)
 
     if (newRunner) {
         newRunner->requestConnect();
+        // Refresh the active workspace from the new camera, guarded like the
+        // requestConnect above so a degraded switch cannot deref a null runner.
+        m_context.activeCameraWorkspace =
+            m_config.cameraWorkspace(newRunner->device()->id());
+        m_activeCameraWorkspace = m_context.activeCameraWorkspace;
     }
     if (allRequiredRolesHealthy()) {
         markRuntimeReady(QStringLiteral("Active camera changed. Runtime ready."));
     }
-
-    m_context.activeCameraWorkspace =  m_config.cameraWorkspace(newRunner->device()->id());
-    m_activeCameraWorkspace = m_context.activeCameraWorkspace;
 }
 
 void LocalizationRuntimeController::setActivePatternGroupNumber(int patternGroupNumber)

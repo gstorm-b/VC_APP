@@ -34,6 +34,7 @@ public:
 
 signals:
     void configChanged();
+    void testerWidgetVisibleChanged();
 
 private slots:
     // FK / IK tester (independent of the saved config): build a robot config from

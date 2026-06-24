@@ -397,21 +397,28 @@ related. Match action scope to what was actually requested.
 project uses markdown link syntax `[file.cpp:42](src/file.cpp#L42)` for
 file references — never backticks or HTML.
 
-### 11.4 Build outputs stay under `build/`, never at repository root
+### 11.4 Build outputs follow the `.pro` owner
 
-**Rule.** Any local build, rebuild, test build, or verification build must be
-performed inside a dedicated subfolder under the repository's `build/`
-directory, following the pattern `./build/<build-folder>/`. Do not generate
-build artifacts directly in the repository root.
+**Rule.** Build artifacts must stay in a `build/` folder owned by the `.pro`
+being built:
 
-**Why.** Root-level build output pollutes the working tree, makes navigation
-harder, and increases the chance of accidentally mixing generated files with
-source-controlled files. Keeping every build in `build/...` makes cleanup,
-comparison, and parallel debug/release or test/app builds predictable.
+- Root app `ncr_picking.pro`: `./build/<build-folder>/`.
+- Tests: `./tests/<test-name>/build/<build-folder>/`.
+- Examples/components: a `build/<build-folder>/` next to that example or
+  component `.pro`.
+
+Do not generate build artifacts directly in the repository root. Do not place
+test, example, or component builds under the repository root `build/`; that
+folder is reserved for root app and root release/package verification.
+
+**Why.** The root app, tests, examples, and component experiments have different
+lifecycles. Keeping generated files beside the owning `.pro` keeps the project
+tree navigable, prevents root build clutter, and makes cleanup safer.
 
 **Where applied.**
-- Session rule added on 2026-05-31 for all future Codex build/test runs in this
-  project.
+- Original root-build rule was added on 2026-05-31.
+- Updated on 2026-06-24 to reserve root `build/` for root app/release builds
+  and move test/example/component builds beside their `.pro` files.
 
 ---
 

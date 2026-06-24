@@ -1,0 +1,84 @@
+QWidget#DevicesMonitorWidget {
+    background: transparent;
+}
+
+QFrame#dmHeader {
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+QLabel#dmTitle {
+    color: @{text.muted};
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1.4px;
+}
+
+QLabel#dmSubtitle {
+    color: @{text.disabled};
+    font: 9pt "JetBrains Mono";
+}
+
+QLabel#dmCount {
+    color: @{device.plc};
+    font: 700 8pt "JetBrains Mono";
+    background-color: @{bg.elevated};
+    border: 1px solid @{border.default};
+    padding: 4px 10px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+}
+
+QLineEdit#dmSearch {
+    background-color: @{bg.input};
+    color: @{text.primary};
+    border: 1px solid @{border.default};
+    border-radius: 4px;
+    padding: 4px 10px;
+    font: 10pt "JetBrains Mono";
+    min-width: 180px;
+}
+QLineEdit#dmSearch:focus {
+    border-color: @{accent.primary};
+}
+
+QTableWidget#dmTable {
+    background-color: @{bg.surface};
+    alternate-background-color: @{bg.elevated};
+    color: @{text.primary};
+    gridline-color: transparent;
+    selection-background-color: @{selection.bg};
+    selection-color: @{selection.text};
+    border: 1px solid @{border.default};
+    border-top: none;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    font-family: "JetBrains Mono";
+    font-size: 11px;
+}
+
+QTableWidget#dmTable::item {
+    border: none;
+}
+
+QHeaderView {
+    background-color: @{bg.surface};
+}
+
+QHeaderView::section {
+    background-color: @{bg.surface};
+    color: @{text.muted};
+    padding: 7px 12px;
+    border: none;
+    border-bottom: 1px solid @{border.default};
+    font: 700 8pt "Segoe UI";
+    letter-spacing: 1px;
+}
+
+QTableCornerButton::section {
+    background-color: @{bg.surface};
+    border: none;
+    border-bottom: 1px solid @{border.default};
+}

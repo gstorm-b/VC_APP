@@ -182,6 +182,8 @@ void MitsubishiMcDeviceWidget::onPropertyValueChanged(QtProperty *property, cons
             }
 
             if (!m_device->deviceManager()->changeDeviceName(m_device->id(), new_name)) {
+                LOG_USER_WARN << tr("Cannot rename device to \"%1\": the name is "
+                                    "already in use.").arg(new_name);
                 m_variantManager->setValue(property, m_device->name());
             }
         }
@@ -233,19 +235,18 @@ void MitsubishiMcDeviceWidget::saveConfig() {
 void MitsubishiMcDeviceWidget::onConnectionStateChanged(vc::device::ConnectStatus state) {
     updateConnectionVisual(state);
     switch (state) {
+    // Lost/closed link → clear the cached monitor values.
     case vc::device::ConnectStatus::Disconnected:
-        if (m_monitor_m) m_monitor_m->clearAllStatuses();
-        if (m_monitor_d) m_monitor_d->clearAllStatuses();
-        break;
     case vc::device::ConnectStatus::LostConnected:
-        if (m_monitor_m) m_monitor_m->clearAllStatuses();
-        if (m_monitor_d) m_monitor_d->clearAllStatuses();
-        break;
     case vc::device::ConnectStatus::ConnectFailed:
         if (m_monitor_m) m_monitor_m->clearAllStatuses();
         if (m_monitor_d) m_monitor_d->clearAllStatuses();
         break;
-    default:
+    // Enumerate the rest explicitly (no default:) so adding a ConnectStatus
+    // value surfaces a -Wswitch / C4062 warning here.
+    case vc::device::ConnectStatus::NoConnection:
+    case vc::device::ConnectStatus::Connected:
+    case vc::device::ConnectStatus::Connecting:
         break;
     }
 }
@@ -296,9 +297,9 @@ void MitsubishiMcDeviceWidget::initWidget() {
         m_monitor_d = new vc::widgets::DevicesMonitorWidget(
             vc::widgets::DevicesMonitorWidget::Mode::Word, this);
 
+
         if (auto *layM = ui->container_m->layout()) layM->addWidget(m_monitor_m);
         if (auto *layD = ui->container_d->layout()) layD->addWidget(m_monitor_d);
-
         connect(m_monitor_m, &vc::widgets::DevicesMonitorWidget::bitWriteRequested,
                 this,        &MitsubishiMcDeviceWidget::onBitWriteRequested);
         connect(m_monitor_d, &vc::widgets::DevicesMonitorWidget::wordWriteRequested,

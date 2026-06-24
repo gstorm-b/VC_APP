@@ -60,9 +60,38 @@ in [ui_design_rules.md](ui_design_rules.md) §5, covering all six groups:
 
 Active theme: **Hybrid — Graphite Vision background + Navy Ops Orange accent**.
 
-What remains deferred: (a) the build-time mechanism (generator / `@`-include /
-concat step) so `.qss` files stop carrying literal hex, and (b) the mechanical
-migration sweep of existing `.qss` files — both tracked in #23.
+**Update (2026-06-24): DONE — runtime token resolver + migration sweep.**
+Chosen mechanism: a **runtime resolver** (not a build-time generator). `.qss`
+files reference tokens as `@{group.token}`; `ThemeManager::resolveTokens()`
+substitutes each from the canonical `tokenTable()` in
+[theme_manager.cpp](../src/utils/theme_manager.cpp) (mirrors §5) when the sheet
+loads. Every loader routes through it: global `apply()`, the `IDeviceWidget` /
+`ITaskWidget` base `reloadStyleSheet()`, and the three widgets with their own
+reload (`AddDeviceWizard`, `CameraMappingWidget`, `SignalsMonitorWidget`).
+
+Migrated all 18 sheets — 1054 `@{token}` references. The sweep is **provably
+non-visual-changing**: a verification pass parsed `tokenTable()` and re-resolved
+every migrated file, matching the pre-migration backup byte-for-byte (modulo hex
+case and rgba whitespace, both visually irrelevant). The app builds and links
+with the resolver wired in.
+
+**Update (2026-06-24, handoff token sweep applied): PARTIALLY RESOLVED.** The
+follow-up colourway pass from
+[resrc/styles/THEME_PALETTE_DESIGN_BRIEF.md](../resrc/styles/THEME_PALETTE_DESIGN_BRIEF.md)
+is now implemented: `ThemeManager::tokenTable()` gained the `device.*`,
+`state.*.bright`, `state.error.deep`, and `overlay.*` families, and the active
+QSS sheets were swept onto those placeholders. The old device-role leftovers
+(`camera`/`plc`/`output`/`default`), status-lamp bright stops, and ADS
+hover/pressed overlays are no longer hard-coded in the themed sheets. The only
+approved raw exception left in the sweep scope is `#7a1010`, matching the
+handoff rationale.
+
+**Done (2026-06-24).** The remaining themed surfaces from
+`ui_token_handoff_rework_request.md` are now closed:
+`DevicesMonitorWidget`/`DeviceRowDelegate` use token-backed theme-aware
+painting and stylesheet reload, and `SystemLogForm` now has explicit
+dark/light QSS plus full visible-entry re-render on theme switch so existing
+log lines stay readable after toggling the active theme.
 
 ---
 
@@ -367,9 +396,25 @@ to flag-not-fix this round. Items fixed by Phase 2 have been removed from this
 batch. The remaining items should be scheduled before the next
 commission run, ahead of the cleanup items lower down.
 
+**CLOSED (2026-06-24).** All of batch 22 is resolved or intentionally deferred.
+Every numbered item (22.1–22.24; 22.7 and 22.15 never existed) carries a Status
+line: RESOLVED, RESOLVED (moot/already-fixed), or — for 22.20 only — DEFERRED
+with rationale (premature optimization). Verified across the architecture
+contract suite (38 passed) and a full Debug app build.
+
 ### Critical — schedule before next commission run
 
 **22.1 — `std::shared_ptr::reset(raw)` creates a second owning control block.**
+
+**Status (2026-06-24): RESOLVED.** Code audit confirms the double-ownership is
+gone: there is no `.reset(raw)` call anywhere in `src/`, and the
+`m_nextConnectCamera` / `m_selectedCamera` members no longer exist. The device
+path now follows the recommended fix — `buildRuntimeContext()` derives the typed
+camera via `std::dynamic_pointer_cast<device::CameraDevice>(device)`
+([task_localization.cpp](../src/model/task_localization.cpp), `buildRuntimeContext`),
+so every owner shares the single control block held by `DeviceManager`. The
+former line references (`:261/:266/:267/:320`) now point at unrelated code.
+
 - Where. [task_localization.cpp:261](../src/model/task_localization.cpp) (and
   :266, :267, :320). `m_nextConnectCamera.reset(camera)` / `m_selectedCamera.reset(camera)`
   receive a raw `CameraDevice*` from `qobject_cast<CameraDevice*>(device.get())`,
@@ -409,6 +454,12 @@ verifies that `CameraWorkspace` and `cv::Mat` are delivered.
 ### High — real bugs, scoped fixes
 
 **22.3 — `removeWidget()` during forward index iteration skips pages.**
+
+**Status (2026-06-24): RESOLVED.** `onTaskDevicesChanged()` now iterates the
+content stack from the top down (`idx = count()-1 … 0`), so `removeWidget()`
+shifting higher indices can no longer skip the page that slides into a vacated
+slot. Compiles in the full Debug app build.
+
 - Where. [localization_task_widget.cpp:470](../src/form/task/localization_task_widget.cpp),
   `onTaskDevicesChanged()`. Loop iterates `content_stack` by ascending index and
   removes inside the loop; `removeWidget` shifts later indices down while `idx`
@@ -418,6 +469,13 @@ verifies that `CameraWorkspace` and `cv::Mat` are delivered.
   iterate `idx = count()-1 .. 0`.
 
 **22.4 — `m_devicePages` cache evicted for still-assigned devices.**
+
+**Status (2026-06-24): RESOLVED.** Both `removePropertyBrowserWidget(...)` and
+`m_devicePages.remove(deviceId)` now sit inside the
+`if (!deviceIds.contains(deviceId))` guard in `onTaskDevicesChanged()`, so live
+device pages are no longer torn down/evicted. Compiles in the full Debug app
+build (`localization_task_widget.cpp`).
+
 - Where. [localization_task_widget.cpp:479](../src/form/task/localization_task_widget.cpp).
   `removePropertyBrowserWidget(...)` and `m_devicePages.remove(deviceId)` sit
   outside the `if (!deviceIds.contains(deviceId))` guard, so they run for every
@@ -441,6 +499,23 @@ full Debug app build.
 - How to fix. `IDeviceWidget(QWidget *parent = nullptr) : QWidget(parent) {}`.
 
 **22.6 — Shared `MatchGroup` read on worker thread while GUI can mutate it.**
+
+**Status (2026-06-24): RESOLVED.** Both matching paths now hand the worker an
+isolated deep copy built on the GUI thread via
+`TaskLocalization::snapshotPatternGroup()` (own `MatchGroupConfig` with cloned
+`typeConfig`, plus an own pattern vector whose configs carry `m_rawImage`):
+- Runtime: `buildRuntimeContext()` already snapshotted into
+  `context.patternGroups`; it now calls the shared helper.
+- Commission: `startCommissionMatching()` previously emitted the **live**
+  `PatternGroupManager` group (obtained in
+  `LocalizationPatternsWidget::runMatchingTest`) directly to the matching thread.
+  It now snapshots before `emit`, so the worker never touches the live group.
+
+Verified: architecture contract suite rebuilt and ran on 2026-06-24 — `Totals:
+38 passed, 0 failed` (incl. `test_runtime_matching_payload_metatypes_support_
+queued_connection` and `test_localization_runtime_trigger_cycle_uses_matching_
+worker_contract`).
+
 - Where. [task_localization.cpp:382-404](../src/model/task_localization.cpp). The
   worker lambda iterates `group->patterns()` / reads `config()` on the matching
   thread, holding the same `shared_ptr<MatchGroup>` that `PatternGroupManager`
@@ -455,6 +530,13 @@ full Debug app build.
 ### Medium — hardening / robustness
 
 **22.8 — `fromJson` performs no schema/version validation.**
+
+**Status (2026-06-24): RESOLVED.** `TaskLocalizeConfig::toJson()` now writes
+`version` (`kSchemaVersion = 1`); `fromJson()` reads it and refuses any document
+whose version is newer than supported (a missing key is the legacy baseline,
+version 0, and is accepted). Verified by the architecture contract suite (38
+passed) and the full Debug app build.
+
 - Where. [task_localization_config.h:89](../src/model/task_localization_config.h),
   [task_localization.cpp:116](../src/model/task_localization.cpp). Only gate is
   `obj.empty()`; fields read with defaults, so a future/foreign document is
@@ -463,6 +545,14 @@ full Debug app build.
   `fromJson()`; treat missing as the legacy baseline.
 
 **22.9 — No range validation on imported binding data.**
+
+**Status (2026-06-24): RESOLVED.** `TaskDeviceBinding::fromJson()` now rejects
+out-of-range camera numbers (CameraNumber bindings must be
+`kMinCameraNumber..kMaxCameraNumber` = 1..16) and over-long device ids
+(`kMaxDeviceIdLength` = 64). Invalid bindings are dropped via the existing
+bool-return convention in `TaskDeviceBindings::fromJson()`. Verified by the
+architecture contract suite (38 passed) and the full Debug app build.
+
 - Where. [task_device_binding.h:65](../src/model/task_device_binding.h).
   `cameraNumber = obj["cameraNumber"].toInt(0)` accepts any int including
   negatives, while the task enforces 1..16 elsewhere (`limit_num_camera`). A
@@ -497,6 +587,12 @@ The full Debug app build passed after moc regeneration.
   the same widget).
 
 **22.12 — `taskRunner()` dereferenced without null check in runner helpers.**
+
+**Status (2026-06-24): RESOLVED (already fixed).** `cameraRunner()` /
+`plcRunner()` already begin with `if (!taskRunner()) return nullptr;`
+([task_localization.cpp](../src/model/task_localization.cpp)); the doc line refs
+were stale. Verified by the architecture contract suite (38 passed).
+
 - Where. [task_localization.cpp:85-95](../src/model/task_localization.cpp).
   `cameraRunner()` / `plcRunner()` call `taskRunner()->runnerFor(...)` with no
   guard, while the task widget treats `taskRunner()` as possibly null
@@ -504,6 +600,13 @@ The full Debug app build passed after moc regeneration.
 - How to fix. Add a null guard returning nullptr for consistency.
 
 **22.13 — Reconnect `SingleShotConnection` re-arms against the wrong camera.**
+
+**Status (2026-06-24): RESOLVED (moot).** The whole mechanism this described is
+gone: `waitReconnectCameraHandle`, `m_selectedCamera` and `m_nextConnectCamera`
+no longer exist anywhere in `src/` (removed alongside 22.1). Recovery reconnects
+are now coordinated by `LocalizationRuntimeController` through runners — nothing
+left to fix.
+
 - Where. [task_localization.cpp:325](../src/model/task_localization.cpp).
   `waitReconnectCameraHandle` re-connects to `m_selectedCamera` for non-terminal
   statuses, but the device being awaited is `m_nextConnectCamera`. Combined with
@@ -514,6 +617,13 @@ The full Debug app build passed after moc regeneration.
 ### Low — cleanup / quality
 
 **22.14 — Dead member variables.**
+
+**Status (2026-06-24): RESOLVED.** `m_currentCamNumber` / `m_curentPatternNumber`
+were already gone; the remaining declaration-only dead members
+`m_lastMatchResult` and `m_lastVisionOutput` (no read/write sites anywhere) were
+removed from `task_localization.h`. Verified by the architecture contract suite
+(38 passed).
+
 - Where. [task_localization.h:121-132](../src/model/task_localization.h).
   `m_currentCamNumber`, `m_curentPatternNumber` (also a typo), `m_lastMatchResult`,
   and `m_lastVisionOutput` have no read/write sites.
@@ -521,12 +631,30 @@ The full Debug app build passed after moc regeneration.
   if kept.
 
 **22.16 — `switch` over `ConnectStatus` uses `default:`, hiding new cases.**
+
+**Status (2026-06-24): RESOLVED.** The two originally-referenced sites were
+already refactored away; the remaining `ConnectStatus` switches were made
+exhaustive (no `default:`; every value enumerated so -Wswitch / C4062 flags a
+new value): `basler_camera_widget`, `mitsubishi_mc_device_widget`,
+`localization_dashboard_widget::applyConnectStatusToLamp`, the `dotStateFor`
+lambda in `localization_task_widget`, and `localization_recovery_policy` (which
+was also silently missing `Connecting`). `connectStatusName` was already
+exhaustive. Verified by contract suite (38 passed) + full Debug app build.
+
 - Where. [task_localization.cpp:347](../src/model/task_localization.cpp),
   [vision_tcpip_device_widget.cpp:224](../src/form/vision_output/vision_tcpip_device_widget.cpp).
 - How to fix. Enumerate every `ConnectStatus` value explicitly (no-ops with
   `break;`) and drop `default:` so `-Wswitch` flags additions.
 
 **22.17 — Duplicated meta-property lookup/dispatch logic.**
+
+**Status (2026-06-24): RESOLVED.** Added a shared `vc::gadget_meta` helper
+(`displayName` / `writeProperty` / `readProperty`) to `src/qgadget_marco.h` —
+the header that already owns the `"<prop>_name"` Q_CLASSINFO convention.
+`localization_setting_widget` (`displayNameOf` / `writeConfigField` /
+`readConfigField`) and `vision_tcpip_device_widget`'s property dispatch now both
+route through it. Verified by contract suite (38 passed) + full Debug app build.
+
 - Where. [localization_setting_widget.cpp:62](../src/form/task/localization_setting_widget.cpp)
   (`readConfigField`/`writeConfigField`) and
   [vision_tcpip_device_widget.cpp:166](../src/form/vision_output/vision_tcpip_device_widget.cpp)
@@ -535,6 +663,13 @@ The full Debug app build passed after moc regeneration.
 - How to fix. Extract a shared `gadget_meta` helper and call from both.
 
 **22.18 — Public `const` data members used as limits.**
+
+**Status (2026-06-24): RESOLVED.** `limit_comm_device` /
+`limit_vision_output_device` / `limit_num_camera` are now
+`static constexpr int kLimitCommDevice` / `kLimitVisionOutputDevice` /
+`kLimitNumCamera`; the three usages in `task_localization.cpp` were updated.
+Verified by the architecture contract suite (38 passed).
+
 - Where. [task_localization.h:105-107](../src/model/task_localization.h).
   `limit_comm_device`, `limit_vision_output_device`, `limit_num_camera` are
   public non-static snake_case const members.
@@ -542,6 +677,13 @@ The full Debug app build passed after moc regeneration.
   (e.g. `kLimitNumCamera`).
 
 **22.19 — Fixed page-index constants assume a click order that isn't enforced.**
+
+**Status (2026-06-24): RESOLVED.** `showDashboardPage()` and `showSettingsPage()`
+now navigate with `setCurrentWidget(m_…Page)` instead of
+`setCurrentIndex(k…Page)`, matching the patterns/device pages — so a page's real
+stack index (pages are inserted lazily in click order) no longer has to equal
+its preferred slot. Compiles in the full Debug app build.
+
 - Where. [localization_task_widget.cpp:616](../src/form/task/localization_task_widget.cpp).
   `kDashboardPage/kSettingsPage/kPatternsPage` are used both as `insertWidget`
   positions and `setCurrentIndex` targets, but pages are created lazily in user
@@ -550,6 +692,13 @@ The full Debug app build passed after moc regeneration.
   (`setCurrentWidget(m_settingPage)`), or build all fixed pages once up front.
 
 **22.20 — `cameraNumberMap()` rebuilds a `QMap` by linear scan on a hot path.**
+
+**Status (2026-06-24): DEFERRED — no action (intentional).** This item's own note
+says "Fine at ≤16 cameras; revisit only if profiling shows it matters." Adding a
+cache now is premature optimization with no measured need, so it is deliberately
+left as-is. Re-open only if profiling shows `cameraDeviceId()` on the
+camera-switch path is a real hotspot.
+
 - Where. [task_device_binding.h:103](../src/model/task_device_binding.h).
   `cameraDeviceId()` is called from `setCameraNumber()` on every camera-switch
   signal; each call scans the `QList` and allocates a fresh map. Fine at ≤16
@@ -558,6 +707,13 @@ The full Debug app build passed after moc regeneration.
   if profiling shows it matters.
 
 **22.21 — `saveConfig()` ignores the persistence outcome.**
+
+**Status (2026-06-24): RESOLVED.** `VisionTcpipDevice::setVisionTcpipConfig()`
+now returns `bool` (false when the link is live and the config is locked); the
+widget's `saveConfig()` surfaces a user-facing `LOG_USER_WARN` on false instead
+of silently dropping the edit. Verified by contract suite (38 passed) + full
+Debug app build.
+
 - Where. [vision_tcpip_device_widget.cpp:208](../src/form/vision_output/vision_tcpip_device_widget.cpp).
   `setVisionTcpipConfig(m_config)` result is discarded; called after every edit
   with no success/failure feedback.
@@ -565,6 +721,12 @@ The full Debug app build passed after moc regeneration.
   surface failures (log + visual), matching the `changeDeviceName` pattern.
 
 **22.22 — Rename failure is reverted but not surfaced to the user.**
+
+**Status (2026-06-24): RESOLVED.** A user-facing `LOG_USER_WARN` ("name already
+in use") is now logged before the field is reverted, in all four device widgets
+that share the rename idiom (basler, mitsubishi, vision_tcpip, vision_tcpip
+client). Verified by the full Debug app build.
+
 - Where. [vision_tcpip_device_widget.cpp:190](../src/form/vision_output/vision_tcpip_device_widget.cpp).
   When `changeDeviceName` returns false the field is reset with no user-visible
   reason. Same silent idiom as the basler / mc_protocol widgets — uniform but
@@ -572,12 +734,65 @@ The full Debug app build passed after moc regeneration.
 - How to fix. On false, add a user-level log/toast explaining the rejection in
   addition to reverting the field (applies to the sibling widgets too).
 
+### Medium — found during the 2026-06-24 shared_ptr ownership audit
+
+These are lifetime-extension leaks (not double-free) — a `shared_ptr` captured by
+value into a Qt connection whose lifetime is bound to a long-lived receiver, so
+the owned object survives its logical removal. Found while auditing 22.1.
+
+**22.23 — `DeviceManager::reserveDevice` leaks the device past `releaseDevice`.**
+
+**Status (2026-06-24): RESOLVED.** The `configChanged` lambda now captures the
+device **id** (`const QString deviceId = device->id()`) instead of the
+`shared_ptr`, so the connection no longer extends the device's lifetime — it
+auto-disconnects when the device (the sender) is destroyed by `releaseDevice()`.
+Verified by the architecture contract suite (38 passed; `device_manager.cpp`
+recompiled) and the full Debug app build.
+
+**Follow-up (2026-06-24): RESOLVED.** The `reserveDevice`/`commitDevice`
+inconsistency the fix note called out is now fixed too. The connect was extracted
+into `DeviceManager::connectConfigChanged()` and is called by **both** creation
+paths — `reserveDevice` (project load) and `commitDevice` (Add-Device wizard).
+Previously, devices added via the wizard never emitted `deviceModified` on a
+config edit, so `Project::projectModificationOccurred()` did not fire and the
+edit was not reflected in the project's modified state; project-loaded devices
+behaved correctly. Now both paths mark the project modified consistently.
+Verified by the architecture contract suite (38 passed).
+
+- Where. [device_manager.cpp:126](../src/device/device_manager.cpp).
+  `connect(device.get(), &IDevice::configChanged, this, [this, device]{ ... })`
+  captures the `device` `shared_ptr` by value, and the connection is bound to
+  `this` (the `DeviceManager`). After `releaseDevice()` removes the device from
+  `deviceInstances`, the lambda still holds a strong ref, so the device is never
+  destroyed until the `DeviceManager` itself dies — it keeps living on its thread
+  and still emits `deviceModified` for a removed id. Note `commitDevice` does
+  *not* make this connection, so the two creation paths behave inconsistently.
+- How to fix. Capture the device **id** (a `QString`) instead of the `shared_ptr`,
+  or capture a `std::weak_ptr`/`QPointer` and bail when expired; disconnect on
+  `releaseDevice`. Reconcile the connect between `reserveDevice`/`commitDevice`.
+
+**22.24 — `Project::addTask` leaks the task past removal.**
+
+**Status (2026-06-24): RESOLVED.** The `configChanged` lambda now captures the
+task **id** (`const QString taskId = task_ptr->id()`) instead of the
+`shared_ptr`, so the connection no longer keeps the task alive past
+`removeTask()`. Verified by the architecture contract suite (38 passed;
+`project.cpp` recompiled) and the full Debug app build.
+
+- Where. [project.cpp:75](../src/model/project.cpp). Same pattern:
+  `connect(task_ptr.get(), &ITask::configChanged, this, [this, task_ptr]{ ... })`
+  captures the `task_ptr` `shared_ptr` by value into a connection bound to the
+  `Project`, so a removed task is kept alive until the `Project` is destroyed.
+- How to fix. Capture the task **id** instead of the `shared_ptr` (or a
+  `weak_ptr`), and disconnect when the task is removed.
+
 ---
 
 ## 23. UI conformance migration to ui_design_rules.md
 
-**Status (2026-05-30): Partially complete — theme-reload contract fully
-implemented; hex-token migration still pending.**
+**Status (2026-06-24): PARTIALLY RESOLVED.** (2026-05-30: theme-reload contract
+done; hex-token migration was pending. 2026-06-24: runtime resolver shipped,
+and the follow-up device/status/overlay handoff sweep was applied; see #2.)
 
 **Completed in this pass:**
 - `IDeviceWidget` and `ITaskWidget` now both provide `virtual reloadStyleSheet()`
@@ -600,20 +815,28 @@ implemented; hex-token migration still pending.**
   `vision_tcpip_device_widget.cpp`.
 - All six new/fixed QSS pairs registered in `resrc.qrc`.
 
-**Still open (what remains of the original #23):**
-- **Hardcoded hex to tokens.** Per-form sheets
-  (`add_device_wizard_{dark,light}.qss`, `camera_mapping_widget_{dark,light}.qss`,
-  `signals_monitor_widget_{dark,light}.qss`) and the global
-  `dark.qss`/`light.qss` still carry literal hex values. Reconcile them onto
-  the §5 token table (this is the migration half of #2). Blocked on deciding
-  the build-time token mechanism (concat / `@`-include / generator).
-- **Accent-tinted panels.** Any remaining blue-tinted literals (`#2a3a52`,
-  `#1a2540`, `#111f30`) in old QSS files must be replaced with the orange-warm
-  `panel.accent.*` family defined in ui_design_rules.md §5.6.
+**Update (2026-06-24): token mechanism + §5-value migration DONE (see #2).**
+- **Hardcoded hex to tokens.** ~~Reconcile per-form + global sheets onto §5.~~
+  The token mechanism now exists (runtime `@{token}` resolver, #2) and all
+  §5-token colours across the 18 sheets are migrated (1054 references), verified
+  non-visual-changing. The mechanism is no longer blocked.
+- **Accent-tinted panels.** ~~Replace blue-tinted literals `#2a3a52`/`#1a2540`/
+  `#111f30`.~~ Confirmed already absent from the QSS files (this note was stale);
+  the `panel.accent.*` tokens are in place and tokenized.
 
-**How to pick up remaining work.** Decide the token mechanism (#2), then sweep
-each `.qss` replacing literal hex with §5 canonical values. Run the §9 review
-checklist against each migrated file in both dark and light.
+**Closeout note (2026-06-24).** The colourway pass tracked here is done:
+the device-role palette, status-lamp bright stops, and overlay helpers are now
+formal tokens, and the corresponding QSS selectors use them. The only raw
+colour intentionally left in place in the sweep scope is `#7a1010`, the
+handoff-approved single-use delete-button shadow.
+
+Final UI conformance closeout remains blocked by:
+- `DevicesMonitorWidget` / `DeviceRowDelegate` staying dark inside
+  `MitsubishiMcDeviceWidget` in light mode.
+- `SystemLogForm` lacking designed dark/light styling.
+
+Track implementation requirements in
+[ui_token_handoff_rework_request.md](ui_token_handoff_rework_request.md).
 
 ---
 
@@ -692,23 +915,32 @@ exposes no manual write / trigger / start-stop controls (read-only v1).
 **Status (2026-06-24): PARTIALLY VERIFIED.** The first implementation pass
 builds and covers the main contract shape, and the 2026-06-24 hardening pass
 added focused tests for invalid setup faults, PLC output writes, invalid PLC tag
-rejection, and camera loss during `RunningCycle`. `TaskLocalization` should not
-yet be considered production-complete because the operator UI pass, latency
-measurement, and broader active-camera switching refactor are still open.
+rejection, and camera loss during `RunningCycle`. The three runtime threading /
+active-camera follow-ups below are now resolved (2026-06-24); the remaining
+gates to production-complete are the operator UI pass and latency measurement.
 
 **Remaining work.**
-- Move the `LocalizationRuntimeController` object into `TaskRunner::m_runtimeThread`
-  or explicitly document that the task object thread is the supported
-  coordinator thread. Moving it requires queued task-to-controller invocations
-  and adjusted QObject ownership.
-- Move runtime matching off the controller call stack if cycle latency or UI
-  responsiveness is a concern. The current pass runs matching synchronously
-  after the camera frame arrives.
-- Rework runtime active-camera switching so it is fully runner-based. The
-  current `TaskLocalization::setCameraNumber()` path still contains direct
-  `CameraDevice::deviceDisconnect()` / `deviceConnect()` calls and should be
-  replaced by queued `CameraRunner` requests coordinated by
-  `LocalizationRuntimeController`.
+- **Done (2026-06-24):** ~~Move the `LocalizationRuntimeController` object into
+  `TaskRunner::m_runtimeThread` or explicitly document the supported coordinator
+  thread.~~ The controller is moved onto `TaskRunner::runtimeThread()` in
+  `beginRuntime`, and all task-to-controller calls are queued (`setup` blocking,
+  the rest non-blocking). The coordinator-thread model is now the recorded
+  supported design — see `phase2_phase3_runtime_hardening.md` →
+  "Runtime Threading Model Decision (2026-06-24)".
+- **Done (2026-06-24):** ~~Move runtime matching off the controller call
+  stack.~~ Matching runs on the `matchingRunner` thread via
+  `runtimeMatchingRequested` → `m_matchingWorker`, with the result posted back
+  through a queued `onRuntimeMatchingFinished`. It no longer runs synchronously
+  on the controller call stack.
+- **Done (2026-06-24):** ~~Rework runtime active-camera switching so it is fully
+  runner-based.~~ The `TaskLocalization::setCameraNumber()` path no longer makes
+  direct `CameraDevice` connect/disconnect calls; it routes through
+  `queueSetActiveCameraNumber` →
+  `LocalizationRuntimeController::setActiveCameraNumber`, which disconnects the
+  previous camera via `previousRunner->requestDisconnect()` and connects the new
+  one via `newRunner->requestConnect()` (queued `CameraRunner` commands). Fixed a
+  latent null-deref/stale-workspace defect on this path during the review.
+  Verified by the architecture contract suite (38 passed).
 - Add focused runtime/controller tests for any remaining unverified edge cases.
   Covered by 2026-06-24 contract tests: trigger edge behavior,
   held-trigger suppression, trigger reset, grab timeout fault `102`,

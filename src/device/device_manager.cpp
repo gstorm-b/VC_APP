@@ -122,14 +122,24 @@ bool DeviceManager::reserveDevice(const QString &id, const QString &name, std::s
         freedIds.erase(idNum);
     }
 
-    // connect signal
-    connect(device.get(), &vc::device::IDevice::configChanged, this, [this, device]() {
-        emit this->deviceModified(device->id());
-    });
+    connectConfigChanged(device);
 
     emit devicesChanged();
     emit deviceCreated(id);
     return true;
+}
+
+void DeviceManager::connectConfigChanged(const std::shared_ptr<IDevice> &device) {
+    if (!device) {
+        return;
+    }
+    // Capture the device id by value, NOT the shared_ptr, so the connection does
+    // not keep the device alive past releaseDevice(); it auto-disconnects when
+    // the device (the sender) is destroyed.
+    const QString deviceId = device->id();
+    connect(device.get(), &vc::device::IDevice::configChanged, this, [this, deviceId]() {
+        emit this->deviceModified(deviceId);
+    });
 }
 
 void DeviceManager::releaseDevice(const QString &id) {
@@ -247,6 +257,7 @@ bool DeviceManager::commitDevice(const QString &id, const QString &name, std::sh
     // increase device typecounter
     currentCounts[type]++;
     device->setManager(this);
+    connectConfigChanged(device);
 
     emit devicesChanged();
     emit deviceCreated(id);

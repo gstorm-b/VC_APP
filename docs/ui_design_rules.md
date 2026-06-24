@@ -140,11 +140,18 @@ stale value.
 
 ### 3.5 Colours
 
-**Rule 3.7 — No hard-coded colour literals.** Every colour resolves to a token
-from §5. Until a QSS variable/generator exists (tracked in
-[later_todo_list.md](later_todo_list.md) #2), the "reference" is by convention:
-each `.qss` uses the exact hex the token table assigns, and the table is the
-place renames happen. A reviewer rejects a raw hex that is not in §5.
+**Rule 3.7 — Reference colours by token, not hex literal.** Every themed colour
+is written as a token placeholder `@{group.token}` (e.g. `@{accent.primary}`,
+`@{bg.surface}`, `@{state.error}`). `ThemeManager::resolveTokens()` substitutes
+each placeholder with the §5 value for the active theme when the sheet is loaded
+(global apply and every per-form `reloadStyleSheet()` route through it). The
+canonical token → {dark, light} table lives once in
+[src/utils/theme_manager.cpp](../src/utils/theme_manager.cpp) (`tokenTable()`),
+mirroring §5; a rename is therefore a single-table edit. A reviewer rejects a raw
+hex that corresponds to a §5 token — use the `@{token}` form instead. Raw hex is
+allowed only for a genuinely off-palette one-off, and then only with a comment
+justifying the exception (§5.1). Unknown tokens are left verbatim and logged, so a
+typo surfaces rather than rendering a wrong colour.
 
 ### 3.6 Reusable control variants via subclassing
 
@@ -270,9 +277,16 @@ toggle.
 
 ## 5. Design tokens (colour palette)
 
-These are the **canonical** colours. Every `.qss` uses the hex assigned here for
-its theme column. The mechanical migration of remaining hardcodes onto this table
-is tracked in [later_todo_list.md](later_todo_list.md) #2.
+These are the **canonical** colours. `.qss` files reference them by the
+`@{group.token}` placeholder (Rule 3.7); the values below are the single source
+of truth, transcribed into [src/utils/theme_manager.cpp](../src/utils/theme_manager.cpp)
+`tokenTable()` and resolved at load time. A `.qss` should not carry a hex that
+equals a token's value — use the token. The migration of legacy hardcodes onto
+the placeholder form now includes the device-identity, status-bright, deep
+accent, and overlay families below. The only accepted raw exception in the
+current sweep scope is `#7a1010` (single-use delete-button shadow); document any
+future raw exception explicitly when touched and keep the design rationale at
+[resrc/styles/THEME_PALETTE_DESIGN_BRIEF.md](../resrc/styles/THEME_PALETTE_DESIGN_BRIEF.md).
 
 ### 5.0 Active theme — Hybrid (Graphite Vision + Orange)
 
@@ -322,6 +336,7 @@ unambiguous regardless of accent.
 | `accent.primary` | Primary interactive accent | `#e87c00` | `#c06400` |
 | `accent.bright` | Hover / highlight accent | `#ffa040` | `#e08020` |
 | `accent.pressed` | Pressed / active deep accent | `#b05a00` | `#8a4400` |
+| `accent.pressed.deep` | Extra-deep accent pressed tone | `#7a3c00` | `#5a3800` |
 | `accent.subtle` | Translucent accent (hover bg, focus glow) | `rgba(232,124,0,0.12)` | `rgba(192,100,0,0.09)` |
 | `selection.bg` | Selected row / item fill | `#3d2e10` | `#fde8c0` |
 | `selection.text` | Selected row / item text | `#e0e4ea` | `#1a1c20` |
@@ -329,7 +344,7 @@ unambiguous regardless of accent.
 ### 5.5 State tokens
 
 **Confirmed** — no longer proposed. Add to both `dark.qss` and `light.qss`
-before shipping the first status-coloured surface (tracked: [later_todo_list.md](later_todo_list.md) #2).
+before shipping the first status-coloured surface.
 
 | Token | Role | Dark | Light |
 |---|---|---|---|
@@ -358,15 +373,88 @@ layered on graphite. Use these before introducing any new warm shade inline.
 | `panel.accent.surface` | Raised accent surface | `#2e2a1e` | `#f5e4c0` |
 | `panel.accent.border` | Border within accent panel | `#403a28` | `#d8c89a` |
 
+### 5.7 Device-identity tokens
+
+Used for device breadcrumbs, nav labels, wizard cards, and tinted device-active
+states. These are semantic role colours, not the primary theme accent.
+
+| Token | Role | Dark | Light |
+|---|---|---|---|
+| `device.camera` | Camera base | `#3a9bd9` | `#1f6fb8` |
+| `device.camera.bright` | Camera hover/highlight | `#5cb3e8` | `#3a8ad0` |
+| `device.camera.deep` | Camera pressed/deep | `#2278b8` | `#155a98` |
+| `device.camera.tint.bg` | Camera tinted fill | `rgba(58,155,217,0.12)` | `rgba(31,111,184,0.08)` |
+| `device.camera.tint.bd` | Camera tinted border | `rgba(58,155,217,0.40)` | `rgba(31,111,184,0.36)` |
+| `device.plc` | PLC base | `#3ac98a` | `#1a8a55` |
+| `device.plc.bright` | PLC hover/highlight | `#5cdca2` | `#28a468` |
+| `device.plc.deep` | PLC pressed/deep | `#22a070` | `#0e6a40` |
+| `device.plc.tint.bg` | PLC tinted fill | `rgba(58,201,138,0.12)` | `rgba(26,138,85,0.08)` |
+| `device.plc.tint.bd` | PLC tinted border | `rgba(58,201,138,0.40)` | `rgba(26,138,85,0.36)` |
+| `device.output` | Vision-output base | `#a87de0` | `#7a4ec0` |
+| `device.output.bright` | Vision-output hover/highlight | `#bf98ea` | `#9168d0` |
+| `device.output.deep` | Vision-output pressed/deep | `#8458c0` | `#5e389a` |
+| `device.output.tint.bg` | Vision-output tinted fill | `rgba(168,125,224,0.12)` | `rgba(122,78,192,0.08)` |
+| `device.output.tint.bd` | Vision-output tinted border | `rgba(168,125,224,0.40)` | `rgba(122,78,192,0.36)` |
+| `device.robot` | Robot base | `#e0b020` | `#a07000` |
+| `device.robot.bright` | Robot hover/highlight | `#f0c850` | `#b88810` |
+| `device.robot.deep` | Robot pressed/deep | `#b88a10` | `#7a5400` |
+| `device.robot.tint.bg` | Robot tinted fill | `rgba(224,176,32,0.12)` | `rgba(160,112,0,0.08)` |
+| `device.robot.tint.bd` | Robot tinted border | `rgba(224,176,32,0.40)` | `rgba(160,112,0,0.36)` |
+| `device.default` | Fallback / unknown base | `#7a8ca8` | `#4a5868` |
+| `device.default.bright` | Fallback hover/highlight | `#94a4be` | `#5e6c80` |
+| `device.default.deep` | Fallback pressed/deep | `#5a6c88` | `#36404e` |
+| `device.default.tint.bg` | Fallback tinted fill | `rgba(122,140,168,0.12)` | `rgba(74,88,104,0.08)` |
+| `device.default.tint.bd` | Fallback tinted border | `rgba(122,140,168,0.40)` | `rgba(74,88,104,0.36)` |
+
+### 5.8 State bright/deep helper tokens
+
+These complement §5.5 when a control needs a lighter gradient stop or a deeper
+danger pressed colour.
+
+| Token | Role | Dark | Light |
+|---|---|---|---|
+| `state.success.bright` | Brighter success stop | `#2eff98` | `#44c878` |
+| `state.error.bright` | Brighter error stop | `#ff8a8a` | `#e84848` |
+| `state.warning.bright` | Brighter warning stop | `#ffd060` | `#d09020` |
+| `state.error.deep` | Danger pressed/deep | `#922015` | `#6e1010` |
+
+### 5.9 Overlay tokens
+
+Theme-agnostic overlay helpers for dock-button hover/pressed states, scrims,
+and elevation tints.
+
+| Token | Role | Dark | Light |
+|---|---|---|---|
+| `overlay.scrim.weak` | Weak black scrim | `rgba(0,0,0,0.08)` | `rgba(0,0,0,0.08)` |
+| `overlay.scrim.med` | Medium black scrim | `rgba(0,0,0,0.16)` | `rgba(0,0,0,0.16)` |
+| `overlay.scrim.strong` | Strong black scrim | `rgba(0,0,0,0.32)` | `rgba(0,0,0,0.32)` |
+| `overlay.tint.weak` | Weak white tint | `rgba(255,255,255,0.04)` | `rgba(255,255,255,0.04)` |
+| `overlay.tint.med` | Medium white tint | `rgba(255,255,255,0.10)` | `rgba(255,255,255,0.10)` |
+| `overlay.tint.strong` | Strong white tint | `rgba(255,255,255,0.24)` | `rgba(255,255,255,0.24)` |
+
+### 5.α Canonical tint-alpha scale
+
+Alpha-only guidance for new tinted families; prefer these levels before
+inventing a fresh translucent literal.
+
+| Level | Dark α | Light α | Use |
+|---|---|---|---|
+| `tint.alpha.subtle` | 0.10 | 0.08 | resting tinted fill |
+| `tint.alpha.hover` | 0.18 | 0.14 | pointer-hover on tinted surface |
+| `tint.alpha.active` | 0.28 | 0.22 | selected / pressed tinted fill |
+| `tint.alpha.border` | 0.40 | 0.36 | outline of a tinted surface |
+
 ---
 
 **Rule 5.1 — A colour used twice is a token.** The second time a hex appears,
 promote it to §5 and reference the token. A single-use decoration may stay
 inline only with a comment justifying the exception.
 
-**Rule 5.2 — Renaming a token is a single-file operation.** Update §5, search
-all `.qss` files for the old hex, replace. The token table is the source of
-truth; the hex in `.qss` is just a cached copy of it.
+**Rule 5.2 — Renaming or re-valuing a token is a single-file operation.** Update
+§5 and the matching entry in `theme_manager.cpp` `tokenTable()`. `.qss` files
+reference the token by name (`@{token}`), so no `.qss` edit is needed — the new
+value resolves everywhere on the next load. (Contrast the old convention, where
+the hex was cached in every `.qss` and a rename meant a project-wide hex search.)
 
 ---
 
@@ -475,10 +563,9 @@ A UI change is not ready to merge unless all of these hold:
 
 - [design_rules.md](design_rules.md) §6, §15 — superseded by this doc for
   UI/QSS; kept as short pointers.
-- [later_todo_list.md](later_todo_list.md) #2 — the QSS token/generator
-  mechanism (this doc defines the tokens; the build-time mechanism is still
-  deferred). Widget conformance migration (e.g. `applyTheme()` → standard
-  `reloadStyleSheet()`) is tracked there.
+- [later_todo_list.md](later_todo_list.md) — follow-up UI conformance work that
+  is orthogonal to the token table itself, for example the remaining
+  theme-aware icon audit.
 - The `qt-ui-design` agent skill may be used to audit a screen against these
   rules.
 
@@ -503,16 +590,23 @@ fallback colour source for any widget not explicitly covered by QSS, and it is
 the colour source for `palette()` references inside the ADS docking stylesheet
 (`focus_highlighting.css`). See §11.2 for the role → token mapping.
 
+**2b — `src/utils/theme_manager.cpp` — `tokenTable()`**  
+The canonical token → {dark, light} values consumed by `resolveTokens()`. Any
+colour referenced in QSS as `@{token}` updates everywhere from this one table —
+no `.qss` edit needed. Keep it identical to §5.
+
 **3 — `resrc/styles/dark.qss` + `light.qss` — global stylesheet**  
-Every standard Qt control and every `ads--` ADS selector lives here. When a
-token changes, search for the old hex and replace. The ADS `ads--` section is
-at the end of both files; keep it consistent with the palette (§11.2).
+Every standard Qt control and every `ads--` ADS selector lives here. Token-backed
+colours are written `@{token}` and re-value automatically via 2b; only the
+residual **raw** hex (off-palette one-offs, ADS `ads--` literals not yet
+tokenized) needs a manual search-and-replace. The ADS section is at the end of
+both files; keep it consistent with the palette (§11.2).
 
 **4 — Per-form QSS pairs (`resrc/styles/<widget>_dark.qss` + `_light.qss`)**  
-Each widget with bespoke styling has its own QSS pair. Search all files in
-`resrc/styles/` for the old hex and replace. Do not forget the `LocalizationTaskWidget`
-nav-panel `panel.accent.*` tokens — they are derived from the accent colour and
-must be re-derived if the accent changes (§5.6).
+Each widget with bespoke styling has its own QSS pair. Token-backed colours
+update via 2b; replace only residual raw hex. The `LocalizationTaskWidget`
+nav-panel `panel.accent.*` tokens re-value from the table when the accent
+changes (§5.6).
 
 ### 11.2 QPalette role → §5 token mapping
 
@@ -551,11 +645,13 @@ This mapping is the contract. When §5 changes, `buildDarkPalette()` and
 Follow this order to avoid transient mismatches:
 
 1. Update §5 token table in this doc.
-2. Update `buildDarkPalette()` + `buildLightPalette()` in `theme_manager.cpp`
+2. Update `tokenTable()` in `theme_manager.cpp` to match §5 (this re-values every
+   `@{token}` reference across all sheets at once).
+3. Update `buildDarkPalette()` + `buildLightPalette()` in `theme_manager.cpp`
    per the role → token mapping above.
-3. Replace the old hex values in `dark.qss` + `light.qss` (global controls,
-   then the `PatternTreeWidget` section, then the ADS section at the bottom).
-4. Replace in all per-form `_dark.qss` / `_light.qss` pairs.
+4. Replace only the residual **raw** hex in `dark.qss` + `light.qss` and the
+   per-form pairs (off-palette one-offs and not-yet-tokenized ADS literals);
+   `@{token}` colours are already handled by step 2.
 5. If the **accent** colour changed: re-derive and update the `panel.accent.*`
    tokens in §5.6 and the `LocalizationTaskWidget` nav-panel QSS sections.
 6. If the **accent** colour changed: update `src/form/pattern/pattern_theme.h`

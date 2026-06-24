@@ -5,10 +5,10 @@
    ═════════════════════════════════════════════════════════════════ */
 
 QListWidget#cmwList {
-    background-color: #ffffff;
-    border: 1px solid #c8ccd4;
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 6px;
-    color: #1a1c20;
+    color: @{text.primary};
 }
 QListWidget#cmwList::item {
     border: none;
@@ -19,78 +19,78 @@ QListWidget#cmwList::item:selected {
 }
 
 QWidget#cmwRow {
-    background-color: #f2f3f5;
-    border: 1px solid #c8ccd4;
+    background-color: @{bg.window};
+    border: 1px solid @{border.default};
     border-radius: 5px;
 }
 QLabel#cmwRowFieldLabel {
-    color: #5a6878;
+    color: @{text.muted};
     font-size: 9pt;
     background: transparent;
 }
 
 QLabel#cmwEditableLabel {
-    color: #1a1c20;
-    background-color: #ffffff;
-    border: 1px solid #c8ccd4;
+    color: @{text.primary};
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 4px;
     padding: 4px 8px;
 }
 QLabel#cmwEditableLabel:hover {
-    border-color: #c06400;
-    background-color: rgba(192, 100, 0, 0.09);
+    border-color: @{accent.primary};
+    background-color: @{accent.subtle};
 }
 
 QComboBox#cmwEditableCombo,
 QComboBox#cmwAddSelectCombo {
-    background-color: #ffffff;
-    border: 1px solid #c8ccd4;
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 4px;
     padding: 4px 8px;
-    color: #1a1c20;
+    color: @{text.primary};
 }
 QComboBox#cmwEditableCombo:focus,
 QComboBox#cmwAddSelectCombo:focus {
-    border-color: #c06400;
+    border-color: @{accent.primary};
 }
 
 QPushButton#cmwDeleteBtn {
     background-color: transparent;
-    color: #1a1c20;
-    border: 1px solid #c8ccd4;
+    color: @{text.primary};
+    border: 1px solid @{border.default};
     border-radius: 4px;
     padding: 4px 12px;
 }
 QPushButton#cmwDeleteBtn:hover {
-    border-color: #c0282a;
-    color: #c0282a;
+    border-color: @{state.error};
+    color: @{state.error};
 }
 
 QPushButton#cmwAddRowBtn {
     background-color: transparent;
-    color: #c06400;
-    border: 1px dashed #c06400;
+    color: @{accent.primary};
+    border: 1px dashed @{accent.primary};
     border-radius: 5px;
     padding: 6px 14px;
     font-weight: 600;
 }
 QPushButton#cmwAddRowBtn:hover {
-    background-color: rgba(192, 100, 0, 0.09);
+    background-color: @{accent.subtle};
 }
 QPushButton#cmwAddRowBtn:disabled {
-    color: #a0a8b0;
-    border-color: #c8ccd4;
+    color: @{text.disabled};
+    border-color: @{border.default};
     background-color: transparent;
 }
 
 QPushButton#cmwCancelBtn {
     background-color: transparent;
-    color: #5a6878;
-    border: 1px solid #c8ccd4;
+    color: @{text.muted};
+    border: 1px solid @{border.default};
     border-radius: 4px;
     padding: 4px 12px;
 }
 QPushButton#cmwCancelBtn:hover {
-    color: #1a1c20;
-    border-color: #a8adb8;
+    color: @{text.primary};
+    border-color: @{border.strong};
 }

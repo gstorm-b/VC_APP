@@ -3,13 +3,21 @@
 **Date:** 2026-06-24  
 **Status:** Verified for the current MSVC/Qt Debug development baseline
 
+> Historical record: this file records the local paths and build folders used
+> during the Phase 1 verification run. Do not use it as the current build
+> recipe. Current rules are in `docs/build_and_verification.md`: root app builds
+> go under root `build\`, while tests/examples/components build beside their own
+> `.pro` files and machine-local paths come from environment variables.
+
 ## Environment
 
-- Qt: `C:\Qt\6.8.2\msvc2022_64`
+- Qt: `C:\Qt\6.8.2\msvc2022_64` (historical local path)
 - Compiler: Visual Studio 2022 Community MSVC, initialized through
-  `VC\Auxiliary\Build\vcvars64.bat`
+  `VC\Auxiliary\Build\vcvars64.bat` (historical local path)
 - OpenCV: `C:\opencv\build`, linked as `opencv_world4120d` for Debug
+  (historical local path)
 - Basler Pylon: v11 import/runtime DLLs from `C:\Program Files\Basler\pylon`
+  (historical local path)
 - RobotKinematics third-party runtime: repo-root `3rdparty/{coal,assimp,boost}`
 
 ## Build Method
@@ -44,8 +52,10 @@ commands and fallback guidance.
 
 ## Verification Results
 
-- `tests/architecture_contract_test` rebuilt successfully in
-  `build/phase1_architecture_contract_20260623_debug`.
+- `tests/architecture_contract_test` rebuilt successfully in the then-current
+  `build/phase1_architecture_contract_20260623_debug` folder. This is now a
+  legacy location; rebuild tests under
+  `tests/architecture_contract_test/build/<build-name>`.
 - `architecture_contract_test.exe -functions` includes
   `test_runtime_matching_payload_metatypes_support_queued_connection`.
 - `architecture_contract_test.exe -silent` exited with code `0`.

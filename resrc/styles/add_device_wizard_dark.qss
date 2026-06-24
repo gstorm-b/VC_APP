@@ -5,34 +5,34 @@
    ═════════════════════════════════════════════════════════════════ */
 
 QDialog#AddDeviceWizard {
-    background-color: #22252a;
+    background-color: @{bg.surface};
 }
 
 /* ── Header ───────────────────────────────────────────────────── */
 QFrame#adwHeader {
-    background-color: #22252a;
+    background-color: @{bg.surface};
     border: none;
-    border-bottom: 1px solid #3a3f48;
+    border-bottom: 1px solid @{border.default};
 }
 QLabel#adwTitle {
-    color: #e0e4ea;
+    color: @{text.primary};
     font-size: 14pt;
     font-weight: 700;
     background: transparent;
 }
 QLabel#adwSubtitle {
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 10pt;
     background: transparent;
 }
 
 /* ── Body ─────────────────────────────────────────────────────── */
 QWidget#adwBody {
-    background-color: #22252a;
+    background-color: @{bg.surface};
 }
 
 QLabel[adwSection="true"] {
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 9pt;
     font-weight: 700;
     background: transparent;
@@ -40,39 +40,39 @@ QLabel[adwSection="true"] {
 
 /* ── Device type cards ────────────────────────────────────────── */
 QFrame[adwCard="true"] {
-    background-color: #22252a;
-    border: 1px solid #3a3f48;
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 7px;
 }
 QFrame[adwCard="true"]:hover {
-    border-color: #4e5562;
+    border-color: @{border.strong};
 }
 
 /* Device card selected states — semantic colors per device type, not theme accent */
 QFrame#adwCard_camera[selected="true"] {
-    background-color: rgba(43, 140, 232, 28);
-    border: 1px solid #2b8ce8;
+    background-color: @{device.camera.tint.bg};
+    border: 1px solid @{device.camera};
 }
 QFrame#adwCard_plc[selected="true"] {
-    background-color: rgba(34, 209, 122, 28);
-    border: 1px solid #22d17a;
+    background-color: @{device.plc.tint.bg};
+    border: 1px solid @{device.plc};
 }
 QFrame#adwCard_visionOutput[selected="true"] {
-    background-color: rgba(245, 166, 35, 28);
-    border: 1px solid #f5a623;
+    background-color: @{device.output.tint.bg};
+    border: 1px solid @{device.output};
 }
 
 QLabel[adwCardName="true"] {
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 11pt;
     font-weight: 600;
     background: transparent;
 }
 QLabel[adwCardName="true"][selected="true"] {
-    color: #e0e4ea;
+    color: @{text.primary};
 }
 QLabel[adwCardDesc="true"] {
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 8pt;
     background: transparent;
 }
@@ -89,24 +89,24 @@ QStackedWidget#adwConfigStack > QWidget {
     background: transparent;
 }
 QStackedWidget#adwConfigStack QLabel {
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 10pt;
     background: transparent;
 }
 QStackedWidget#adwConfigStack QComboBox {
-    background-color: #22252a;
-    border: 1px solid #3a3f48;
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 5px;
     padding: 6px 10px;
-    color: #e0e4ea;
+    color: @{text.primary};
     font-size: 10pt;
     min-height: 18px;
 }
 QStackedWidget#adwConfigStack QComboBox:hover {
-    border-color: #4e5562;
+    border-color: @{border.strong};
 }
 QStackedWidget#adwConfigStack QComboBox:focus {
-    border-color: #e87c00;
+    border-color: @{accent.primary};
 }
 QStackedWidget#adwConfigStack QComboBox::drop-down {
     border: none;
@@ -115,22 +115,22 @@ QStackedWidget#adwConfigStack QComboBox::drop-down {
 
 /* ── Device name input ────────────────────────────────────────── */
 QLineEdit#adwNameEdit {
-    background-color: #22252a;
-    border: 1px solid #3a3f48;
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
     border-radius: 5px;
     padding: 8px 11px;
-    color: #e0e4ea;
+    color: @{text.primary};
     font-family: "JetBrains Mono", "Consolas", monospace;
     font-size: 11pt;
 }
 QLineEdit#adwNameEdit:focus {
-    border-color: #e87c00;
+    border-color: @{accent.primary};
 }
 
 /* ── Info strip ───────────────────────────────────────────────── */
 QFrame#adwInfoStrip {
-    background-color: #1a1c20;
-    border: 1px solid #3a3f48;
+    background-color: @{bg.window};
+    border: 1px solid @{border.default};
     border-radius: 6px;
 }
 QLabel#adwInfoIcon, QLabel#adwInfoText {
@@ -138,40 +138,40 @@ QLabel#adwInfoIcon, QLabel#adwInfoText {
     border: none;
 }
 QLabel#adwInfoText {
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 9pt;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────── */
 QPushButton#adwCancelBtn {
     background-color: transparent;
-    border: 1px solid #3a3f48;
+    border: 1px solid @{border.default};
     border-radius: 5px;
     padding: 9px 22px;
-    color: #7a8898;
+    color: @{text.muted};
     font-size: 11pt;
 }
 QPushButton#adwCancelBtn:hover {
-    border-color: #4e5562;
-    color: #e0e4ea;
+    border-color: @{border.strong};
+    color: @{text.primary};
 }
 
 QPushButton#adwAddBtn {
     border: none;
     border-radius: 5px;
     padding: 9px 22px;
-    color: #ffffff;
+    color: @{text.on-accent};
     font-size: 11pt;
     font-weight: 600;
 }
 /* Add button colors are device-type semantic, not theme accent */
-QPushButton#adwAddBtn[deviceColor="camera"]       { background-color: #2b8ce8; }
-QPushButton#adwAddBtn[deviceColor="camera"]:hover { background-color: #3aa0ff; }
-QPushButton#adwAddBtn[deviceColor="plc"]           { background-color: #22d17a; }
-QPushButton#adwAddBtn[deviceColor="plc"]:hover     { background-color: #2ee68a; }
-QPushButton#adwAddBtn[deviceColor="visionOutput"]       { background-color: #f5a623; }
-QPushButton#adwAddBtn[deviceColor="visionOutput"]:hover { background-color: #ffb73d; }
+QPushButton#adwAddBtn[deviceColor="camera"]       { background-color: @{device.camera}; }
+QPushButton#adwAddBtn[deviceColor="camera"]:hover { background-color: @{device.camera.bright}; }
+QPushButton#adwAddBtn[deviceColor="plc"]          { background-color: @{device.plc}; }
+QPushButton#adwAddBtn[deviceColor="plc"]:hover    { background-color: @{device.plc.bright}; }
+QPushButton#adwAddBtn[deviceColor="visionOutput"] { background-color: @{device.output}; }
+QPushButton#adwAddBtn[deviceColor="visionOutput"]:hover { background-color: @{device.output.bright}; }
 QPushButton#adwAddBtn:disabled {
-    background-color: #1e2024;
-    color: #4a5260;
+    background-color: @{bg.disabled};
+    color: @{text.disabled};
 }

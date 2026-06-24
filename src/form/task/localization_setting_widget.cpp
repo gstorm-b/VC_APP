@@ -56,39 +56,29 @@ constexpr SignalRowSpec kSignalRows[] = {
     { "bTaskFault",         SignalsMapWidget::Type::Bool },
 };
 
-// Resolve the display name registered via Q_CLASSINFO("<name>_name", "…") on
-// the TaskLocalizeConfig meta object. Falls back to the internal name when
-// no class-info entry is present.
+// Thin wrappers over the shared vc::gadget_meta helpers (qgadget_marco.h),
+// bound to TaskLocalizeConfig's meta object. Falls back to the internal name
+// when no Q_CLASSINFO("<name>_name", …) entry is present.
 QString displayNameOf(const char *internalName) {
-    const QMetaObject &meta = TaskLocalizeConfig::staticMetaObject;
-    QByteArray key = QByteArray(internalName) + "_name";
-    int idx = meta.indexOfClassInfo(key.constData());
-    if (idx >= 0) {
-        QString v = QString::fromUtf8(meta.classInfo(idx).value());
-        if (!v.isEmpty()) return v;
-    }
-    return QString::fromUtf8(internalName);
+    return vc::gadget_meta::displayName(TaskLocalizeConfig::staticMetaObject,
+                                        internalName);
 }
 
 // Setter dispatch — writes `value` into the matching field of the config's
 // private data via the Q_PROPERTY system. Returns true on success.
 bool writeConfigField(TaskLocalizeConfig &cfg, const QString &internalName,
                       const QString &value) {
-    const QMetaObject &meta = TaskLocalizeConfig::staticMetaObject;
-    int idx = meta.indexOfProperty(internalName.toUtf8().constData());
-    if (idx < 0) {
-        LOG_DEV_ERR << "writeConfigField: unknown field" << internalName;
+    if (!vc::gadget_meta::writeProperty(TaskLocalizeConfig::staticMetaObject,
+                                        &cfg, internalName, value)) {
+        LOG_DEV_ERR << "writeConfigField: failed to write field" << internalName;
         return false;
     }
-    QMetaProperty p = meta.property(idx);
-    return p.writeOnGadget(&cfg, value);
+    return true;
 }
 
 QString readConfigField(const TaskLocalizeConfig &cfg, const QString &internalName) {
-    const QMetaObject &meta = TaskLocalizeConfig::staticMetaObject;
-    int idx = meta.indexOfProperty(internalName.toUtf8().constData());
-    if (idx < 0) return {};
-    return meta.property(idx).readOnGadget(&cfg).toString();
+    return vc::gadget_meta::readProperty(TaskLocalizeConfig::staticMetaObject,
+                                         &cfg, internalName).toString();
 }
 
 // ── Image conversion (matches the helpers used by the pattern dialogs) ──────

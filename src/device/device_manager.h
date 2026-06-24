@@ -67,6 +67,10 @@ signals:
 private:
     QString generateId();
     void deviceNameCheck(IDevice* device);
+    // Forwards a device's configChanged signal to deviceModified(id). Called by
+    // both creation paths (reserveDevice on project load, commitDevice via the
+    // Add-Device wizard) so config edits mark the project modified consistently.
+    void connectConfigChanged(const std::shared_ptr<IDevice> &device);
 
 private:
     QStringList dvTypeStrings;

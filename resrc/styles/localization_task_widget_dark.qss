@@ -7,11 +7,10 @@
      QFrame          [navItem]        = true
      QFrame          [navActive]      = true|false
      QFrame          [deviceType]     = camera|plc|output|robot|default
-     QLabel          [devNavName]     (objectName selector)
-     QLabel          [devNavType]     (objectName selector)
+     QLabel          [navPart]        = name|type|empty
      QLabel#lbl_active_title [taskState] = Idle|CommissionStarting|Commission|RuntimeStarting|Ready|RunningCycle|Recovering|Faulted|Stopping
-     QFrame#statusDot [lampState]     = on|off|warn|error
-     QLabel#statusLabel [lampState]   = on|off|warn|error
+     StatusLampDot    [lampState]     = on|off|warn|error
+     StatusTextLabel  [lampState]     = on|off|warn|error
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── Root ─────────────────────────────────────────────────────────────── */
@@ -139,84 +138,15 @@ QStackedWidget#content_stack { background: @{bg.window}; }
 QWidget#wg_property_browser  { background: @{bg.window}; }
 QWidget#page_task_config     { background: @{bg.window}; }
 
-/* ── Status lamp dots ─────────────────────────────────────────────────── */
-QFrame#statusDot { border-radius: 5px; }
-QFrame#statusDot[lampState="on"] {
-    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
-        stop:0 @{state.success.bright}, stop:1 @{state.success});
-    border: 1px solid rgba(64,200,112,100);
-}
-QFrame#statusDot[lampState="off"] {
-    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
-        stop:0 @{state.error.bright}, stop:1 @{state.error});
-    border: 1px solid rgba(255,82,82,100);
-}
-QFrame#statusDot[lampState="warn"] {
-    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
-        stop:0 @{state.warning.bright}, stop:1 @{state.warning});
-    border: 1px solid rgba(255,176,32,100);
-}
-QFrame#statusDot[lampState="error"] {
-    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
-        stop:0 @{state.error.bright}, stop:1 @{state.error});
-    border: 1px solid rgba(255,82,82,100);
-}
-
-/* ── Status lamp labels ───────────────────────────────────────────────── */
-QLabel#statusLabel                  { font: 700 6.5pt 'Segoe UI'; letter-spacing: 0.5px; }
-QLabel#statusLabel[lampState="on"]  { color: @{text.muted}; }
-QLabel#statusLabel[lampState="off"] { color: @{text.disabled}; }
-QLabel#statusLabel[lampState="warn"] { color: @{state.warning}; }
-QLabel#statusLabel[lampState="error"] { color: @{state.error}; }
-
-/* ── Device nav item frame ────────────────────────────────────────────── */
-QFrame[navItem="true"] {
-    border: 1px solid transparent;
-    background: transparent;
-    border-radius: 5px;
-}
-QFrame[navItem="true"]:hover { background: @{bg.elevated}; }
-
-QFrame[navItem="true"][navActive="true"][deviceType="camera"] {
-    background: @{device.camera.tint.bg};
-    border: 1px solid @{device.camera.tint.bd};
-}
-QFrame[navItem="true"][navActive="true"][deviceType="plc"] {
-    background: @{device.plc.tint.bg};
-    border: 1px solid @{device.plc.tint.bd};
-}
-QFrame[navItem="true"][navActive="true"][deviceType="output"] {
-    background: @{device.output.tint.bg};
-    border: 1px solid @{device.output.tint.bd};
-}
-QFrame[navItem="true"][navActive="true"][deviceType="robot"] {
-    background: @{device.robot.tint.bg};
-    border: 1px solid @{device.robot.tint.bd};
-}
-QFrame[navItem="true"][navActive="true"][deviceType="default"] {
-    background: @{device.default.tint.bg};
-    border: 1px solid @{device.default.tint.bd};
-}
-
 /* ── Device nav name label ────────────────────────────────────────────── */
-QLabel#devNavName { color: @{text.muted}; }
-QFrame[navItem="true"][navActive="true"] QLabel#devNavName {
-    color: @{text.primary};
-    font-weight: bold;
-}
+QLabel[navPart="name"] { color: @{text.muted}; }
 
 /* ── Device nav type label (device-identity accent) ──────────────────── */
-QFrame[navItem="true"][deviceType="camera"]  QLabel#devNavType { color: @{device.camera}; }
-QFrame[navItem="true"][deviceType="plc"]     QLabel#devNavType { color: @{device.plc}; }
-QFrame[navItem="true"][deviceType="output"]  QLabel#devNavType { color: @{device.output}; }
-QFrame[navItem="true"][deviceType="robot"]   QLabel#devNavType { color: @{device.robot}; }
-QFrame[navItem="true"][deviceType="default"] QLabel#devNavType { color: @{device.default}; }
-
-/* ── Device nav status dot (connection indicator) ─────────────────────── */
-QFrame#devNavDot                    { border-radius: 2px; }
-QFrame#devNavDot[lampState="on"]   { background: @{state.success}; border: 1px solid @{bg.window}; }
-QFrame#devNavDot[lampState="warn"] { background: @{state.warning}; border: 1px solid @{bg.window}; }
-QFrame#devNavDot[lampState="off"]  { background: @{state.error}; border: 1px solid @{bg.window}; }
+DeviceNavItemWidget[deviceType="camera"]  QLabel[navPart="type"] { color: @{device.camera}; }
+DeviceNavItemWidget[deviceType="plc"]     QLabel[navPart="type"] { color: @{device.plc}; }
+DeviceNavItemWidget[deviceType="output"]  QLabel[navPart="type"] { color: @{device.output}; }
+DeviceNavItemWidget[deviceType="robot"]   QLabel[navPart="type"] { color: @{device.robot}; }
+DeviceNavItemWidget[deviceType="default"] QLabel[navPart="type"] { color: @{device.default}; }
 
 /* ── Empty state label ────────────────────────────────────────────────── */
-QLabel#devNavEmpty { color: @{text.disabled}; font-size: 8.5pt; }
+QLabel[navPart="empty"] { color: @{text.disabled}; font-size: 8.5pt; }

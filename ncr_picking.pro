@@ -39,16 +39,29 @@ SOURCES += \
     src/form/pattern/pattern_canvas.cpp \
     src/form/pattern/add_pattern_wizard.cpp \
     src/form/pattern/edit_pattern_wizard.cpp \
+    src/form/widgets/compact_combo_box.cpp \
+    src/form/widgets/connection_action_button.cpp \
+    src/form/widgets/connection_state_dot.cpp \
+    src/form/widgets/connection_state_label.cpp \
+    src/form/widgets/device_nav_dot.cpp \
+    src/form/widgets/device_nav_item_widget.cpp \
+    src/form/widgets/flat_list_widget.cpp \
+    src/form/widgets/frame_box.cpp \
     src/form/plc/mitsubishi_mc_device_widget.cpp \
     src/form/plc/plc_mitsu_device_wizard.cpp \
     src/form/project_infor_setting.cpp \
+    src/form/widgets/state_pill_label.cpp \
+    src/form/widgets/status_lamp_dot.cpp \
     src/form/task/localization_dashboard_widget.cpp \
     src/form/task/localization_patterns_widget.cpp \
     src/form/task/localization_setting_widget.cpp \
     src/form/task/localization_task_widget.cpp \
+    src/form/widgets/status_text_label.cpp \
+    src/form/widgets/type_chip_label.cpp \
     src/form/vision_output/vision_tcpip_device_widget.cpp \
     src/form/vision_output/vision_tcpip_client_device_widget.cpp \
     src/form/vision_output/robot_kinematic_check_widget.cpp \
+    src/form/widgets/send_state_hint_label.cpp \
     src/form/widgets/status_lamp.cpp \
     src/libwg/group_frame.cpp \
     src/logger/app_logger.cpp \
@@ -170,15 +183,28 @@ HEADERS += \
     src/form/pattern/pattern_canvas.h \
     src/form/pattern/add_pattern_wizard.h \
     src/form/pattern/edit_pattern_wizard.h \
+    src/form/widgets/compact_combo_box.h \
+    src/form/widgets/connection_action_button.h \
+    src/form/widgets/connection_state_dot.h \
+    src/form/widgets/connection_state_label.h \
+    src/form/widgets/device_nav_dot.h \
+    src/form/widgets/device_nav_item_widget.h \
+    src/form/widgets/flat_list_widget.h \
+    src/form/widgets/frame_box.h \
     src/form/plc/mitsubishi_mc_device_widget.h \
     src/form/plc/plc_mitsu_device_wizard.h \
     src/form/project_infor_setting.h \
+    src/form/widgets/state_pill_label.h \
+    src/form/widgets/status_lamp_dot.h \
     src/form/task/localization_dashboard_widget.h \
     src/form/task/localization_patterns_widget.h \
     src/form/task/localization_setting_widget.h \
     src/form/task/localization_task_widget.h \
     src/form/task_widget.h \
+    src/form/widgets/status_text_label.h \
+    src/form/widgets/send_state_hint_label.h \
     src/form/widgets/status_lamp.h \
+    src/form/widgets/type_chip_label.h \
     src/form/vision_output/vision_tcpip_device_widget.h \
     src/form/vision_output/vision_tcpip_client_device_widget.h \
     src/form/vision_output/robot_kinematic_check_widget.h \
@@ -358,7 +384,7 @@ INCLUDEPATH += \
 # and the prebuilt Coal/Boost/Assimp install trees under the repo-root 3rdparty
 # folder. The .pri auto-copies the mesh-collision runtime DLL set and the
 # Nachi MZ04D mesh assets next to the built binary after link. Customer installer
-# packaging is still tracked in docs/later_todo_list.md #27.
+# packaging is still tracked in docs/backlog/later_todo_list.md #27.
 include(components/RobotKinematics/robotkinematics.pri)
 
 # Default rules for deployment.
@@ -370,19 +396,7 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-win32:CONFIG(release, debug|release): LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120
-else:win32:CONFIG(debug, debug|release): LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120d
-else:unix: LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120
-
-INCLUDEPATH += C:/opencv/build/include
-DEPENDPATH += C:/opencv/build/include
-
-win32:CONFIG(release, debug|release): LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v11
-else:win32:CONFIG(debug, debug|release): LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v11
-else:unix: LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v11
-
-INCLUDEPATH += 'C:/Program Files/Basler/pylon/Development/include'
-DEPENDPATH += 'C:/Program Files/Basler/pylon/Development/include'
+include(qmake/local_dependencies.pri)
 
 RESOURCES += \
     3rdparty/advance_docking/include/ads.qrc \

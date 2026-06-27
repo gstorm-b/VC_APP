@@ -9,7 +9,7 @@ REM so MeshCollisionProfileJsonLoader resolves the relative paths consistently.
 REM ============================================================================
 setlocal
 
-if "%QT_MSVC_DIR%"=="" set "QT_MSVC_DIR=C:\Qt\6.8.3\msvc2022_64"
+if "%QT_MSVC_DIR%"=="" ( echo [ERROR] QT_MSVC_DIR must point to the Qt MSVC kit root & exit /b 1 )
 
 set "ROOT=%~dp0.."
 set "TOOL_DIR=%ROOT%\build\tools\mesh_simplification"

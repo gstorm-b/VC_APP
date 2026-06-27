@@ -361,8 +361,11 @@ void MainWindow::connectProjectSignals() {
             this, &MainWindow::onDeviceCreated);
     connect(m_project->deviceManager().get(), &vc::device::DeviceManager::deviceDeleted,
             this, &MainWindow::onDeviceDeleted);
-    // Device manager changes (rename, etc.) refresh the tree
+    // Device creation/deletion changes refresh the tree
     connect(m_project->deviceManager().get(), &vc::device::DeviceManager::devicesChanged,
+            ui->proj_treeview_wg, &ProjectTreeWidget::refreshTree);
+    // Device metadata changes such as rename also refresh the tree
+    connect(m_project->deviceManager().get(), &vc::device::DeviceManager::deviceModified,
             ui->proj_treeview_wg, &ProjectTreeWidget::refreshTree);
 
     connect(m_project.get(), &vc::model::Project::taskCreated,

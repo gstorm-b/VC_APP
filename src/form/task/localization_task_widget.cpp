@@ -6,7 +6,6 @@
 #include <QHBoxLayout>
 #include <QButtonGroup>
 #include <QInputDialog>
-#include <QMouseEvent>
 #include <QScrollArea>
 #include <QFont>
 #include <QFile>
@@ -22,39 +21,6 @@
 #include "form/task/localization_dashboard_widget.h"
 #include "form/task/localization_patterns_widget.h"
 #include "form/task/localization_setting_widget.h"
-
-static QString deviceTypeString(vc::device::DeviceType t)
-{
-    switch (t) {
-    case vc::device::DeviceType::Camera:       return QStringLiteral("camera");
-    case vc::device::DeviceType::PLC:          return QStringLiteral("plc");
-    case vc::device::DeviceType::VisionOutput: return QStringLiteral("output");
-    case vc::device::DeviceType::Robot:        return QStringLiteral("robot");
-    default:                                   return QStringLiteral("default");
-    }
-}
-
-static QString typeShortLabel(vc::device::DeviceType t)
-{
-    switch (t) {
-    case vc::device::DeviceType::Camera:       return "CAM";
-    case vc::device::DeviceType::PLC:          return "PLC";
-    case vc::device::DeviceType::VisionOutput: return "OUT";
-    case vc::device::DeviceType::Robot:        return "BOT";
-    default:                                   return "DEV";
-    }
-}
-
-static QString deviceIconPath(vc::device::DeviceType t)
-{
-    switch (t) {
-    case vc::device::DeviceType::Camera:       return ":/resrc/icon/camera.svg";
-    case vc::device::DeviceType::PLC:          return ":/resrc/icon/plc_icon.svg";
-    case vc::device::DeviceType::VisionOutput: return ":/resrc/icon/plug_connected.svg";
-    case vc::device::DeviceType::Robot:        return ":/resrc/icon/robot_movement.svg";
-    default:                                   return ":/resrc/icon/setting.svg";
-    }
-}
 
 static QString readyLampStateForTask(vc::model::TaskState state)
 {
@@ -145,6 +111,8 @@ void LocalizationTaskWidget::initWidget()
                   // rebuildDeviceNav();
                   onTaskDevicesChanged();
         });
+        connect(proj->deviceManager().get(), &vc::device::DeviceManager::deviceModified,
+                this, &LocalizationTaskWidget::onAssignedDeviceModified);
         // connect(ui->camera_mapping_wg, &CameraMappingWidget::mappingChanged,
         //         this, &LocalizationTaskWidget::onCameraMappingChanged);
 
@@ -327,16 +295,15 @@ void LocalizationTaskWidget::initStatusLamps()
         colLay->setSpacing(3);
         colLay->setAlignment(Qt::AlignHCenter);
 
-        auto *dot = new QFrame(col);
-        dot->setObjectName(QStringLiteral("statusDot"));
+        auto *dot = new StatusLampDot(col);
         dot->setFixedSize(10, 10);
 
         QFont lf;
         lf.setPointSizeF(6.5);
         lf.setBold(true);
         lf.setLetterSpacing(QFont::AbsoluteSpacing, 0.5);
-        auto *lbl = new QLabel(label, col);
-        lbl->setObjectName(QStringLiteral("statusLabel"));
+        auto *lbl = new StatusTextLabel(col);
+        lbl->setText(label);
         lbl->setFont(lf);
         lbl->setAlignment(Qt::AlignCenter);
 
@@ -508,64 +475,10 @@ void LocalizationTaskWidget::rebuildDeviceNav()
     for (const auto &device : devices) {
         const QString devId = device->id();
 
-        auto *item = new QFrame(m_devListWidget);
-        item->setAttribute(Qt::WA_Hover);
-        item->setCursor(Qt::PointingHandCursor);
-        item->installEventFilter(this);
-        item->setProperty("navItem", true);
-        item->setProperty("navActive", false);
-        item->setProperty("deviceType", deviceTypeString(device->deviceType()));
-
-        auto *itemLayout = new QHBoxLayout(item);
-        itemLayout->setContentsMargins(7, 7, 7, 7);
-        itemLayout->setSpacing(7);
-
-        // Icon + status dot container
-        auto *iconBox = new QWidget(item);
-        iconBox->setFixedSize(20, 20);
-        iconBox->setAttribute(Qt::WA_TransparentForMouseEvents);
-        auto *iconLbl = new QLabel(iconBox);
-        iconLbl->setPixmap(svgIcon(deviceIconPath(device->deviceType())).pixmap(14, 14));
-        iconLbl->move(0, 3);
-        iconLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-        // Status dot — starts disconnected; styled via QSS [lampState] property
-        auto *dotLbl = new QFrame(iconBox);
-        dotLbl->setObjectName(QStringLiteral("devNavDot"));
-        dotLbl->setFixedSize(5, 5);
-        dotLbl->move(13, 13);
-        dotLbl->setProperty("lampState", QStringLiteral("off"));
-        dotLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-        itemLayout->addWidget(iconBox);
-
-        // Name + type label
-        auto *textCol = new QWidget(item);
-        textCol->setAttribute(Qt::WA_TransparentForMouseEvents);
-        auto *textLay = new QVBoxLayout(textCol);
-        textLay->setContentsMargins(0, 0, 0, 0);
-        textLay->setSpacing(1);
-
-        auto *nameLbl = new QLabel(device->name(), textCol);
-        QFont nameFont("JetBrains Mono");
-        if (!nameFont.exactMatch()) nameFont.setFamily("Consolas");
-        nameFont.setPointSizeF(9);
-        nameLbl->setFont(nameFont);
-        nameLbl->setObjectName(QStringLiteral("devNavName"));
-        nameLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-        auto *typeLbl = new QLabel(typeShortLabel(device->deviceType()), textCol);
-        QFont typeFont;
-        typeFont.setPointSizeF(7.5);
-        typeFont.setBold(true);
-        typeFont.setLetterSpacing(QFont::AbsoluteSpacing, 0.4);
-        typeLbl->setFont(typeFont);
-        typeLbl->setObjectName(QStringLiteral("devNavType"));
-        typeLbl->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-        textLay->addWidget(nameLbl);
-        textLay->addWidget(typeLbl);
-        itemLayout->addWidget(textCol, 1);
+        auto *item = new DeviceNavItemWidget(m_devListWidget);
+        item->setDevice(device);
+        connect(item, &DeviceNavItemWidget::activated,
+                this, &LocalizationTaskWidget::onDeviceNavClicked);
 
         m_navItems.insert(devId, item);
         lay->addWidget(item);
@@ -574,7 +487,7 @@ void LocalizationTaskWidget::rebuildDeviceNav()
     if (!anyDevice) {
         auto *emptyLbl = new QLabel(tr("No devices assigned.\nUse [+] to add."),
                                     m_devListWidget);
-        emptyLbl->setObjectName(QStringLiteral("devNavEmpty"));
+        emptyLbl->setProperty("navPart", QStringLiteral("empty"));
         emptyLbl->setAlignment(Qt::AlignCenter);
         QFont f = emptyLbl->font();
         f.setPointSizeF(8.5);
@@ -595,30 +508,6 @@ void LocalizationTaskWidget::rebuildDeviceNav()
 // ──────────────────────────────────────────────────────────────────────────────
 void LocalizationTaskWidget::wireDeviceNavDots()
 {
-    // Map a device link state onto the dot's [lampState] QSS variant.
-    auto dotStateFor = [](vc::device::ConnectStatus status) -> QString {
-        using CS = vc::device::ConnectStatus;
-        // No default: — every ConnectStatus value is enumerated so -Wswitch /
-        // C4062 flags a new value; the trailing return satisfies the return type.
-        switch (status) {
-        case CS::Connected:    return QStringLiteral("on");
-        case CS::Connecting:   return QStringLiteral("warn");
-        case CS::LostConnected:
-        case CS::ConnectFailed:
-        case CS::Disconnected:
-        case CS::NoConnection: return QStringLiteral("off");
-        }
-        return QStringLiteral("off");
-    };
-
-    auto applyDotState = [](QFrame *dot, const QString &state) {
-        if (!dot) return;
-        dot->setProperty("lampState", state);
-        dot->style()->unpolish(dot);
-        dot->style()->polish(dot);
-        dot->update();
-    };
-
     // Drop previous subscriptions before re-binding (dots may have been
     // recreated by a rebuild, or runners replaced by a phase change).
     for (const auto &conn : std::as_const(m_navDotConns))
@@ -629,25 +518,24 @@ void LocalizationTaskWidget::wireDeviceNavDots()
 
     for (auto it = m_navItems.cbegin(); it != m_navItems.cend(); ++it) {
         const QString &devId = it.key();
-        QFrame *item = it.value();
-        auto *dot = item->findChild<QFrame *>(QStringLiteral("devNavDot"));
-        if (!dot) continue;
+        DeviceNavItemWidget *item = it.value();
+        if (!item) continue;
 
         auto *runner = taskRunner ? taskRunner->runnerFor(devId) : nullptr;
         if (!runner || !runner->device()) {
-            applyDotState(dot, QStringLiteral("off"));
+            item->setIndicatorState(QStringLiteral("off"));
             continue;
         }
 
         // Seed from current status (plain enum read; corrected by the next
         // forwarded change). The runner forwards connectStatusChanged onto the
-        // GUI thread, and the dot is the connection context so it auto-detaches
-        // when the dot is destroyed.
-        applyDotState(dot, dotStateFor(runner->device()->connectStatus()));
+        // GUI thread, and the nav item is the connection context so it
+        // auto-detaches when the item is destroyed.
+        item->setConnectStatus(runner->device()->connectStatus());
         m_navDotConns.append(connect(
-            runner, &vc::runtime::IDeviceRunner::connectStatusChanged, dot,
-            [dot, applyDotState, dotStateFor](vc::device::ConnectStatus status) {
-                applyDotState(dot, dotStateFor(status));
+            runner, &vc::runtime::IDeviceRunner::connectStatusChanged, item,
+            [item](vc::device::ConnectStatus status) {
+                item->setConnectStatus(status);
             }));
     }
 }
@@ -752,7 +640,7 @@ void LocalizationTaskWidget::showDeviceConfigPage(const QString &deviceId)
         auto dev = m_localizeTask->project()->deviceById(deviceId);
         if (dev) {
             label = dev->name();
-            role  = deviceTypeString(dev->deviceType());
+            role  = DeviceNavItemWidget::roleForDeviceType(dev->deviceType());
         }
     }
     updateBreadcrumb(label.isEmpty() ? deviceId : label, role);
@@ -788,18 +676,10 @@ void LocalizationTaskWidget::onTbtnExitRuntime() {
 
 void LocalizationTaskWidget::refreshNavItemStyles()
 {
-    auto repolish = [](QWidget *w) {
-        w->style()->unpolish(w);
-        w->style()->polish(w);
-        w->update();
-    };
     for (auto it = m_navItems.cbegin(); it != m_navItems.cend(); ++it) {
-        QFrame *item   = it.value();
+        DeviceNavItemWidget *item   = it.value();
         const bool active = (it.key() == m_activeDeviceId);
-        item->setProperty("navActive", active);
-        repolish(item);
-        if (auto *lbl = item->findChild<QLabel*>("devNavName")) repolish(lbl);
-        if (auto *lbl = item->findChild<QLabel*>("devNavType")) repolish(lbl);
+        item->setSelected(active);
     }
 }
 
@@ -810,6 +690,27 @@ void LocalizationTaskWidget::updateBreadcrumb(const QString &label, const QStrin
     ui->lbl_bc_current->style()->unpolish(ui->lbl_bc_current);
     ui->lbl_bc_current->style()->polish(ui->lbl_bc_current);
     ui->lbl_bc_current->update();
+}
+
+void LocalizationTaskWidget::onAssignedDeviceModified(const QString &deviceId)
+{
+    if (!m_localizeTask || !m_localizeTask->hasDevice(deviceId))
+        return;
+
+    auto proj = m_localizeTask->project();
+    if (!proj)
+        return;
+
+    auto dev = proj->deviceById(deviceId);
+    if (!dev)
+        return;
+
+    rebuildDeviceNav();
+
+    if (m_activeDeviceId == deviceId) {
+        updateBreadcrumb(dev->name(),
+                         DeviceNavItemWidget::roleForDeviceType(dev->deviceType()));
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -845,25 +746,6 @@ QWidget *LocalizationTaskWidget::getOrCreateDeviceConfigPage(const QString &devi
     ui->content_stack->addWidget(page);
     m_devicePages.insert(deviceId, page);
     return page;
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-//  Event filter — device nav item clicks + hover
-// ──────────────────────────────────────────────────────────────────────────────
-bool LocalizationTaskWidget::eventFilter(QObject *obj, QEvent *ev)
-{
-    const QEvent::Type t = ev->type();
-
-    if (t == QEvent::MouseButtonPress) {
-        for (auto it = m_navItems.cbegin(); it != m_navItems.cend(); ++it) {
-            if (obj == it.value()) {
-                onDeviceNavClicked(it.key());
-                return true;
-            }
-        }
-    }
-
-    return ITaskWidget::eventFilter(obj, ev);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

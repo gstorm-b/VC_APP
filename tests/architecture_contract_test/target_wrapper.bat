@@ -1,10 +1,14 @@
 @echo off
 SetLocal EnableDelayedExpansion
-(set PATH=C:\Qt\6.8.2\msvc2022_64\bin;!PATH!)
+if "%QT_MSVC_DIR%"=="" (
+    echo [ERROR] QT_MSVC_DIR must point to the Qt MSVC kit root.
+    exit /b 1
+)
+(set PATH=%QT_MSVC_DIR%\bin;!PATH!)
 if defined QT_PLUGIN_PATH (
-    set QT_PLUGIN_PATH=C:\Qt\6.8.2\msvc2022_64\plugins;!QT_PLUGIN_PATH!
+    set QT_PLUGIN_PATH=%QT_MSVC_DIR%\plugins;!QT_PLUGIN_PATH!
 ) else (
-    set QT_PLUGIN_PATH=C:\Qt\6.8.2\msvc2022_64\plugins
+    set QT_PLUGIN_PATH=%QT_MSVC_DIR%\plugins
 )
 %*
 EndLocal

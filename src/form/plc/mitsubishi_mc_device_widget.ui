@@ -63,7 +63,7 @@
        <number>16</number>
       </property>
       <item>
-       <widget class="QFrame" name="frame_connection">
+       <widget class="FrameBox" name="frame_connection">
         <property name="frameShape">
          <enum>QFrame::Shape::NoFrame</enum>
         </property>
@@ -109,7 +109,7 @@
             </spacer>
            </item>
            <item>
-            <widget class="QLabel" name="lbl_conn_dot">
+            <widget class="ConnectionStateDot" name="lbl_conn_dot">
              <property name="minimumSize">
               <size>
                <width>10</width>
@@ -128,14 +128,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="lbl_conn_state">
+            <widget class="ConnectionStateLabel" name="lbl_conn_state">
              <property name="text">
               <string>DISCONNECTED</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="btn_connect">
+            <widget class="ConnectionActionButton" name="btn_connect">
              <property name="cursor">
               <cursorShape>PointingHandCursor</cursorShape>
              </property>
@@ -322,6 +322,29 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FrameBox</class>
+   <extends>QFrame</extends>
+   <header location="global">form/widgets/frame_box.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionStateDot</class>
+   <extends>QLabel</extends>
+   <header location="global">form/widgets/connection_state_dot.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionStateLabel</class>
+   <extends>QLabel</extends>
+   <header location="global">form/widgets/connection_state_label.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionActionButton</class>
+   <extends>QPushButton</extends>
+   <header location="global">form/widgets/connection_action_button.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -59,7 +59,7 @@ marked explicitly when the implementation is not wired yet.
 - `KawasakiRobotDevice` and `NachiRobotDevice` are minimum stubs.
 - `TaskRunner` does not create a `RobotRunner`.
 - `RobotKinematics` is packaged for build-folder runs, but customer installer
-  packaging is still open (see `docs/later_todo_list.md` #27).
+  packaging is still open (see `docs/backlog/later_todo_list.md` #27).
 - `RobotKinematics` currently exposes the Nachi MZ04D production preset plus
   test/JSON-loaded presets. Kawasaki RS007N and Nachi MZ07 were dropped with the
   old `rkin` module.

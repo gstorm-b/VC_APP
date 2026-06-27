@@ -12,8 +12,8 @@
 //
 //  Layout:
 //    ┌──────────────┐
-//    │  TASK        │  ← lbl_lamp_name  (small, muted, uppercase)
-//    │  Ready       │  ← lbl_lamp_state (larger, bold, severity-coloured)
+//    │  TASK        │  <- lampPart="name"  (small, muted, uppercase)
+//    │  Ready       │  <- lampPart="state" (larger, bold, severity-coloured)
 //    └──────────────┘
 //
 //  Usage (from host cpp):

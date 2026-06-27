@@ -31,6 +31,7 @@ private:
     void rebuildCameraList();
     void rebuildCameraWorkspaceList();
     void refreshCommTags(const QString &deviceId);
+    void refreshDevicePresentation(const QString &deviceId);
     void pushConfigToTask();
 
     // ── Camera workspace (ROI) ──────────────────────────────────────────

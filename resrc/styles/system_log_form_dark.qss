@@ -12,7 +12,7 @@ QTextEdit#log_view {
     selection-color: @{selection.text};
 }
 
-QComboBox#cbx_view_mode {
+CompactComboBox#cbx_view_mode {
     min-width: 120px;
     background-color: @{bg.input};
     color: @{text.primary};
@@ -20,11 +20,10 @@ QComboBox#cbx_view_mode {
     border-radius: 5px;
     padding: 5px 28px 5px 10px;
 }
-QComboBox#cbx_view_mode:focus {
+CompactComboBox#cbx_view_mode:focus {
     border-color: @{accent.primary};
 }
-QComboBox#cbx_view_mode::drop-down {
-    border: none;
+CompactComboBox#cbx_view_mode::drop-down {
     width: 22px;
 }
 

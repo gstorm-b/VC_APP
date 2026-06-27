@@ -107,7 +107,7 @@ constexpr char kPickingToolId[]    = "picking_tcp";
 // two locations, in order: (1) deployed next to the binary by the
 // robotkinematics.pri post-link copy, (2) the source tree (dev runs). The
 // simplified profile is used (same as the widget tester) because it is fast
-// enough for the per-cycle result send path. See docs/later_todo_list.md #27.
+// enough for the per-cycle result send path. See docs/backlog/later_todo_list.md #27.
 constexpr char kSimplifiedMeshProfileDeployedRel[] =
     "robot_assets/Nachi/MZ04/nachi_mz04d_mesh_collision_simplified.json";
 constexpr char kSimplifiedMeshProfileSourceRel[] =

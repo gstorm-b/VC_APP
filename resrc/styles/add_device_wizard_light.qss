@@ -93,7 +93,7 @@ QStackedWidget#adwConfigStack QLabel {
     font-size: 10pt;
     background: transparent;
 }
-QStackedWidget#adwConfigStack QComboBox {
+QStackedWidget#adwConfigStack CompactComboBox {
     background-color: @{bg.surface};
     border: 1px solid @{border.default};
     border-radius: 5px;
@@ -102,14 +102,13 @@ QStackedWidget#adwConfigStack QComboBox {
     font-size: 10pt;
     min-height: 18px;
 }
-QStackedWidget#adwConfigStack QComboBox:hover {
+QStackedWidget#adwConfigStack CompactComboBox:hover {
     border-color: @{border.strong};
 }
-QStackedWidget#adwConfigStack QComboBox:focus {
+QStackedWidget#adwConfigStack CompactComboBox:focus {
     border-color: @{accent.primary};
 }
-QStackedWidget#adwConfigStack QComboBox::drop-down {
-    border: none;
+QStackedWidget#adwConfigStack CompactComboBox::drop-down {
     width: 18px;
 }
 

@@ -93,13 +93,16 @@
 - **Done (2026-06-24):** ~~Review `TaskLocalization` public limit constants and
   dead members after runtime tests are stable.~~ Limits are now
   `static constexpr kLimit*`; dead members removed. See 22.18/22.14.
-- **Open (2026-06-24):** Migrate hard-coded local dependency paths in qmake
-  files and helper scripts to environment variables. Known touchpoints include
-  `ncr_picking.pro`, `tests/architecture_contract_test/architecture_contract_test.pro`,
-  generated/legacy `target_wrapper.bat`, and `build_test.bat`. New work must
-  follow `docs/rules/build_and_verification.md`: root app builds under root `build\`,
-  tests/examples/components build beside their `.pro`, and Qt/OpenCV/Basler/
-  Visual Studio paths come from environment variables.
+- **Done (2026-06-27):** ~~Migrate hard-coded local dependency paths in qmake
+  files and helper scripts to environment variables.~~ Added shared qmake
+  dependency includes under `qmake/` for OpenCV/Pylon, migrated
+  `ncr_picking.pro`, the architecture contract test, and calibration tests,
+  and removed hard-coded Qt/Visual Studio/VTK defaults from helper scripts.
+  `build_test.bat` now builds the architecture contract test beside its `.pro`
+  under `tests\architecture_contract_test\build\msvc_debug`. New work must
+  follow `docs/rules/build_and_verification.md`: root app builds under root
+  `build\`, tests/examples/components build beside their `.pro`, and
+  Qt/OpenCV/Basler/Visual Studio paths come from environment variables.
 
 ## Product/Packaging Next Stages
 

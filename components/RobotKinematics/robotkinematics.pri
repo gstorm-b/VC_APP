@@ -17,7 +17,7 @@
 # it depends on) must be reachable on PATH next to the application binary, and
 # the Nachi MZ04D mesh-collision assets under
 # components/RobotKinematics/presets/Nachi/MZ04 must be deployed for the
-# in-app collision check to load them. See docs/later_todo_list.md.
+# in-app collision check to load them. See docs/backlog/later_todo_list.md.
 # ---------------------------------------------------------------------------
 
 ROBOTKINEMATICS_DIR = $$PWD

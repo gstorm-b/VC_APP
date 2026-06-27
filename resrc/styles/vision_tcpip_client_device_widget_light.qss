@@ -10,14 +10,6 @@ QWidget#VisionTcpipClientDeviceWidget {
     background-color: @{bg.window};
 }
 
-/* ── Connection card ─────────────────────────────────────────── */
-
-QFrame#frame_connection {
-    background-color: @{bg.surface};
-    border: 1px solid @{border.default};
-    border-radius: 8px;
-}
-
 /* ── Labels ──────────────────────────────────────────────────── */
 
 QLabel#lbl_conn_title {
@@ -53,75 +45,11 @@ QSpinBox#spb_port_data:focus {
     border-color: @{accent.primary};
 }
 
-/* ── Connection status dot ───────────────────────────────────── */
-
-QLabel#lbl_conn_dot {
-    border-radius: 5px;
-    min-width: 10px; max-width: 10px;
-    min-height: 10px; max-height: 10px;
-}
-QLabel#lbl_conn_dot[connectionState="connected"]    { background-color: @{state.success}; }
-QLabel#lbl_conn_dot[connectionState="connecting"]   { background-color: @{accent.bright}; }
-QLabel#lbl_conn_dot[connectionState="disconnected"] { background-color: @{state.error}; }
-
-/* ── Connection status text ──────────────────────────────────── */
-
-QLabel#lbl_conn_state {
-    font: 700 9pt "Segoe UI";
-    letter-spacing: 1px;
-}
-QLabel#lbl_conn_state[connectionState="connected"]    { color: @{state.success}; }
-QLabel#lbl_conn_state[connectionState="connecting"]   { color: @{accent.bright}; }
-QLabel#lbl_conn_state[connectionState="disconnected"] { color: @{state.error}; }
-
-/* ── Connect / Disconnect button ─────────────────────────────── */
-
-QPushButton#btn_connect {
-    border-radius: 5px;
-    padding: 7px 22px;
-    font: 700 10pt "Segoe UI";
-}
-QPushButton#btn_connect[connectionState="disconnected"] {
-    background-color: @{accent.primary};
-    color: @{bg.surface};
-    border: none;
-}
-QPushButton#btn_connect[connectionState="disconnected"]:hover   { background-color: @{accent.bright}; }
-QPushButton#btn_connect[connectionState="disconnected"]:pressed { background-color: @{accent.pressed}; }
-QPushButton#btn_connect[connectionState="connected"] {
-    background-color: rgba(192, 40, 42, 0.10);
-    color: @{state.error};
-    border: 1px solid rgba(192, 40, 42, 0.30);
-}
-QPushButton#btn_connect[connectionState="connected"]:hover   { border-color: @{state.error}; }
-QPushButton#btn_connect[connectionState="connected"]:pressed { background-color: rgba(192, 40, 42, 0.18); }
-QPushButton#btn_connect[connectionState="connecting"] {
-    background-color: rgba(176, 112, 0, 0.10);
-    color: @{accent.bright};
-    border: 1px solid @{accent.bright};
-}
-QPushButton#btn_connect[connectionState="connecting"]:hover   { border-color: @{accent.bright}; }
-QPushButton#btn_connect[connectionState="connecting"]:pressed { background-color: rgba(176, 112, 0, 0.18); }
-
-/* ── Send result card ────────────────────────────────────────── */
-
-QFrame#frame_send_result {
-    background-color: @{bg.surface};
-    border: 1px solid @{border.default};
-    border-radius: 8px;
-}
-
 QLabel#lbl_send_title {
     color: @{text.muted};
     font: 700 9pt "Segoe UI";
     letter-spacing: 1px;
 }
-
-QLabel#lbl_send_hint {
-    font: 9pt "Segoe UI";
-}
-QLabel#lbl_send_hint[sendState="ready"] { color: @{state.success}; }
-QLabel#lbl_send_hint[sendState="idle"]  { color: @{text.muted}; }
 
 /* ── Send section buttons (+ Row / - Row) ────────────────────── */
 

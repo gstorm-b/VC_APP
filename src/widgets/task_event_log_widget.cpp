@@ -27,7 +27,7 @@ void TaskEventItemWidget::setupUi(const TaskEvent &event)
 
     // ── Left severity bar (3 px, full row height) ─────────────────────────────
     auto *bar = new QFrame(this);
-    bar->setObjectName(QStringLiteral("taskEventBar"));
+    bar->setProperty("eventPart", QStringLiteral("bar"));
     bar->setFixedWidth(3);
     bar->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     root->addWidget(bar);
@@ -39,14 +39,14 @@ void TaskEventItemWidget::setupUi(const TaskEvent &event)
 
     // Timestamp — monospace, fixed width, text.muted
     auto *time = new QLabel(event.timestamp.toString(QStringLiteral("hh:mm:ss")), this);
-    time->setObjectName(QStringLiteral("taskEventTime"));
+    time->setProperty("eventPart", QStringLiteral("time"));
     time->setFixedWidth(56);
     time->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     content->addWidget(time);
 
     // Level badge — fixed width so columns stay aligned across severities
     auto *lv = new QLabel(levelText(event.level), this);
-    lv->setObjectName(QStringLiteral("taskEventLevel"));
+    lv->setProperty("eventPart", QStringLiteral("level"));
     lv->setFixedWidth(44);
     lv->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     content->addWidget(lv);
@@ -54,14 +54,14 @@ void TaskEventItemWidget::setupUi(const TaskEvent &event)
     // Source tag — optional component identifier, e.g. "[Camera]"
     if (!event.source.isEmpty()) {
         auto *src = new QLabel(QStringLiteral("[%1]").arg(event.source), this);
-        src->setObjectName(QStringLiteral("taskEventSource"));
+        src->setProperty("eventPart", QStringLiteral("source"));
         src->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         content->addWidget(src);
     }
 
     // Message — stretches to fill remaining width; single-line for scan speed
     auto *msg = new QLabel(event.message, this);
-    msg->setObjectName(QStringLiteral("taskEventMsg"));
+    msg->setProperty("eventPart", QStringLiteral("message"));
     msg->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     msg->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     msg->setTextInteractionFlags(Qt::TextSelectableByMouse);

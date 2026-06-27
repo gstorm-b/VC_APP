@@ -16,6 +16,8 @@
         <file alias="styles/system_log_form_light.qss">resrc/styles/system_log_form_light.qss</file>
         <file alias="styles/localization_task_widget_dark.qss">resrc/styles/localization_task_widget_dark.qss</file>
         <file alias="styles/localization_task_widget_light.qss">resrc/styles/localization_task_widget_light.qss</file>
+        <file alias="styles/localization_dashboard_widget_dark.qss">resrc/styles/localization_dashboard_widget_dark.qss</file>
+        <file alias="styles/localization_dashboard_widget_light.qss">resrc/styles/localization_dashboard_widget_light.qss</file>
         <file alias="styles/localization_patterns_widget_dark.qss">resrc/styles/localization_patterns_widget_dark.qss</file>
         <file alias="styles/localization_patterns_widget_light.qss">resrc/styles/localization_patterns_widget_light.qss</file>
         <file alias="styles/vision_tcpip_device_widget_dark.qss">resrc/styles/vision_tcpip_device_widget_dark.qss</file>

@@ -122,7 +122,11 @@ Expected local variables:
 - `QT_MSVC_DIR`
 - `VCVARS`
 - `OPENCV_ROOT`, `OPENCV_BIN`, `OPENCV_INCLUDE_DIR`, `OPENCV_LIB_DIR`
+- `OPENCV_WORLD_RELEASE`, `OPENCV_WORLD_DEBUG` when the OpenCV world library
+  names differ from qmake defaults
 - `PYLON_ROOT`, `PYLON_RUNTIME_DIR`, `PYLON_INCLUDE_DIR`, `PYLON_LIB_DIR`
+- `PYLON_BASE_LIB` when the Basler Pylon import-library name differs from the
+  qmake default
 - `VCTOOLS_DEBUG_CRT_DIR` when running Debug test binaries outside Visual Studio
 - third-party/component roots such as RobotKinematics dependencies
 

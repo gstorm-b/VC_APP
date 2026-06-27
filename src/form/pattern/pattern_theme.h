@@ -8,7 +8,7 @@
 //  Pattern UI theme tokens — Hybrid (Graphite Vision + Orange)
 //
 //  Single source of truth for C++ painted / inline-styled surfaces in the
-//  pattern manager and device wizards. Aligned with docs/ui_design_rules.md §5.
+//  pattern manager and device wizards. Aligned with docs/rules/ui_theme_tokens.md.
 //  QSS-driven widgets use resrc/styles/*.qss directly; this header covers only
 //  surfaces that cannot be styled via QSS (custom-painted or runtime-built).
 // ─────────────────────────────────────────────────────────────────────────────

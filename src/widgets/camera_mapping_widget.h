@@ -1,6 +1,8 @@
 #ifndef CAMERAMAPPINGWIDGET_H
 #define CAMERAMAPPINGWIDGET_H
 
+#include "form/widgets/flat_list_widget.h"
+
 #include <QListWidget>
 #include <QStackedWidget>
 #include <QLabel>
@@ -93,7 +95,7 @@ public:
 };
 
 // --- Component 5: Widget Chính (Manager) ---
-class CameraMappingWidget : public QListWidget {
+class CameraMappingWidget : public FlatListWidget {
     Q_OBJECT
 public:
     explicit CameraMappingWidget(QWidget *parent = nullptr);

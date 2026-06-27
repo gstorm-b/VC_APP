@@ -48,7 +48,7 @@
     <number>10</number>
    </property>
    <item>
-    <widget class="QFrame" name="frame_connection">
+    <widget class="FrameBox" name="frame_connection">
      <property name="frameShape">
       <enum>QFrame::Shape::NoFrame</enum>
      </property>
@@ -94,7 +94,7 @@
          </spacer>
         </item>
         <item>
-         <widget class="QLabel" name="lbl_conn_dot">
+         <widget class="ConnectionStateDot" name="lbl_conn_dot">
           <property name="minimumSize">
            <size>
             <width>10</width>
@@ -113,14 +113,14 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="lbl_conn_state">
+         <widget class="ConnectionStateLabel" name="lbl_conn_state">
           <property name="text">
            <string>DISCONNECTED</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="btn_connect">
+         <widget class="ConnectionActionButton" name="btn_connect">
           <property name="cursor">
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
@@ -210,7 +210,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QFrame" name="frame_send_result">
+    <widget class="FrameBox" name="frame_send_result">
      <property name="minimumSize">
       <size>
        <width>0</width>
@@ -337,7 +337,7 @@
       <item>
        <layout class="QHBoxLayout" name="sendBtnRow">
         <item>
-         <widget class="QLabel" name="lbl_send_hint">
+         <widget class="SendStateHintLabel" name="lbl_send_hint">
           <property name="text">
            <string>Not connected</string>
           </property>
@@ -378,7 +378,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QFrame" name="frame_kinematic_check">
+    <widget class="FrameBox" name="frame_kinematic_check">
      <property name="minimumSize">
       <size>
        <width>0</width>
@@ -441,6 +441,32 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>FrameBox</class>
+   <extends>QFrame</extends>
+   <header location="global">form/widgets/frame_box.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionStateDot</class>
+   <extends>QLabel</extends>
+   <header location="global">form/widgets/connection_state_dot.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionStateLabel</class>
+   <extends>QLabel</extends>
+   <header location="global">form/widgets/connection_state_label.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionActionButton</class>
+   <extends>QPushButton</extends>
+   <header location="global">form/widgets/connection_action_button.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SendStateHintLabel</class>
+   <extends>QLabel</extends>
+   <header location="global">form/widgets/send_state_hint_label.h</header>
+  </customwidget>
   <customwidget>
    <class>RobotKinematicCheckWidget</class>
    <extends>QWidget</extends>

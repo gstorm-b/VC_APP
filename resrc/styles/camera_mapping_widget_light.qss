@@ -10,14 +10,6 @@ QListWidget#cmwList {
     border-radius: 6px;
     color: @{text.primary};
 }
-QListWidget#cmwList::item {
-    border: none;
-    padding: 0px;
-}
-QListWidget#cmwList::item:selected {
-    background: transparent;
-}
-
 QWidget#cmwRow {
     background-color: @{bg.window};
     border: 1px solid @{border.default};

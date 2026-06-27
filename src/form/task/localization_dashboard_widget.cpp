@@ -95,6 +95,8 @@ LocalizationDashboardWidget::LocalizationDashboardWidget(std::shared_ptr<vc::mod
     ui(new Ui::LocalizationDashboardWidget) {
 
     ui->setupUi(this);
+    setupThemeReload(QStringLiteral(":/styles/localization_dashboard_widget_dark.qss"),
+                     QStringLiteral(":/styles/localization_dashboard_widget_light.qss"));
     initWidget();
 }
 

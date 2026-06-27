@@ -29,7 +29,7 @@ in §5–§6. Do not redesign the established tokens in §3 unless explicitly as
 - At load time `ThemeManager::resolveTokens()` substitutes each placeholder with
   the value for the active theme. The single source of truth is the
   `tokenTable()` map in `src/utils/theme_manager.cpp`, mirrored by the table in
-  `docs/ui_design_rules.md` §5.
+  `docs/rules/ui_theme_tokens.md`.
 - **So every token you design needs a `{dark, light}` value pair**, and a
   `group.token` name. Values may be `#rrggbb` or `rgba(r,g,b,a)` with `a` in the
   **0.0–1.0** range (do **not** use the legacy 0–255 alpha form).
@@ -37,7 +37,7 @@ in §5–§6. Do not redesign the established tokens in §3 unless explicitly as
 ## 3. Established tokens — DO NOT change (reference for harmony)
 
 These exist and are in use. Match their saturation/lightness so new colours feel
-like the same family. (Full table with roles: `docs/ui_design_rules.md` §5.)
+like the same family. (Full table with roles: `docs/rules/ui_theme_tokens.md`.)
 
 | Group | Tokens (dark / light shown for the key ones) |
 |---|---|
@@ -128,7 +128,7 @@ at-a-glance vs. visual cohesion).
 ## 7. Deliverable (what to hand back)
 
 A single token table the engineer can paste into `theme_manager.cpp` `tokenTable()`
-and `ui_design_rules.md` §5. For every new token:
+and `docs/rules/ui_theme_tokens.md`. For every new token:
 
 | Token name | Role / where used | Dark value | Light value | Replaces (raw values) |
 |---|---|---|---|---|
@@ -140,15 +140,15 @@ and the canonical alpha levels chosen in §6.2.
 
 **Acceptance:** every listed raw colour in §5–§6 is either (a) covered by a new
 token with dark+light values, or (b) explicitly kept raw with a justification.
-After the engineer applies it, the §9 review checklist in `ui_design_rules.md`
+After the engineer applies it, the review checklist in `docs/rules/ui_design_rules.md`
 is run in both dark and light themes (QSS colour changes are visual-only and need
 human inspection — there is no automated test for appearance).
 
 ## 8. Where the result is applied (for the engineer, not the designer)
 
 1. Add the new tokens to `tokenTable()` in `src/utils/theme_manager.cpp` and the
-   §5 table in `docs/ui_design_rules.md`.
+   table in `docs/rules/ui_theme_tokens.md`.
 2. Replace the raw values in `resrc/styles/*.qss` with the new `@{token}` forms
    (heaviest files: `localization_task_widget_*`, `add_device_wizard_*`).
 3. If any painted (non-QSS) surface uses the same identity colours, mirror them in
-   `src/form/pattern/pattern_theme.h` (ui_design_rules §6).
+   `src/form/pattern/pattern_theme.h` (see `docs/rules/ui_design_rules.md`).

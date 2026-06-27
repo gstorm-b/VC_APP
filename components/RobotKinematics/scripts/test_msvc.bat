@@ -7,7 +7,7 @@ REM The test executable is launched from the repository root so preset paths suc
 REM as presets/Nachi/MZ04/nachi_mz04d.json resolve consistently.
 REM ============================================================================
 setlocal
-if "%QT_MSVC_DIR%"=="" set "QT_MSVC_DIR=C:\Qt\6.8.3\msvc2022_64"
+if "%QT_MSVC_DIR%"=="" ( echo [ERROR] QT_MSVC_DIR must point to the Qt MSVC kit root & exit /b 1 )
 set "ROOT=%~dp0.."
 set "BUILD=%ROOT%\build\msvc"
 set "PATH=%QT_MSVC_DIR%\bin;%PATH%"

@@ -1,5 +1,7 @@
 #include "signals_monitor_widget.h"
 
+#include "form/widgets/state_pill_label.h"
+#include "form/widgets/type_chip_label.h"
 #include "logger/app_logger.h"
 #include "utils/theme_manager.h"
 
@@ -76,7 +78,7 @@ public:
         m_lblName->setObjectName(QStringLiteral("smwName"));
 
         // ── Type chip ───────────────────────────────────────────────────
-        m_lblType = new QLabel(this);
+        m_lblType = new TypeChipLabel(this);
         m_lblType->setObjectName(QStringLiteral("smwTypeChip"));
         m_lblType->setProperty("typeKind", type == Type::Bool ? "bool" : "number");
         m_lblType->setText(type == Type::Bool ? tr("Bool") : tr("Num"));
@@ -89,7 +91,7 @@ public:
         vlay->setContentsMargins(0, 0, 0, 0);
         vlay->setSpacing(kValueInnerSpacing);
 
-        m_lblOnOff = new QLabel(m_valueCell);
+        m_lblOnOff = new StatePillLabel(m_valueCell);
         m_lblOnOff->setObjectName(QStringLiteral("smwOnOff"));
         m_lblOnOff->setProperty("onOffState", "off");
         m_lblOnOff->setText(tr("OFF"));
@@ -432,7 +434,7 @@ SignalsMonitorWidget::SignalsMonitorWidget(QWidget *parent)
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0, 0, 0, 0);
 
-    m_list = new QListWidget(this);
+    m_list = new FlatListWidget(this);
     m_list->setObjectName(QStringLiteral("smwList"));
     m_list->setSelectionMode(QAbstractItemView::NoSelection);
     m_list->setFocusPolicy(Qt::NoFocus);

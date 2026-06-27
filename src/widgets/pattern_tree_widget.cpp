@@ -27,31 +27,32 @@ void PatternGroupItemWidget::setupUi()
 
     // ── Left accent bar ───────────────────────────────────────────────────────
     auto *bar = new QFrame(this);
-    bar->setObjectName(QStringLiteral("patternGroupAccentBar"));
+    bar->setProperty("patternRole", QStringLiteral("groupAccent"));
     bar->setFixedSize(3, 26);
     root->addWidget(bar, 0, Qt::AlignVCenter);
 
     // ── Name label ────────────────────────────────────────────────────────────
     m_nameLabel = new QLabel(this);
-    m_nameLabel->setStyleSheet(QStringLiteral("font-size:13px; font-weight:700;"));
+    m_nameLabel->setProperty("patternRole", QStringLiteral("groupName"));
     root->addWidget(m_nameLabel);
 
     // ── Group number badge ────────────────────────────────────────────────────
     m_numberLabel = new QLabel(this);
-    m_numberLabel->setObjectName(QStringLiteral("patternGroupNumber"));
+    m_numberLabel->setProperty("patternRole", QStringLiteral("groupNumber"));
     root->addWidget(m_numberLabel);
 
     root->addStretch();
 
     // ── + Pattern button ──────────────────────────────────────────────────────
     m_addPatternBtn = new QPushButton(QStringLiteral("＋ Pattern"), this);
+    m_addPatternBtn->setProperty("patternAction", QStringLiteral("add"));
     m_addPatternBtn->setFixedHeight(24);
     m_addPatternBtn->setCursor(Qt::PointingHandCursor);
     root->addWidget(m_addPatternBtn);
 
     // ── Delete button ─────────────────────────────────────────────────────────
     m_deleteBtn = new QPushButton(QStringLiteral("✕"), this);
-    m_deleteBtn->setObjectName(QStringLiteral("patternDeleteBtn"));
+    m_deleteBtn->setProperty("patternAction", QStringLiteral("delete"));
     m_deleteBtn->setFixedSize(24, 24);
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     root->addWidget(m_deleteBtn);
@@ -116,7 +117,7 @@ void PatternItemWidget::setupUi()
 
     // ── Thumbnail ─────────────────────────────────────────────────────────────
     m_thumbnail = new QLabel(this);
-    m_thumbnail->setObjectName(QStringLiteral("patternThumbnail"));
+    m_thumbnail->setProperty("patternRole", QStringLiteral("thumbnail"));
     m_thumbnail->setFixedSize(60, 60);
     m_thumbnail->setAlignment(Qt::AlignCenter);
     root->addWidget(m_thumbnail, 0, Qt::AlignVCenter);
@@ -127,13 +128,13 @@ void PatternItemWidget::setupUi()
     infoBox->setContentsMargins(0, 0, 0, 0);
 
     m_nameLabel = new QLabel(this);
-    m_nameLabel->setStyleSheet(QStringLiteral("font-size:12px; font-weight:600;"));
+    m_nameLabel->setProperty("patternRole", QStringLiteral("patternName"));
 
     m_numberLabel = new QLabel(this);
-    m_numberLabel->setObjectName(QStringLiteral("patternNumber"));
+    m_numberLabel->setProperty("patternRole", QStringLiteral("patternMeta"));
 
     m_threshLabel = new QLabel(this);
-    m_threshLabel->setObjectName(QStringLiteral("patternThresh"));
+    m_threshLabel->setProperty("patternRole", QStringLiteral("patternMeta"));
 
     infoBox->addWidget(m_nameLabel);
     infoBox->addWidget(m_numberLabel);
@@ -144,14 +145,14 @@ void PatternItemWidget::setupUi()
 
     // ── Edit button ───────────────────────────────────────────────────────────
     m_editBtn = new QPushButton(QStringLiteral("✎"), this);
-    m_editBtn->setObjectName(QStringLiteral("patternEditBtn"));
+    m_editBtn->setProperty("patternAction", QStringLiteral("edit"));
     m_editBtn->setFixedSize(22, 22);
     m_editBtn->setCursor(Qt::PointingHandCursor);
     root->addWidget(m_editBtn, 0, Qt::AlignVCenter);
 
     // ── Delete button ─────────────────────────────────────────────────────────
     m_deleteBtn = new QPushButton(QStringLiteral("✕"), this);
-    m_deleteBtn->setObjectName(QStringLiteral("patternDeleteBtn"));
+    m_deleteBtn->setProperty("patternAction", QStringLiteral("delete"));
     m_deleteBtn->setFixedSize(22, 22);
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     root->addWidget(m_deleteBtn, 0, Qt::AlignVCenter);
@@ -219,10 +220,12 @@ void FooterItemWidget::setupUi()
     root->setSpacing(8);
 
     m_addGroupBtn = new QPushButton(QStringLiteral("＋  Add Group"), this);
+    m_addGroupBtn->setProperty("patternAction", QStringLiteral("add"));
     m_addGroupBtn->setCursor(Qt::PointingHandCursor);
     m_addGroupBtn->setFixedHeight(28);
 
     m_autoSortBtn = new QPushButton(QStringLiteral("⇅  Auto Sort"), this);
+    m_autoSortBtn->setProperty("patternAction", QStringLiteral("sort"));
     m_autoSortBtn->setCursor(Qt::PointingHandCursor);
     m_autoSortBtn->setFixedHeight(28);
 

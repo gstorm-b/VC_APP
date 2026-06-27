@@ -2,11 +2,12 @@
 #define LOCALIZATION_TASK_WIDGET_H
 
 #include <QWidget>
-#include <QFrame>
-#include <QLabel>
 #include <QMap>
 #include <QButtonGroup>
 
+#include "form/widgets/device_nav_item_widget.h"
+#include "form/widgets/status_lamp_dot.h"
+#include "form/widgets/status_text_label.h"
 #include "model/task_localization.h"
 #include "form/task_widget.h"
 
@@ -43,9 +44,6 @@ public:
 signals:
     void addDeviceRequested(const QString &taskId);
 
-protected:
-    bool eventFilter(QObject *obj, QEvent *ev) override;
-
 private:
     // ── Initialisation ────────────────────────────────────────────────────
     void initWidget();
@@ -70,6 +68,7 @@ private:
     void updateBreadcrumb(const QString &label, const QString &role = QStringLiteral("accent"));
     void updateStatusLamps();
     void updateTaskStateUi();
+    void onAssignedDeviceModified(const QString &deviceId);
 
     // ── Helpers ───────────────────────────────────────────────────────────
     QWidget *getOrCreateDeviceConfigPage(const QString &deviceId);
@@ -106,14 +105,14 @@ private:
 
     // ── Nav: status lamps ─────────────────────────────────────────────────
     struct StatusLamp {
-        QFrame *dot{nullptr};
-        QLabel *label{nullptr};
+        StatusLampDot *dot{nullptr};
+        StatusTextLabel *label{nullptr};
     };
     QList<StatusLamp> m_statusLamps; // READY, CAM, PLC, OUT
 
     // ── Nav: device items ─────────────────────────────────────────────────
     QWidget               *m_devListWidget{nullptr};
-    QMap<QString, QFrame*> m_navItems;     // deviceId → frame
+    QMap<QString, DeviceNavItemWidget*> m_navItems;     // deviceId → frame
     // Live runner→dot subscriptions for the device-nav connection indicators;
     // dropped and rebuilt by wireDeviceNavDots().
     QList<QMetaObject::Connection> m_navDotConns;

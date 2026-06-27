@@ -57,16 +57,27 @@ Use these names for local configuration:
 - `VCVARS`: full path to Visual Studio `vcvars64.bat`.
 - `OPENCV_ROOT`, `OPENCV_BIN`, `OPENCV_INCLUDE_DIR`, `OPENCV_LIB_DIR`: OpenCV
   install/build paths.
+- `OPENCV_WORLD_RELEASE`, `OPENCV_WORLD_DEBUG`: optional OpenCV world library
+  names when the local OpenCV version differs from the qmake default
+  (`opencv_world4120`, `opencv_world4120d`).
 - `PYLON_ROOT`, `PYLON_RUNTIME_DIR`, `PYLON_INCLUDE_DIR`, `PYLON_LIB_DIR`:
   Basler Pylon paths.
+- `PYLON_BASE_LIB`: optional Basler Pylon import-library name when the local
+  Pylon SDK differs from the qmake default (`PylonBase_v11`).
 - `VCTOOLS_DEBUG_CRT_DIR`: optional Debug CRT runtime directory when running
   Debug test binaries outside Visual Studio.
 - RobotKinematics and third-party dependencies should follow the component
   scripts' pattern: define the dependency root once, then derive include, lib,
   bin, and runtime folders from that root.
 
-Existing hard-coded paths in old `.pro` files are technical debt. New work
-should migrate touched project files to environment-variable based paths.
+qmake projects consume local dependency paths through the shared includes under
+`qmake/`:
+
+- `qmake/opencv_dependency.pri` for OpenCV-only targets;
+- `qmake/pylon_dependency.pri` for Pylon-only targets;
+- `qmake/local_dependencies.pri` for targets that need both OpenCV and Pylon.
+
+Do not add per-target hard-coded local dependency paths.
 
 ## MSVC App Build
 

@@ -145,6 +145,7 @@ QComboBox {
 }
 QComboBox:focus { border-color: @{accent.primary}; }
 QComboBox::drop-down { border-left: 1px solid @{border.default}; }
+CompactComboBox::drop-down { border: none; }
 QComboBox QAbstractItemView {
     background-color: @{bg.surface};
     color: @{text.primary};
@@ -177,10 +178,145 @@ QPushButton:pressed  { background-color: @{accent.pressed}; color: @{text.on-acc
 QPushButton:default  { border-color: @{accent.primary}; border-width: 2px; }
 QPushButton:disabled { color: @{text.disabled}; background-color: @{bg.disabled}; border-color: @{border.disabled}; }
 
+ConnectionActionButton {
+    border-radius: 5px;
+    padding: 7px 22px;
+    font: 700 10pt "Segoe UI";
+}
+ConnectionActionButton[connectionState="disconnected"] {
+    background-color: @{accent.primary};
+    color: @{text.on-accent};
+    border: none;
+}
+ConnectionActionButton[connectionState="disconnected"]:hover {
+    background-color: @{accent.bright};
+}
+ConnectionActionButton[connectionState="disconnected"]:pressed {
+    background-color: @{accent.pressed};
+}
+ConnectionActionButton[connectionState="connected"] {
+    background-color: rgba(255, 82, 82, 0.12);
+    color: @{state.error};
+    border: 1px solid rgba(255, 82, 82, 0.27);
+}
+ConnectionActionButton[connectionState="connected"]:hover {
+    border-color: @{state.error};
+}
+ConnectionActionButton[connectionState="connected"]:pressed {
+    background-color: rgba(255, 82, 82, 0.22);
+}
+ConnectionActionButton[connectionState="connecting"] {
+    background-color: @{accent.subtle};
+    color: @{accent.bright};
+    border: 1px solid @{accent.bright};
+}
+ConnectionActionButton[connectionState="connecting"]:hover {
+    border-color: @{accent.bright};
+}
+ConnectionActionButton[connectionState="connecting"]:pressed {
+    background-color: rgba(232,124,0,0.18);
+}
+
 /* ── Labels / Checkboxes ─────────────────────────────────────────── */
 
 QCheckBox { color: @{text.primary}; }
 QLabel    { color: @{text.primary}; }
+
+FrameBox {
+    background-color: @{bg.surface};
+    border: 1px solid @{border.default};
+    border-radius: 8px;
+}
+FrameBox[frameBoxVariant="compact"] { border-radius: 4px; }
+FrameBox QLabel { background: transparent; }
+
+ConnectionStateDot {
+    border-radius: 5px;
+    min-width: 10px;
+    max-width: 10px;
+    min-height: 10px;
+    max-height: 10px;
+}
+ConnectionStateDot[connectionState="connected"]    { background-color: @{state.success}; }
+ConnectionStateDot[connectionState="connecting"]   { background-color: @{accent.bright}; }
+ConnectionStateDot[connectionState="disconnected"] { background-color: @{state.error}; }
+
+ConnectionStateLabel {
+    font: 700 9pt "Segoe UI";
+    letter-spacing: 1px;
+}
+ConnectionStateLabel[connectionState="connected"]    { color: @{state.success}; }
+ConnectionStateLabel[connectionState="connecting"]   { color: @{accent.bright}; }
+ConnectionStateLabel[connectionState="disconnected"] { color: @{state.error}; }
+
+SendStateHintLabel {
+    font: 9pt "Segoe UI";
+}
+SendStateHintLabel[sendState="ready"] { color: @{state.success}; }
+SendStateHintLabel[sendState="idle"]  { color: @{text.disabled}; }
+
+StatusLampDot { border-radius: 5px; }
+StatusLampDot[lampState="on"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 @{state.success.bright}, stop:1 @{state.success});
+    border: 1px solid rgba(64,200,112,100);
+}
+StatusLampDot[lampState="off"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 @{state.error.bright}, stop:1 @{state.error});
+    border: 1px solid rgba(255,82,82,100);
+}
+StatusLampDot[lampState="warn"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 @{state.warning.bright}, stop:1 @{state.warning});
+    border: 1px solid rgba(255,176,32,100);
+}
+StatusLampDot[lampState="error"] {
+    background: qradialgradient(cx:0.35, cy:0.35, radius:0.65,
+        stop:0 @{state.error.bright}, stop:1 @{state.error});
+    border: 1px solid rgba(255,82,82,100);
+}
+
+StatusTextLabel {
+    font: 700 6.5pt "Segoe UI";
+    letter-spacing: 0.5px;
+}
+StatusTextLabel[lampState="on"]    { color: @{text.muted}; }
+StatusTextLabel[lampState="off"]   { color: @{text.disabled}; }
+StatusTextLabel[lampState="warn"]  { color: @{state.warning}; }
+StatusTextLabel[lampState="error"] { color: @{state.error}; }
+
+TypeChipLabel {
+    color: @{text.primary};
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 8pt;
+    font-weight: 600;
+}
+TypeChipLabel[typeKind="bool"] {
+    background-color: rgba(64, 168, 224, 0.18);
+    color: @{state.info};
+}
+TypeChipLabel[typeKind="number"] {
+    background-color: rgba(64, 200, 112, 0.18);
+    color: @{state.success};
+}
+
+StatePillLabel {
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 9pt;
+    font-weight: 700;
+    min-width: 36px;
+}
+StatePillLabel[onOffState="on"] {
+    background-color: rgba(64, 200, 112, 0.18);
+    color: @{state.success};
+}
+StatePillLabel[onOffState="off"] {
+    background-color: @{bg.elevated};
+    color: @{text.muted};
+}
 
 /* ── Tabs ────────────────────────────────────────────────────────── */
 
@@ -204,6 +340,64 @@ QTableView {
 }
 QTableWidget::item:selected,
 QTableView::item:selected { background-color: @{selection.bg}; color: @{text.primary}; }
+
+FlatListWidget::item {
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    background: transparent;
+}
+FlatListWidget::item:selected { background: transparent; }
+FlatListWidget::item:hover { background: transparent; }
+
+DeviceNavItemWidget[navItem="true"] {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 5px;
+}
+DeviceNavItemWidget[navItem="true"]:hover {
+    background: @{bg.elevated};
+}
+DeviceNavItemWidget[navItem="true"][navActive="true"][deviceType="camera"] {
+    background: @{device.camera.tint.bg};
+    border: 1px solid @{device.camera.tint.bd};
+}
+DeviceNavItemWidget[navItem="true"][navActive="true"][deviceType="plc"] {
+    background: @{device.plc.tint.bg};
+    border: 1px solid @{device.plc.tint.bd};
+}
+DeviceNavItemWidget[navItem="true"][navActive="true"][deviceType="output"] {
+    background: @{device.output.tint.bg};
+    border: 1px solid @{device.output.tint.bd};
+}
+DeviceNavItemWidget[navItem="true"][navActive="true"][deviceType="robot"] {
+    background: @{device.robot.tint.bg};
+    border: 1px solid @{device.robot.tint.bd};
+}
+DeviceNavItemWidget[navItem="true"][navActive="true"][deviceType="default"] {
+    background: @{device.default.tint.bg};
+    border: 1px solid @{device.default.tint.bd};
+}
+DeviceNavItemWidget[navItem="true"][navActive="true"] QLabel[navPart="name"] {
+    color: @{text.primary};
+    font-weight: bold;
+}
+
+DeviceNavDot {
+    border-radius: 2px;
+}
+DeviceNavDot[lampState="on"] {
+    background: @{state.success};
+    border: 1px solid @{bg.window};
+}
+DeviceNavDot[lampState="warn"] {
+    background: @{state.warning};
+    border: 1px solid @{bg.window};
+}
+DeviceNavDot[lampState="off"] {
+    background: @{state.error};
+    border: 1px solid @{bg.window};
+}
 
 /* ── Slider ──────────────────────────────────────────────────────── */
 
@@ -232,178 +426,6 @@ QWizardPage { background-color: @{bg.surface}; }
 QAbstractScrollArea { background-color: @{bg.surface}; }
 
 /* ═══════════════════════════════════════════════════════════════════
-   LocalizationTaskWidget — nav panel
-   panel.accent.*: deep #1e1c16  mid #252118  surface #2e2a1e  border #403a28
-   accent.primary: #e87c00    selection.bg: #3d2e10
-   ═══════════════════════════════════════════════════════════════════ */
-
-QFrame#nav_panel {
-    background-color: @{panel.accent.mid};
-    border-right: 1px solid @{panel.accent.border};
-}
-
-QFrame#frame_task_header {
-    background-color: transparent;
-    border-bottom: 1px solid @{panel.accent.border};
-}
-QLabel#lbl_active_title {
-    color: @{text.muted};
-    font-size: 8pt;
-    font-weight: bold;
-}
-QLabel#lbl_task_name_nav {
-    color: @{text.primary};
-    font-family: "JetBrains Mono", Consolas, monospace;
-    font-size: 10pt;
-    font-weight: bold;
-}
-QLabel#lbl_task_type_chip {
-    color: @{accent.primary};
-    background-color: @{accent.subtle};
-    border: 1px solid rgba(232, 124, 0, 0.30);
-    border-radius: 3px;
-    padding: 1px 6px;
-    font-size: 8pt;
-    font-weight: bold;
-}
-
-QFrame#frame_status_lamps {
-    background-color: transparent;
-    border-bottom: 1px solid @{panel.accent.border};
-}
-
-QPushButton#btn_nav_dashboard,
-QPushButton#btn_nav_settings {
-    background-color: transparent;
-    border: none;
-    border-left: 2px solid transparent;
-    border-radius: 5px;
-    text-align: left;
-    padding: 6px 8px;
-    color: @{text.muted};
-    font-size: 9pt;
-}
-QPushButton#btn_nav_dashboard:hover:!checked,
-QPushButton#btn_nav_settings:hover:!checked {
-    background-color: @{panel.accent.surface};
-    color: @{text.primary};
-}
-QPushButton#btn_nav_dashboard:checked,
-QPushButton#btn_nav_settings:checked {
-    background-color: @{selection.bg};
-    border-left: 2px solid @{accent.primary};
-    color: @{accent.primary};
-    font-weight: bold;
-}
-
-QFrame#frame_devices_header { background-color: transparent; }
-QLabel#lbl_devices_section {
-    color: @{text.muted};
-    font-size: 8pt;
-    font-weight: bold;
-}
-QToolButton#tbtn_add_device {
-    background-color: transparent;
-    border: none;
-    border-radius: 3px;
-    padding: 2px;
-    color: @{text.muted};
-}
-QToolButton#tbtn_add_device:hover {
-    color: @{accent.primary};
-    background-color: @{accent.subtle};
-}
-
-QScrollArea#scroll_devices {
-    background-color: transparent;
-    border: none;
-}
-QWidget#scroll_devices_content { background-color: transparent; }
-QScrollArea#scroll_devices QScrollBar:vertical {
-    background: transparent;
-    width: 4px;
-    margin: 0;
-}
-QScrollArea#scroll_devices QScrollBar::handle:vertical {
-    background: @{panel.accent.border};
-    border-radius: 2px;
-}
-QScrollArea#scroll_devices QScrollBar::add-line:vertical,
-QScrollArea#scroll_devices QScrollBar::sub-line:vertical { height: 0; }
-
-QFrame#frame_nav_bottom {
-    background-color: transparent;
-    border-top: 1px solid @{panel.accent.border};
-}
-
-/* ── Right content area ─────────────────────────────────────────── */
-
-QWidget#wg_content_right { background-color: @{bg.window}; }
-
-QFrame#frame_breadcrumb {
-    background-color: @{bg.surface};
-    border-bottom: 1px solid @{border.default};
-}
-QLabel#lbl_bc_task {
-    color: @{text.muted};
-    font-family: "JetBrains Mono", Consolas, monospace;
-    font-size: 9pt;
-}
-QLabel#lbl_bc_sep { color: @{border.strong}; font-size: 13pt; }
-
-QToolButton#tbtn_bc_save,
-QToolButton#tbtn_bc_refresh {
-    background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    padding: 4px;
-    color: @{text.muted};
-}
-QToolButton#tbtn_bc_save:hover,
-QToolButton#tbtn_bc_refresh:hover { color: @{text.primary}; }
-
-/* ── Settings page (page_task_config) ───────────────────────────── */
-
-QWidget#page_task_config QLabel {
-    color: @{text.muted};
-    font-size: 9pt;
-}
-QWidget#page_task_config QLineEdit {
-    background-color: @{bg.elevated};
-    color: @{text.primary};
-    border: 1px solid @{border.default};
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 9pt;
-}
-QWidget#page_task_config QLineEdit:focus { border-color: @{accent.primary}; }
-QWidget#page_task_config QToolButton {
-    background-color: @{bg.elevated};
-    color: @{text.muted};
-    border: 1px solid @{border.default};
-    border-radius: 4px;
-    padding: 3px 6px;
-}
-QWidget#page_task_config QToolButton:hover {
-    border-color: @{accent.primary};
-    color: @{text.primary};
-}
-QWidget#page_task_config QGroupBox {
-    color: @{text.muted};
-    border: 1px solid @{border.default};
-    border-radius: 5px;
-    margin-top: 8px;
-    padding-top: 8px;
-    font-size: 9pt;
-    font-weight: bold;
-}
-QWidget#page_task_config QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 8px;
-    padding: 0 4px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
    PatternTreeWidget — Dark theme
    bg.window: #1a1c20    bg.surface: #22252a    bg.elevated: #2c3038
    accent.primary: #e87c00    selection.bg: #3d2e10
@@ -425,12 +447,18 @@ PatternTreeWidget::item:selected        { background-color: @{selection.bg}; }
 PatternTreeWidget::item:hover:!selected { background-color: @{bg.elevated}; }
 PatternTreeWidget::branch               { background-color: @{bg.window}; }
 
-QFrame#patternGroupAccentBar {
+PatternTreeWidget QFrame[patternRole="groupAccent"] {
     background-color: @{accent.primary};
     border-radius: 2px;
 }
 
-QLabel#patternGroupNumber {
+PatternTreeWidget QLabel[patternRole="groupName"] {
+    color: @{text.primary};
+    font-size: 13px;
+    font-weight: 700;
+}
+
+PatternTreeWidget QLabel[patternRole="groupNumber"] {
     color: @{accent.primary};
     background-color: @{accent.subtle};
     border: 1px solid rgba(232, 124, 0, 0.30);
@@ -439,7 +467,7 @@ QLabel#patternGroupNumber {
     font-size: 11px;
 }
 
-QLabel#patternThumbnail {
+PatternTreeWidget QLabel[patternRole="thumbnail"] {
     background-color: @{bg.window};
     border: 1px solid @{border.default};
     border-radius: 5px;
@@ -447,10 +475,18 @@ QLabel#patternThumbnail {
     font-size: 9px;
 }
 
-QLabel#patternNumber,
-QLabel#patternThresh { color: @{text.muted}; font-size: 10px; }
+PatternTreeWidget QLabel[patternRole="patternName"] {
+    color: @{text.primary};
+    font-size: 12px;
+    font-weight: 600;
+}
 
-QPushButton#patternDeleteBtn {
+PatternTreeWidget QLabel[patternRole="patternMeta"] {
+    color: @{text.muted};
+    font-size: 10px;
+}
+
+PatternTreeWidget QPushButton[patternAction="delete"] {
     background-color: @{state.error};
     color: @{text.on-accent};
     border: none;
@@ -459,10 +495,10 @@ QPushButton#patternDeleteBtn {
     font-weight: 600;
     padding: 0;
 }
-QPushButton#patternDeleteBtn:hover   { background-color: #c0282a; }
-QPushButton#patternDeleteBtn:pressed { background-color: @{state.error.deep}; }
+PatternTreeWidget QPushButton[patternAction="delete"]:hover   { background-color: #c0282a; }
+PatternTreeWidget QPushButton[patternAction="delete"]:pressed { background-color: @{state.error.deep}; }
 
-QPushButton#patternEditBtn {
+PatternTreeWidget QPushButton[patternAction="edit"] {
     background-color: @{bg.window};
     color: @{text.primary};
     border: 1px solid @{border.default};
@@ -471,8 +507,8 @@ QPushButton#patternEditBtn {
     font-weight: 600;
     padding: 0;
 }
-QPushButton#patternEditBtn:hover   { background-color: @{selection.bg}; color: @{accent.primary}; border-color: @{accent.primary}; }
-QPushButton#patternEditBtn:pressed { background-color: @{accent.primary}; color: @{text.on-accent}; }
+PatternTreeWidget QPushButton[patternAction="edit"]:hover   { background-color: @{selection.bg}; color: @{accent.primary}; border-color: @{accent.primary}; }
+PatternTreeWidget QPushButton[patternAction="edit"]:pressed { background-color: @{accent.primary}; color: @{text.on-accent}; }
 
 /* ═══════════════════════════════════════════════════════════════════
    StatusLamp — Dark theme
@@ -493,94 +529,21 @@ StatusLamp[status="warning"] { border-left-color: @{state.warning}; }
 StatusLamp[status="error"]   { border-left-color: @{state.error}; }
 StatusLamp[status="off"]     { border-left-color: @{border.default}; }
 
-StatusLamp QLabel#lbl_lamp_name {
+StatusLamp QLabel[lampPart="name"] {
     color: @{text.muted};
     font-size: 9px;
     font-weight: 700;
     background: transparent;
 }
-StatusLamp QLabel#lbl_lamp_state {
+StatusLamp QLabel[lampPart="state"] {
     font-size: 13px;
     font-weight: 700;
     background: transparent;
 }
-StatusLamp[status="ok"]      QLabel#lbl_lamp_state { color: @{state.success}; }
-StatusLamp[status="warning"] QLabel#lbl_lamp_state { color: @{state.warning}; }
-StatusLamp[status="error"]   QLabel#lbl_lamp_state { color: @{state.error}; }
-StatusLamp[status="off"]     QLabel#lbl_lamp_state { color: @{border.strong}; }
-
-/* ── Dashboard section panels ────────────────────────────────── */
-
-QFrame#frame_task_context,
-QFrame#frame_fault {
-    background-color: @{bg.surface};
-    border: 1px solid @{border.default};
-    border-radius: 4px;
-}
-
-/* Section header labels */
-QLabel#lbl_section_task_context,
-QLabel#lbl_section_fault,
-QLabel#lbl_section_signal_monitor,
-QLabel#lbl_section_task_log,
-QLabel#lbl_section_match_view,
-QLabel#lbl_section_result {
-    color: @{text.muted};
-    font-size: 9px;
-    font-weight: 700;
-}
-
-/* Caption / value pairs inside task context & fault panels */
-QFrame#frame_task_context QLabel,
-QFrame#frame_fault QLabel {
-    background: transparent;
-}
-QLabel#lbl_caption_vision_device,
-QLabel#lbl_caption_plc_device,
-QLabel#lbl_caption_camera,
-QLabel#lbl_caption_pattern_group,
-QLabel#lbl_caption_fault_flag,
-QLabel#lbl_caption_fault_code { color: @{text.muted}; }
-
-QLabel#lbl_val_vision_device,
-QLabel#lbl_val_plc_device,
-QLabel#lbl_val_camera,
-QLabel#lbl_val_pattern_group { color: @{text.primary}; font-weight: 600; }
-
-QLabel#lbl_val_fault_flag,
-QLabel#lbl_val_fault_code { color: @{text.primary}; font-weight: 600; }
-
-/* Fault panel — active state (bTaskFault = true) */
-QFrame#frame_fault[active="true"] {
-    border-color: @{state.error};
-    background-color: rgba(255, 82, 82, 0.07);
-}
-QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_flag,
-QFrame#frame_fault[active="true"] QLabel#lbl_val_fault_code { color: @{state.error}; }
-
-/* KPI cards */
-QFrame#frame_match_view,
-QFrame#frame_kpi_detected,
-QFrame#frame_kpi_sent,
-QFrame#frame_kpi_cycle_time,
-QFrame#frame_kpi_low_area {
-    background-color: @{bg.surface};
-    border: 1px solid @{border.default};
-    border-radius: 4px;
-}
-QFrame#frame_kpi_detected   QLabel:first-child,
-QFrame#frame_kpi_sent       QLabel:first-child,
-QFrame#frame_kpi_cycle_time QLabel:first-child,
-QFrame#frame_kpi_low_area   QLabel:first-child { color: @{text.muted}; font-size: 10px; }
-
-QLabel#lbl_kpi_detected_val,
-QLabel#lbl_kpi_sent_val,
-QLabel#lbl_kpi_cycle_time_val,
-QLabel#lbl_kpi_low_area_val {
-    color: @{text.primary};
-    font-size: 20px;
-    font-weight: 750;
-}
+StatusLamp[status="ok"]      QLabel[lampPart="state"] { color: @{state.success}; }
+StatusLamp[status="warning"] QLabel[lampPart="state"] { color: @{state.warning}; }
+StatusLamp[status="error"]   QLabel[lampPart="state"] { color: @{state.error}; }
+StatusLamp[status="off"]     QLabel[lampPart="state"] { color: @{border.strong}; }
 
 /* ═══════════════════════════════════════════════════════════════════
    TaskEventLogWidget — Dark theme
@@ -609,44 +572,44 @@ TaskEventLogWidget::item:hover:!selected { background-color: @{bg.surface}; }
 TaskEventItemWidget { background: transparent; }
 
 /* ── Left severity bar ───────────────────────────────────────── */
-QFrame#taskEventBar { border-radius: 0px; }
+TaskEventItemWidget QFrame[eventPart="bar"] { border-radius: 0px; }
 
-TaskEventItemWidget[severity="info"]    QFrame#taskEventBar { background-color: @{accent.primary}; }
-TaskEventItemWidget[severity="warning"] QFrame#taskEventBar { background-color: @{state.warning}; }
-TaskEventItemWidget[severity="error"]   QFrame#taskEventBar { background-color: @{state.error}; }
-TaskEventItemWidget[severity="success"] QFrame#taskEventBar { background-color: @{state.success}; }
+TaskEventItemWidget[severity="info"]    QFrame[eventPart="bar"] { background-color: @{accent.primary}; }
+TaskEventItemWidget[severity="warning"] QFrame[eventPart="bar"] { background-color: @{state.warning}; }
+TaskEventItemWidget[severity="error"]   QFrame[eventPart="bar"] { background-color: @{state.error}; }
+TaskEventItemWidget[severity="success"] QFrame[eventPart="bar"] { background-color: @{state.success}; }
 
 /* ── Timestamp ───────────────────────────────────────────────── */
-QLabel#taskEventTime {
+TaskEventItemWidget QLabel[eventPart="time"] {
     color: @{text.muted};
     font-family: "JetBrains Mono", Consolas, monospace;
     font-size: 10px;
 }
 
 /* ── Level badge ─────────────────────────────────────────────── */
-TaskEventItemWidget[severity="info"]    QLabel#taskEventLevel { color: @{accent.primary}; }
-TaskEventItemWidget[severity="warning"] QLabel#taskEventLevel { color: @{state.warning}; }
-TaskEventItemWidget[severity="error"]   QLabel#taskEventLevel { color: @{state.error}; }
-TaskEventItemWidget[severity="success"] QLabel#taskEventLevel { color: @{state.success}; }
+TaskEventItemWidget[severity="info"]    QLabel[eventPart="level"] { color: @{accent.primary}; }
+TaskEventItemWidget[severity="warning"] QLabel[eventPart="level"] { color: @{state.warning}; }
+TaskEventItemWidget[severity="error"]   QLabel[eventPart="level"] { color: @{state.error}; }
+TaskEventItemWidget[severity="success"] QLabel[eventPart="level"] { color: @{state.success}; }
 
-QLabel#taskEventLevel {
+TaskEventItemWidget QLabel[eventPart="level"] {
     font-family: "JetBrains Mono", Consolas, monospace;
     font-size: 10px;
     font-weight: 700;
 }
 
 /* ── Source tag ──────────────────────────────────────────────── */
-QLabel#taskEventSource {
+TaskEventItemWidget QLabel[eventPart="source"] {
     color: @{border.strong};
     font-size: 10px;
     font-style: italic;
 }
 
 /* ── Message text ────────────────────────────────────────────── */
-QLabel#taskEventMsg { color: @{text.primary}; font-size: 11px; }
+TaskEventItemWidget QLabel[eventPart="message"] { color: @{text.primary}; font-size: 11px; }
 
-TaskEventItemWidget[severity="error"]   QLabel#taskEventMsg { color: @{state.error.surface}; }
-TaskEventItemWidget[severity="warning"] QLabel#taskEventMsg { color: @{state.warning.surface}; }
+TaskEventItemWidget[severity="error"]   QLabel[eventPart="message"] { color: @{state.error.surface}; }
+TaskEventItemWidget[severity="warning"] QLabel[eventPart="message"] { color: @{state.warning.surface}; }
 
 /* ═══════════════════════════════════════════════════════════════════
    Qt Advanced Docking System — Dark theme

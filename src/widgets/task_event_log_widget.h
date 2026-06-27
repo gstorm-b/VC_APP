@@ -37,9 +37,9 @@ struct TaskEvent {
 //
 //  Styling is owned entirely by dark.qss / light.qss via:
 //    TaskEventItemWidget[severity="info"|"warning"|"error"|"success"]
-//    TaskEventItemWidget[…] QFrame#taskEventBar
-//    TaskEventItemWidget[…] QLabel#taskEventLevel
-//    QLabel#taskEventTime  /  QLabel#taskEventMsg  /  QLabel#taskEventSource
+//    TaskEventItemWidget[...] QFrame[eventPart="bar"]
+//    TaskEventItemWidget[...] QLabel[eventPart="level"]
+//    QLabel[eventPart="time"|"message"|"source"]
 // ─────────────────────────────────────────────────────────────────────────────
 class TaskEventItemWidget : public QWidget
 {

@@ -1,0 +1,68 @@
+/* LocalizationDashboardWidget - Dark theme */
+
+QWidget#LocalizationDashboardWidget {
+    background-color: @{bg.window};
+    color: @{text.primary};
+}
+
+QLabel#lbl_section_task_context,
+QLabel#lbl_section_fault,
+QLabel#lbl_section_signal_monitor,
+QLabel#lbl_section_task_log,
+QLabel#lbl_section_match_view,
+QLabel#lbl_section_result {
+    color: @{text.muted};
+    font-size: 9px;
+    font-weight: 700;
+}
+
+FrameBox#frame_task_context QLabel,
+FrameBox#frame_fault QLabel {
+    background: transparent;
+}
+
+QLabel#lbl_caption_vision_device,
+QLabel#lbl_caption_plc_device,
+QLabel#lbl_caption_camera,
+QLabel#lbl_caption_pattern_group,
+QLabel#lbl_caption_fault_flag,
+QLabel#lbl_caption_fault_code {
+    color: @{text.muted};
+}
+
+QLabel#lbl_val_vision_device,
+QLabel#lbl_val_plc_device,
+QLabel#lbl_val_camera,
+QLabel#lbl_val_pattern_group,
+QLabel#lbl_val_fault_flag,
+QLabel#lbl_val_fault_code {
+    color: @{text.primary};
+    font-weight: 600;
+}
+
+FrameBox#frame_fault[active="true"] {
+    border-color: @{state.error};
+    background-color: rgba(255, 82, 82, 0.07);
+}
+
+FrameBox#frame_fault[active="true"] QLabel#lbl_val_fault_flag,
+FrameBox#frame_fault[active="true"] QLabel#lbl_val_fault_code {
+    color: @{state.error};
+}
+
+FrameBox#frame_kpi_detected QLabel:first-child,
+FrameBox#frame_kpi_sent QLabel:first-child,
+FrameBox#frame_kpi_cycle_time QLabel:first-child,
+FrameBox#frame_kpi_low_area QLabel:first-child {
+    color: @{text.muted};
+    font-size: 10px;
+}
+
+QLabel#lbl_kpi_detected_val,
+QLabel#lbl_kpi_sent_val,
+QLabel#lbl_kpi_cycle_time_val,
+QLabel#lbl_kpi_low_area_val {
+    color: @{text.primary};
+    font-size: 20px;
+    font-weight: 750;
+}

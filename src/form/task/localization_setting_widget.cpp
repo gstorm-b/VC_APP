@@ -221,6 +221,13 @@ void LocalizationSettingWidget::initWidget() {
         refreshCommTags(ui->cbb_comm_device->currentData().toString());
     });
 
+    if (auto proj = m_localizeTask->project()) {
+        if (auto dm = proj->deviceManager()) {
+            connect(dm.get(), &vc::device::DeviceManager::deviceModified,
+                    this, &LocalizationSettingWidget::refreshDevicePresentation);
+        }
+    }
+
     loadConfigToWidget();
 }
 
@@ -289,6 +296,13 @@ void LocalizationSettingWidget::refreshWorkspaceRow(const QString &cameraId) {
         cameraId, ws.useWorkspace, roi,
         ws.useConditionWorkspace, condRoi,
         !ws.referenceImage.empty());
+}
+
+void LocalizationSettingWidget::refreshDevicePresentation(const QString &deviceId) {
+    if (!m_localizeTask || deviceId.isEmpty() || !m_localizeTask->hasDevice(deviceId))
+        return;
+
+    loadConfigToWidget();
 }
 
 void LocalizationSettingWidget::onWorkspaceUseToggled(const QString &cameraId, bool enabled) {

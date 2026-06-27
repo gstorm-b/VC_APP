@@ -1,12 +1,13 @@
 #ifndef SIGNALS_MONITOR_WIDGET_H
 #define SIGNALS_MONITOR_WIDGET_H
 
+#include "form/widgets/flat_list_widget.h"
+
 #include <QWidget>
 #include <QVariant>
 #include <QList>
 #include <QString>
 
-class QListWidget;
 class QListWidgetItem;
 
 namespace vc::widgets::sm_internal { class RowWidget; }
@@ -90,7 +91,7 @@ private:
     int  rowIndexOf(const QString &internalName) const;
     void openModifyDialog(vc::widgets::sm_internal::RowWidget *row);
 
-    QListWidget *m_list{nullptr};
+    FlatListWidget *m_list{nullptr};
     QList<vc::widgets::sm_internal::RowWidget *> m_rows;
 
     bool m_deviceConnected{false};

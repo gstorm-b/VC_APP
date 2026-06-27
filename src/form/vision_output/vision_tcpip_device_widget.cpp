@@ -222,8 +222,7 @@ void VisionTcpipDeviceWidget::initWidget() {
     connect(ui->btn_send_result,&QPushButton::clicked, this, &VisionTcpipDeviceWidget::onSendResult);
 
     // ── Robot kinematic check (Phase 2) ─────────────────────────────────────
-    m_kcheckWidget = new RobotKinematicCheckWidget(this);
-    ui->verticalLayout->insertWidget(ui->verticalLayout->count() - 1, m_kcheckWidget);
+    m_kcheckWidget = ui->widget_kinematic_check;
     m_kcheckWidget->setConfig(m_config.m_kinematicCheck);
     connect(m_kcheckWidget, &RobotKinematicCheckWidget::configChanged, this, [this]() {
         m_config.m_kinematicCheck = m_kcheckWidget->config();

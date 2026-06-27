@@ -7,26 +7,21 @@ REM RobotKinematics library build and does not imply VTK is approved for the
 REM production mesh backend.
 REM
 REM Required:
-REM   VTK_ROOT      VTK install prefix, defaults to D:\Project\vtk_build\vtk\install-x64-cuda-qt-vs when present
+REM   VTK_ROOT      VTK install prefix
 REM Optional:
 REM   VTK_VERSION   default 9.6
-REM   QT_MSVC_DIR   default C:\Qt\6.8.3\msvc2022_64
-REM   VCVARS        default VS 2022 Community vcvars64.bat
+REM   QT_MSVC_DIR   Qt MSVC kit root
+REM   VCVARS        full path to vcvars64.bat
 REM ============================================================================
 setlocal
 
-if "%QT_MSVC_DIR%"=="" set "QT_MSVC_DIR=C:\Qt\6.8.3\msvc2022_64"
-if "%VCVARS%"=="" set "VCVARS=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+if "%QT_MSVC_DIR%"=="" ( echo [ERROR] QT_MSVC_DIR must point to the Qt MSVC kit root & exit /b 1 )
+if "%VCVARS%"=="" ( echo [ERROR] VCVARS must point to vcvars64.bat & exit /b 1 )
 if "%VTK_VERSION%"=="" set "VTK_VERSION=9.6"
 
 if "%VTK_ROOT%"=="" (
-    if exist "C:\Program Files\VTK" (
-        set "VTK_ROOT=C:\Program Files\VTK"
-    ) else (
-        echo [ERROR] VTK_ROOT is not set.
-        echo         Install VTK externally, then set VTK_ROOT to its install prefix.
-        exit /b 1
-    )
+    echo [ERROR] VTK_ROOT must point to the VTK install prefix.
+    exit /b 1
 )
 
 set "ROOT=%~dp0.."

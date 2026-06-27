@@ -139,16 +139,4 @@ HEADERS += \
     $$ROOT_DIR/src/runtime/vision_output_runner.h \
     $$ROOT_DIR/src/utils/meta_utils.h
 
-INCLUDEPATH += C:/opencv/build/include
-DEPENDPATH += C:/opencv/build/include
-
-win32:CONFIG(release, debug|release): LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4110
-else:win32:CONFIG(debug, debug|release): LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4110d
-else:unix: LIBS += -LC:/opencv/build/x64/vc16/lib/ -lopencv_world4120
-
-win32:CONFIG(release, debug|release): LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v10
-else:win32:CONFIG(debug, debug|release): LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v10
-else:unix: LIBS += -L'C:/Program Files/Basler/pylon/Development/lib/x64/' -lPylonBase_v10
-
-INCLUDEPATH += 'C:/Program Files/Basler/pylon/Development/include'
-DEPENDPATH += 'C:/Program Files/Basler/pylon/Development/include'
+include($$ROOT_DIR/qmake/local_dependencies.pri)

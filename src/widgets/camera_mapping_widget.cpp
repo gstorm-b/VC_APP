@@ -197,7 +197,7 @@ void AddRowWidget::setAvailableCameras(const QStringList &displayNames,
 // ==========================================
 // CameraMappingWidget Implementation
 // ==========================================
-CameraMappingWidget::CameraMappingWidget(QWidget *parent) : QListWidget(parent) {
+CameraMappingWidget::CameraMappingWidget(QWidget *parent) : FlatListWidget(parent) {
     setObjectName(QStringLiteral("cmwList"));
     setSelectionMode(QAbstractItemView::NoSelection);
     setupAddRow();

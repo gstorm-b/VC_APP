@@ -11,12 +11,12 @@ REM This script builds only. Use test_mingw.bat to run tests, or rebuild_mingw.b
 REM for a clean rebuild + test cycle.
 REM
 REM Override these via environment if your install differs:
-REM   QT_MINGW_DIR  (default C:\Qt\6.8.2\mingw_64)
-REM   MINGW_DIR     (default C:\Qt\Tools\mingw1310_64)
+REM   QT_MINGW_DIR  Qt MinGW kit root
+REM   MINGW_DIR     MinGW toolchain root
 REM ============================================================================
 setlocal
-if "%QT_MINGW_DIR%"=="" set "QT_MINGW_DIR=C:\Qt\6.8.2\mingw_64"
-if "%MINGW_DIR%"=="" set "MINGW_DIR=C:\Qt\Tools\mingw1310_64"
+if "%QT_MINGW_DIR%"=="" ( echo [ERROR] QT_MINGW_DIR must point to the Qt MinGW kit root & exit /b 1 )
+if "%MINGW_DIR%"=="" ( echo [ERROR] MINGW_DIR must point to the MinGW toolchain root & exit /b 1 )
 set "ROOT=%~dp0.."
 set "BUILD=%ROOT%\build\mingw"
 

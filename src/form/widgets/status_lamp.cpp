@@ -10,11 +10,11 @@ StatusLamp::StatusLamp(QWidget *parent)
     layout->setSpacing(3);
 
     m_nameLabel = new QLabel(this);
-    m_nameLabel->setObjectName(QStringLiteral("lbl_lamp_name"));
+    m_nameLabel->setProperty("lampPart", QStringLiteral("name"));
     m_nameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     m_stateLabel = new QLabel(this);
-    m_stateLabel->setObjectName(QStringLiteral("lbl_lamp_state"));
+    m_stateLabel->setProperty("lampPart", QStringLiteral("state"));
     m_stateLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     layout->addWidget(m_nameLabel);

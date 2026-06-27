@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-if "%QT_MSVC_DIR%"=="" set "QT_MSVC_DIR=C:\Qt\6.8.3\msvc2022_64"
+if "%QT_MSVC_DIR%"=="" ( echo [ERROR] QT_MSVC_DIR must point to the Qt MSVC kit root & exit /b 1 )
 
 set "ROOT=%~dp0.."
 if "%COAL_ROOT%"=="" set "COAL_ROOT=%ROOT%\third_party\install\coal"

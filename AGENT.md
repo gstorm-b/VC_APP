@@ -25,32 +25,53 @@ customer installer implementation.
 For most work, read only what matches your task. Do not load the whole docs
 tree by default.
 
-1. `docs/design_rules.md` for process, ownership, language, architecture, and
-   coding conventions.
-2. `docs/build_and_verification.md` for the qmake/MSVC build and test flow.
-3. `docs/project_restructure_plan.md` for the closed restructure roadmap and
-   source-of-truth hierarchy.
-4. `docs/restructure_closeout.md` for what has already been completed.
-5. `docs/technical_debt_and_next_steps.md` for the active implementation
-   backlog after restructure closeout.
-6. `docs/later_todo_list.md` before flagging or fixing known deferred work.
+1. `docs/README.md` for the documentation map and source-of-truth groups.
+2. `docs/rules/design_rules.md` for process, ownership, language,
+   architecture, and coding conventions.
+3. `docs/rules/build_and_verification.md` for the qmake/MSVC build and test
+   flow.
+4. `docs/backlog/technical_debt_and_next_steps.md` for the active
+   implementation backlog after restructure closeout.
+5. `docs/backlog/later_todo_list.md` before flagging or fixing known deferred
+   work.
 
 Topic-specific docs:
 
-- Localization runtime: `docs/task_localization/` and
-  `docs/task_localization_implementation_plan.md`.
-- RobotKinematics integration: `docs/robot_kinematics_module.md`.
-- Product packaging: `docs/phase4_product_release_plan.md` and
-  `docs/customer_installer_packaging.md`.
-- UI/QSS: `docs/ui_design_rules.md`.
+- Localization runtime: `docs/domains/task_localization/`.
+- RobotKinematics integration: `docs/architecture/robot_kinematics_module.md`.
+- Product packaging: `docs/product/phase4_product_release_plan.md` and
+  `docs/product/customer_installer_packaging.md`.
+- UI/QSS implementation: `docs/rules/ui_design_rules.md`.
+- UI colour tokens and palette migration: `docs/rules/ui_theme_tokens.md`.
 - Current UML: `uml/`.
 
 Historical docs:
 
-- `docs/old_session/` is traceability only. Do not treat it as current spec
-  unless the user explicitly points there.
-- `docs/architecture_docs/` is API reference only and may drift; prefer source
-  and tests when behavior matters.
+- `docs/history/` is traceability only. Do not treat it as current spec unless
+  the user explicitly points there.
+- `docs/generated/architecture_docs/` is API reference only and may drift;
+  prefer source and tests when behavior matters.
+
+## Source-Of-Truth Hierarchy
+
+Use this order when project documents disagree:
+
+1. Source code and tests are the implemented truth.
+2. `AGENT.md` is the entrypoint and authority map for agents.
+3. Topic source-of-truth docs own their domain:
+   - UI structure, QSS workflow, and theming implementation:
+     `docs/rules/ui_design_rules.md`;
+   - UI token names, values, palette rationale, QPalette mapping, and
+     colour-scheme migration workflow: `docs/rules/ui_theme_tokens.md`;
+   - build, test, and local environment workflow:
+     `docs/rules/build_and_verification.md`;
+   - architecture diagrams: `uml/`.
+4. `docs/rules/design_rules.md` owns general engineering and architecture rules
+   when no topic-specific source-of-truth doc exists.
+5. Historical docs and generated API references are supporting context only.
+
+If code and docs disagree, treat code as the current implemented behaviour, then
+either update the docs or flag the drift before closing the task.
 
 ## Operating Rules
 
@@ -62,9 +83,10 @@ Historical docs:
 - For explicit implementation requests, proceed with the work and keep the user
   updated. For broad, risky, or ambiguous architecture changes, restate the
   scope and ask before editing.
-- If you discover unrelated debt, document it in `docs/later_todo_list.md` or
-  `docs/technical_debt_and_next_steps.md` instead of silently mixing it into the
-  current change.
+- If you discover unrelated debt, document it in
+  `docs/backlog/later_todo_list.md` or
+  `docs/backlog/technical_debt_and_next_steps.md` instead of silently mixing it
+  into the current change.
 - Do not add backwards-compatibility shims unless the user explicitly asks. The
   project has not shipped to customers yet.
 
@@ -122,7 +144,7 @@ Important:
 - Qt Creator may use `jom`, but from Codex CLI use the qmake + nmake fallback
   unless the `jom` PATH inheritance issue has been solved.
 
-See `docs/build_and_verification.md` for exact commands.
+See `docs/rules/build_and_verification.md` for exact commands.
 
 ## Current Release Decision
 
@@ -138,8 +160,8 @@ its own manifest and clean-machine smoke test.
 
 ## Highest Priority Next Work
 
-Start with `docs/technical_debt_and_next_steps.md`. The most important next
-slices are:
+Start with `docs/backlog/technical_debt_and_next_steps.md`. The most important
+next slices are:
 
 - operator runtime validation with a real or simulated Localization cycle;
 - customer installer prototype and clean-machine smoke verification;
@@ -150,7 +172,7 @@ slices are:
 
 ## Do Not
 
-- Do not use `docs/old_session/` as current design guidance.
+- Do not use `docs/history/` as current design guidance.
 - Do not treat `QMAKE_POST_LINK` build-folder copying as customer packaging.
 - Do not mark roadmap items verified without build/test/manual evidence.
 - Do not run destructive git or filesystem commands without explicit user

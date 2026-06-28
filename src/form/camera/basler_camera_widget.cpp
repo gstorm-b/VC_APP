@@ -273,6 +273,10 @@ void BaslerCameraWidget::initCameraWiget() {
     } else {
         LOG_DEV_ERR << "BaslerCameraWidget: no runner provided — control disabled";
     }
+
+    onCameraConnectStatusChanged(m_device && m_device->isDeviceConnected()
+                               ? vc::device::ConnectStatus::Connected
+                               : vc::device::ConnectStatus::Disconnected);
 }
 
 void BaslerCameraWidget::setDoublePropertyLimit(QtVariantProperty *variant, double &max, double &min) {
@@ -418,6 +422,10 @@ void BaslerCameraWidget::btn_save_image_clicked() {
 
 void BaslerCameraWidget::onCameraConnected() {
     ui->lb_connection_status->setText(tr("Connected"));
+    ui->lb_connection_status->setProperty("connectionState", "disconnected");
+    ui->lb_connection_status->style()->unpolish(ui->lb_connection_status);
+    ui->lb_connection_status->style()->polish(ui->lb_connection_status);
+    ui->lb_connection_status->update();
     m_params = m_camera->baslerGigeConfig();
     LOG_DEV_DEBUG << m_params.m_paramsExposureMin << m_params.m_paramsExposureMax;
     LOG_DEV_DEBUG << m_params.m_paramsGainMin << m_params.m_paramsGainMax;
@@ -427,6 +435,10 @@ void BaslerCameraWidget::onCameraConnected() {
 
 void BaslerCameraWidget::onCameraDisconnected() {
     ui->lb_connection_status->setText(tr("Disconnected"));
+    ui->lb_connection_status->setProperty("connectionState", "disconnected");
+    ui->lb_connection_status->style()->unpolish(ui->lb_connection_status);
+    ui->lb_connection_status->style()->polish(ui->lb_connection_status);
+    ui->lb_connection_status->update();
     ui->btn_connect->setIcon(svgIcon(":/resrc/icon/plug_disconnected.svg"));
 }
 

@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1080" font-family="Segoe UI, Inter, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Current Settings view + Add Device Wizard
+       ============================================================ -->
+  <rect width="1440" height="1080" fill="#1a1c20"/>
+
+  <!-- =============== Top: Localization Settings ============== -->
+  <text x="32" y="32" fill="#e0e4ea" font-size="16" font-weight="600">Localization · Settings</text>
+  <text x="32" y="50" fill="#7a8898" font-size="11">Reflects: localization_setting_widget.ui — task config form bound to TaskLocalization persistent settings.</text>
+
+  <rect x="32" y="64" width="1376" height="448" fill="#22252a" stroke="#3a3f48"/>
+  <!-- Two-column form -->
+  <g transform="translate(56,88)" font-size="12">
+    <!-- Section: Identification -->
+    <text fill="#7a8898" letter-spacing="1">IDENTIFICATION</text>
+    <line x1="0" y1="8" x2="660" y2="8" stroke="#3a3f48"/>
+    <g transform="translate(0,24)">
+      <text fill="#7a8898">Task name</text>
+      <rect x="160" y="-14" width="280" height="24" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#e0e4ea">localize_bin_top</text>
+    </g>
+    <g transform="translate(0,56)">
+      <text fill="#7a8898">Type</text>
+      <rect x="160" y="-14" width="180" height="24" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#e0e4ea">Localization ▾</text>
+    </g>
+    <g transform="translate(0,88)">
+      <text fill="#7a8898">Description</text>
+      <rect x="160" y="-14" width="500" height="60" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#7a8898">Pick parts from the top of the bin using Basler GigE…</text>
+    </g>
+
+    <!-- Section: Bindings -->
+    <text y="200" fill="#7a8898" letter-spacing="1">BINDINGS</text>
+    <line x1="0" y1="208" x2="660" y2="208" stroke="#3a3f48"/>
+    <g transform="translate(0,232)">
+      <text fill="#7a8898">Active camera</text>
+      <rect x="160" y="-14" width="280" height="24" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#e0e4ea">basler_top ▾</text>
+    </g>
+    <g transform="translate(0,264)">
+      <text fill="#7a8898">PLC</text>
+      <rect x="160" y="-14" width="280" height="24" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#e0e4ea">mitsu_mc_01 ▾</text>
+    </g>
+    <g transform="translate(0,296)">
+      <text fill="#7a8898">Vision output</text>
+      <rect x="160" y="-14" width="280" height="24" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#e0e4ea">tcpip_server_01 ▾</text>
+    </g>
+    <g transform="translate(0,328)">
+      <text fill="#7a8898">Pattern group</text>
+      <rect x="160" y="-14" width="280" height="24" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="170" y="2" fill="#e0e4ea">group_default ▾</text>
+    </g>
+  </g>
+
+  <!-- Right column: Signals + Camera mapping (collapsed look) -->
+  <g transform="translate(776,88)" font-size="12">
+    <text fill="#7a8898" letter-spacing="1">PLC SIGNAL MAP</text>
+    <line x1="0" y1="8" x2="600" y2="8" stroke="#3a3f48"/>
+    <g transform="translate(0,22)">
+      <rect width="600" height="180" fill="#1a1c20" stroke="#3a3f48"/>
+      <!-- table header -->
+      <g font-size="11" fill="#7a8898">
+        <text x="12" y="20">Role</text>
+        <text x="200" y="20">Address</text>
+        <text x="320" y="20">Type</text>
+        <text x="420" y="20">Direction</text>
+      </g>
+      <line x1="0" y1="28" x2="600" y2="28" stroke="#3a3f48"/>
+      <g font-size="11" fill="#e0e4ea" font-family="Consolas,Menlo,monospace">
+        <text x="12" y="46">TriggerRequest</text><text x="200" y="46">M100</text><text x="320" y="46">BOOL</text><text x="420" y="46">IN</text>
+        <text x="12" y="66">Busy</text>           <text x="200" y="66">M101</text><text x="320" y="66">BOOL</text><text x="420" y="66">OUT</text>
+        <text x="12" y="86">Done</text>           <text x="200" y="86">M102</text><text x="320" y="86">BOOL</text><text x="420" y="86">OUT</text>
+        <text x="12" y="106">FaultFlag</text>     <text x="200" y="106">M110</text><text x="320" y="106">BOOL</text><text x="420" y="106">OUT</text>
+        <text x="12" y="126">FaultCode</text>     <text x="200" y="126">D110</text><text x="320" y="126">WORD</text><text x="420" y="126">OUT</text>
+        <text x="12" y="146">DetectedCount</text> <text x="200" y="146">D200</text><text x="320" y="146">WORD</text><text x="420" y="146">OUT</text>
+      </g>
+    </g>
+
+    <text y="226" fill="#7a8898" letter-spacing="1">CAMERA MAPPING</text>
+    <line x1="0" y1="234" x2="600" y2="234" stroke="#3a3f48"/>
+    <g transform="translate(0,248)">
+      <rect width="600" height="142" fill="#1a1c20" stroke="#3a3f48"/>
+      <g font-size="11" fill="#7a8898"><text x="12" y="20">Camera slot</text><text x="200" y="20">Calibration</text><text x="380" y="20">Frame</text></g>
+      <line x1="0" y1="28" x2="600" y2="28" stroke="#3a3f48"/>
+      <g font-size="11" fill="#e0e4ea">
+        <text x="12" y="48">cam_top → basler_top</text><text x="200" y="48">calib_top.npz</text><text x="380" y="48">world_robot_base</text>
+        <text x="12" y="68">cam_side → (none)</text><text x="200" y="68" fill="#7a8898">—</text><text x="380" y="68" fill="#7a8898">—</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Save / Cancel -->
+  <g transform="translate(1200,484)">
+    <rect width="90" height="28" rx="3" fill="transparent" stroke="#3a3f48"/>
+    <text x="45" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">Cancel</text>
+    <g transform="translate(98,0)">
+      <rect width="100" height="28" rx="3" fill="#e87c00"/>
+      <text x="50" y="18" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Save</text>
+    </g>
+  </g>
+
+  <!-- =============== Bottom: Add Device Wizard ============== -->
+  <text x="32" y="556" fill="#e0e4ea" font-size="16" font-weight="600">Add Device — Wizard</text>
+  <text x="32" y="574" fill="#7a8898" font-size="11">Reflects: add_device_wizard.ui — modal wizard with step rail on left, form area on right.</text>
+
+  <!-- Modal scrim -->
+  <rect x="0" y="588" width="1440" height="492" fill="rgba(0,0,0,0.32)"/>
+
+  <!-- Dialog -->
+  <rect x="240" y="608" width="960" height="460" fill="#22252a" stroke="#3a3f48" rx="6"/>
+  <rect x="240" y="608" width="960" height="44" fill="#2c3038" rx="6"/>
+  <text x="260" y="636" fill="#e0e4ea" font-size="14" font-weight="600">Add Device</text>
+  <text x="1180" y="636" text-anchor="end" fill="#7a8898" font-size="14">✕</text>
+
+  <!-- Step rail -->
+  <rect x="240" y="652" width="220" height="370" fill="#1e1c16"/>
+  <g transform="translate(252,672)" font-size="12">
+    <g><circle cx="10" cy="10" r="10" fill="#e87c00"/><text x="10" y="14" text-anchor="middle" fill="#ffffff" font-weight="700">1</text><text x="30" y="14" fill="#e87c00" font-weight="600">Family</text></g>
+    <g transform="translate(0,40)"><circle cx="10" cy="10" r="10" fill="#2c3038" stroke="#3a3f48"/><text x="10" y="14" text-anchor="middle" fill="#7a8898">2</text><text x="30" y="14" fill="#7a8898">Subtype</text></g>
+    <g transform="translate(0,80)"><circle cx="10" cy="10" r="10" fill="#2c3038" stroke="#3a3f48"/><text x="10" y="14" text-anchor="middle" fill="#7a8898">3</text><text x="30" y="14" fill="#7a8898">Connection</text></g>
+    <g transform="translate(0,120)"><circle cx="10" cy="10" r="10" fill="#2c3038" stroke="#3a3f48"/><text x="10" y="14" text-anchor="middle" fill="#7a8898">4</text><text x="30" y="14" fill="#7a8898">Identity &amp; review</text></g>
+  </g>
+
+  <!-- Page area -->
+  <g transform="translate(484,672)">
+    <text fill="#e0e4ea" font-size="14" font-weight="600">Choose a device family</text>
+    <text y="20" fill="#7a8898" font-size="11">Pick the family this device belongs to. Subtypes are filtered in the next step.</text>
+
+    <!-- Family cards -->
+    <g transform="translate(0,40)">
+      <!-- Camera -->
+      <g>
+        <rect width="160" height="120" fill="rgba(58,155,217,0.12)" stroke="#3a9bd9" rx="6"/>
+        <circle cx="80" cy="44" r="20" fill="#3a9bd9"/>
+        <text x="80" y="50" text-anchor="middle" fill="#ffffff" font-size="18">📷</text>
+        <text x="80" y="88" text-anchor="middle" fill="#e0e4ea" font-size="13" font-weight="600">Camera</text>
+        <text x="80" y="104" text-anchor="middle" fill="#7a8898" font-size="10">Basler GigE / USB</text>
+      </g>
+      <!-- PLC -->
+      <g transform="translate(176,0)">
+        <rect width="160" height="120" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)" rx="6"/>
+        <circle cx="80" cy="44" r="20" fill="#3ac98a"/>
+        <text x="80" y="50" text-anchor="middle" fill="#1a1c20" font-size="18">⚙</text>
+        <text x="80" y="88" text-anchor="middle" fill="#e0e4ea" font-size="13" font-weight="600">PLC</text>
+        <text x="80" y="104" text-anchor="middle" fill="#7a8898" font-size="10">Mitsubishi MC</text>
+      </g>
+      <!-- Vision Output -->
+      <g transform="translate(352,0)">
+        <rect width="160" height="120" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)" rx="6"/>
+        <circle cx="80" cy="44" r="20" fill="#a87de0"/>
+        <text x="80" y="50" text-anchor="middle" fill="#ffffff" font-size="16">⇄</text>
+        <text x="80" y="88" text-anchor="middle" fill="#e0e4ea" font-size="13" font-weight="600">Vision Output</text>
+        <text x="80" y="104" text-anchor="middle" fill="#7a8898" font-size="10">TCP/IP server &amp; client</text>
+      </g>
+      <!-- Robot -->
+      <g transform="translate(528,0)">
+        <rect width="160" height="120" fill="rgba(224,176,32,0.12)" stroke="rgba(224,176,32,0.40)" rx="6"/>
+        <circle cx="80" cy="44" r="20" fill="#e0b020"/>
+        <text x="80" y="50" text-anchor="middle" fill="#1a1c20" font-size="18">🤖</text>
+        <text x="80" y="88" text-anchor="middle" fill="#e0e4ea" font-size="13" font-weight="600">Robot</text>
+        <text x="80" y="104" text-anchor="middle" fill="#7a8898" font-size="10">RobotKinematics advisory</text>
+      </g>
+    </g>
+
+    <!-- Detail text -->
+    <text y="200" fill="#7a8898" font-size="11">Camera selected — the next step shows Basler GigE and Basler USB subtypes (USB deferred per Phase 4 plan).</text>
+  </g>
+
+  <!-- Wizard footer -->
+  <g transform="translate(244,1024)">
+    <rect width="952" height="40" fill="#2c3038"/>
+    <g transform="translate(820,6)">
+      <rect width="60" height="28" rx="3" fill="transparent" stroke="#3a3f48"/>
+      <text x="30" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">Back</text>
+    </g>
+    <g transform="translate(884,6)">
+      <rect width="60" height="28" rx="3" fill="#e87c00"/>
+      <text x="30" y="18" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Next</text>
+    </g>
+  </g>
+</svg>

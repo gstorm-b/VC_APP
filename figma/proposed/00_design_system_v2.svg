@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1500" font-family="Inter, Segoe UI, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Proposed Design System v2
+       Goal: keep Hybrid (Graphite + Orange), tighten typography,
+             add density/spacing scale, codify status + KPI patterns.
+       ============================================================ -->
+  <rect width="1280" height="1500" fill="#1a1c20"/>
+
+  <text x="32" y="48" fill="#e0e4ea" font-size="26" font-weight="700">Design System v2 — Proposed</text>
+  <text x="32" y="74" fill="#7a8898" font-size="13">Builds on the existing Hybrid theme. Adds: type scale, 4-pt spacing grid, density modes, status pattern, KPI tile spec, focus &amp; a11y rules.</text>
+
+  <!-- 1. Type scale -->
+  <text x="32" y="118" fill="#e0e4ea" font-size="16" font-weight="600">1. Type scale (new)</text>
+  <g transform="translate(32,138)">
+    <rect width="1216" height="200" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <g transform="translate(24,12)" fill="#e0e4ea">
+      <text y="26" font-size="32" font-weight="700">H1 / 32 · 700  —  Page title</text>
+      <text y="56" font-size="20" font-weight="600">H2 / 20 · 600  —  Card title</text>
+      <text y="82" font-size="14" font-weight="600">H3 / 14 · 600  —  Subsection</text>
+      <text y="106" font-size="13">Body / 13 · 400  —  Default UI text and labels</text>
+      <text y="128" font-size="12" fill="#7a8898">Body-S / 12 · 400  —  Secondary text, captions</text>
+      <text y="148" font-size="11" fill="#7a8898" letter-spacing="1.2">CAPTION / 11 · 600 · TRACK 1.2 — UPPERCASE SECTION</text>
+      <text y="180" font-size="28" font-weight="700" font-family="JetBrains Mono, Consolas, monospace">Mono-XL / 28 · 700  —  KPI numerals</text>
+    </g>
+  </g>
+
+  <!-- 2. 4-pt spacing scale -->
+  <text x="32" y="380" fill="#e0e4ea" font-size="16" font-weight="600">2. Spacing scale — 4 pt grid</text>
+  <g transform="translate(32,400)">
+    <rect width="1216" height="100" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <g transform="translate(20,20)">
+      <g><rect width="4" height="60" fill="#e87c00"/><text x="2" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">4</text><text x="2" y="88" text-anchor="middle" fill="#7a8898" font-size="9">xs</text></g>
+      <g transform="translate(40,0)"><rect width="8" height="60" fill="#e87c00"/><text x="4" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">8</text><text x="4" y="88" text-anchor="middle" fill="#7a8898" font-size="9">sm</text></g>
+      <g transform="translate(90,0)"><rect width="12" height="60" fill="#e87c00"/><text x="6" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">12</text><text x="6" y="88" text-anchor="middle" fill="#7a8898" font-size="9">md</text></g>
+      <g transform="translate(150,0)"><rect width="16" height="60" fill="#e87c00"/><text x="8" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">16</text><text x="8" y="88" text-anchor="middle" fill="#7a8898" font-size="9">lg</text></g>
+      <g transform="translate(220,0)"><rect width="24" height="60" fill="#e87c00"/><text x="12" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">24</text><text x="12" y="88" text-anchor="middle" fill="#7a8898" font-size="9">xl</text></g>
+      <g transform="translate(300,0)"><rect width="32" height="60" fill="#e87c00"/><text x="16" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">32</text><text x="16" y="88" text-anchor="middle" fill="#7a8898" font-size="9">2xl</text></g>
+      <g transform="translate(400,0)"><rect width="48" height="60" fill="#e87c00"/><text x="24" y="76" text-anchor="middle" fill="#e0e4ea" font-size="11">48</text><text x="24" y="88" text-anchor="middle" fill="#7a8898" font-size="9">3xl</text></g>
+      <text x="520" y="20" fill="#7a8898" font-size="11">Card padding = lg (16) · between cards = sm (8) · between sections = xl (24)</text>
+      <text x="520" y="42" fill="#7a8898" font-size="11">Replaces ad-hoc 4/6/8/10/12 magic numbers seen in current .ui files.</text>
+    </g>
+  </g>
+
+  <!-- 3. Density modes -->
+  <text x="32" y="540" fill="#e0e4ea" font-size="16" font-weight="600">3. Density modes (View › Density)</text>
+  <g transform="translate(32,560)">
+    <rect width="1216" height="148" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <!-- Comfortable -->
+    <g transform="translate(20,16)">
+      <text fill="#7a8898" font-size="11" letter-spacing="1">COMFORTABLE — default on ≥ 24" screens</text>
+      <g transform="translate(0,14)" font-size="12">
+        <rect width="180" height="36" rx="4" fill="#2c3038" stroke="#3a3f48"/>
+        <text x="14" y="22" fill="#e0e4ea">Trigger Camera</text>
+      </g>
+      <text y="78" fill="#7a8898" font-size="10">Row height 36 · padding 14×8</text>
+    </g>
+    <!-- Compact -->
+    <g transform="translate(280,16)">
+      <text fill="#7a8898" font-size="11" letter-spacing="1">COMPACT — default on ≤ 19" HMI panels</text>
+      <g transform="translate(0,14)" font-size="12">
+        <rect width="180" height="28" rx="3" fill="#2c3038" stroke="#3a3f48"/>
+        <text x="12" y="18" fill="#e0e4ea">Trigger Camera</text>
+      </g>
+      <text y="70" fill="#7a8898" font-size="10">Row height 28 · padding 12×4</text>
+    </g>
+    <!-- Touch -->
+    <g transform="translate(540,16)">
+      <text fill="#7a8898" font-size="11" letter-spacing="1">TOUCH — operator panel mode</text>
+      <g transform="translate(0,14)" font-size="14">
+        <rect width="220" height="48" rx="6" fill="#e87c00"/>
+        <text x="22" y="30" fill="#ffffff" font-weight="600">Trigger Camera</text>
+      </g>
+      <text y="86" fill="#7a8898" font-size="10">Min hit target 48×48 · primary actions raised</text>
+    </g>
+    <text x="800" y="32" fill="#7a8898" font-size="11">Persisted per-machine in app_settings.</text>
+    <text x="800" y="50" fill="#7a8898" font-size="11">Density only changes spacing + control height, not colour or hierarchy.</text>
+  </g>
+
+  <!-- 4. Status pattern — colour + icon + text -->
+  <text x="32" y="748" fill="#e0e4ea" font-size="16" font-weight="600">4. Status pattern — always (icon + label + colour)</text>
+  <text x="32" y="768" fill="#7a8898" font-size="12">Codifies ui_theme_tokens.md §2.5: "Never use a state colour as the sole cue." Below is the canonical micro-component.</text>
+  <g transform="translate(32,786)">
+    <rect width="1216" height="180" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <g transform="translate(24,24)">
+      <!-- Success -->
+      <g>
+        <rect width="280" height="56" rx="6" fill="rgba(64,200,112,0.10)" stroke="#40c870"/>
+        <circle cx="22" cy="28" r="10" fill="#40c870"/>
+        <text x="22" y="33" text-anchor="middle" fill="#1a1c20" font-size="14" font-weight="700">✓</text>
+        <text x="44" y="24" fill="#40c870" font-size="13" font-weight="700">CONNECTED</text>
+        <text x="44" y="42" fill="#e0e4ea" font-size="11">PLC mitsu_mc_01 · 12:04:18</text>
+      </g>
+      <g transform="translate(300,0)">
+        <rect width="280" height="56" rx="6" fill="rgba(255,176,32,0.10)" stroke="#ffb020"/>
+        <circle cx="22" cy="28" r="10" fill="#ffb020"/>
+        <text x="22" y="33" text-anchor="middle" fill="#1a1c20" font-size="14" font-weight="700">!</text>
+        <text x="44" y="24" fill="#ffb020" font-size="13" font-weight="700">DEGRADED</text>
+        <text x="44" y="42" fill="#e0e4ea" font-size="11">Output retry 2/5 · 245 ms RTT</text>
+      </g>
+      <g transform="translate(600,0)">
+        <rect width="280" height="56" rx="6" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/>
+        <circle cx="22" cy="28" r="10" fill="#ff5252"/>
+        <text x="22" y="33" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="700">✕</text>
+        <text x="44" y="24" fill="#ff5252" font-size="13" font-weight="700">FAULT</text>
+        <text x="44" y="42" fill="#e0e4ea" font-size="11">11 — VISION_OUTPUT_DOWN</text>
+      </g>
+      <g transform="translate(900,0)">
+        <rect width="280" height="56" rx="6" fill="rgba(64,168,224,0.10)" stroke="#40a8e0"/>
+        <circle cx="22" cy="28" r="10" fill="#40a8e0"/>
+        <text x="22" y="33" text-anchor="middle" fill="#1a1c20" font-size="14" font-weight="700">i</text>
+        <text x="44" y="24" fill="#40a8e0" font-size="13" font-weight="700">INFO</text>
+        <text x="44" y="42" fill="#e0e4ea" font-size="11">Calibration loaded · 12:00</text>
+      </g>
+
+      <!-- Inline mini chip -->
+      <g transform="translate(0,84)">
+        <text fill="#7a8898" font-size="11" letter-spacing="1">MINI CHIP — for table cells, log rows</text>
+        <g transform="translate(0,14)">
+          <rect width="78" height="20" rx="10" fill="rgba(64,200,112,0.10)" stroke="#40c870"/>
+          <text x="39" y="14" text-anchor="middle" fill="#40c870" font-size="10" font-weight="700">✓ OK</text>
+          <g transform="translate(86,0)"><rect width="92" height="20" rx="10" fill="rgba(255,176,32,0.10)" stroke="#ffb020"/><text x="46" y="14" text-anchor="middle" fill="#ffb020" font-size="10" font-weight="700">! WARN</text></g>
+          <g transform="translate(186,0)"><rect width="94" height="20" rx="10" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/><text x="47" y="14" text-anchor="middle" fill="#ff5252" font-size="10" font-weight="700">✕ ERROR</text></g>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- 5. KPI tile spec -->
+  <text x="32" y="998" fill="#e0e4ea" font-size="16" font-weight="600">5. KPI tile spec — replaces ad-hoc dashboard counters</text>
+  <g transform="translate(32,1018)">
+    <rect width="1216" height="170" fill="#22252a" stroke="#3a3f48" rx="6"/>
+
+    <!-- Normal KPI -->
+    <g transform="translate(24,24)">
+      <rect width="200" height="120" fill="#1a1c20" stroke="#3a3f48" rx="6"/>
+      <text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">DETECTED</text>
+      <text x="14" y="64" fill="#e0e4ea" font-size="36" font-weight="700">128</text>
+      <text x="14" y="86" fill="#40c870" font-size="11">▲ +6 vs. last cycle</text>
+      <!-- sparkline -->
+      <polyline points="14,108 30,102 46,106 62,98 78,100 94,92 110,94 126,90 142,96 158,86 174,90" fill="none" stroke="#e87c00" stroke-width="1.5"/>
+    </g>
+
+    <!-- Threshold KPI -->
+    <g transform="translate(244,24)">
+      <rect width="200" height="120" fill="#1a1c20" stroke="#3a3f48" rx="6"/>
+      <text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">MATCH TIME</text>
+      <text x="14" y="64" fill="#e0e4ea" font-size="36" font-weight="700">82<tspan font-size="16" fill="#7a8898"> ms</tspan></text>
+      <text x="14" y="86" fill="#7a8898" font-size="11">target ≤ 120 ms</text>
+      <rect x="14" y="98" width="172" height="6" fill="#2c3038" rx="3"/>
+      <rect x="14" y="98" width="118" height="6" fill="#40c870" rx="3"/>
+    </g>
+
+    <!-- Warning KPI -->
+    <g transform="translate(464,24)">
+      <rect width="200" height="120" fill="#1a1c20" stroke="#ffb020" rx="6"/>
+      <text x="14" y="22" fill="#ffb020" font-size="11" letter-spacing="1" font-weight="600">! LOW AREA</text>
+      <text x="14" y="64" fill="#ffb020" font-size="36" font-weight="700">3</text>
+      <text x="14" y="86" fill="#e0e4ea" font-size="11">Pat #3 · 2 cycles in a row</text>
+    </g>
+
+    <!-- Error KPI -->
+    <g transform="translate(684,24)">
+      <rect width="200" height="120" fill="#1a1c20" stroke="#ff5252" rx="6"/>
+      <text x="14" y="22" fill="#ff5252" font-size="11" letter-spacing="1" font-weight="600">✕ NOT SENT</text>
+      <text x="14" y="64" fill="#ff5252" font-size="36" font-weight="700">12</text>
+      <text x="14" y="86" fill="#e0e4ea" font-size="11">Vision Output queue full</text>
+    </g>
+
+    <text x="900" y="40" fill="#7a8898" font-size="11">Pattern: caption + numeric (mono) + trend or context.</text>
+    <text x="900" y="58" fill="#7a8898" font-size="11">State expressed by border colour AND prefix glyph.</text>
+    <text x="900" y="76" fill="#7a8898" font-size="11">Sparkline only when ≥ 5 cycles of history exist.</text>
+  </g>
+
+  <!-- 6. Focus + a11y -->
+  <text x="32" y="1218" fill="#e0e4ea" font-size="16" font-weight="600">6. Focus &amp; accessibility</text>
+  <g transform="translate(32,1238)">
+    <rect width="1216" height="120" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <g transform="translate(24,24)">
+      <!-- focused button -->
+      <rect width="160" height="36" rx="4" fill="#e87c00"/>
+      <text x="80" y="22" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="600">Trigger Camera</text>
+      <rect x="-3" y="-3" width="166" height="42" rx="6" fill="none" stroke="#ffa040" stroke-width="2"/>
+      <text y="62" fill="#7a8898" font-size="11">Focus ring = accent.bright, 2 px, 3 px offset — visible against both bg.surface and bg.window.</text>
+
+      <!-- skip nav target -->
+      <g transform="translate(440,0)">
+        <rect width="220" height="36" rx="4" fill="#3d2e10" stroke="#e87c00"/>
+        <text x="110" y="22" text-anchor="middle" fill="#e87c00" font-size="12" font-weight="600">Skip to dashboard ▸</text>
+        <text y="62" fill="#7a8898" font-size="11">Keyboard shortcut chip — visible only on first Tab.</text>
+      </g>
+
+      <!-- contrast pair -->
+      <g transform="translate(740,0)">
+        <rect width="140" height="36" fill="#3ac98a"/>
+        <text x="70" y="22" text-anchor="middle" fill="#1a1c20" font-weight="700">AAA</text>
+        <text y="62" fill="#7a8898" font-size="11">All on-state badges meet WCAG AAA against tinted backgrounds.</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- 7. Components added -->
+  <text x="32" y="1390" fill="#e0e4ea" font-size="16" font-weight="600">7. New widget primitives proposed (subclasses, no new QSS files)</text>
+  <g transform="translate(32,1410)" font-size="12" fill="#e0e4ea">
+    <text>·  PrimaryButton, DangerButton  —  thin QPushButton subclasses (consistent with §3.6 of ui_design_rules.md)</text>
+    <text y="18">·  KpiTile  —  reusable card with caption + numeric + trend slot (replaces inline FrameBox + 2 QLabels)</text>
+    <text y="36">·  StatusBanner  —  inline alert (success / warn / error / info) — see §4 above</text>
+    <text y="54">·  CommandPalette  —  Ctrl+K modal for switching task, device, or jumping to view (see proposal mock)</text>
+    <text y="72">·  RunBar  —  Runtime mode persistent footer with Start / Stop / Estop and live cycle clock</text>
+  </g>
+</svg>

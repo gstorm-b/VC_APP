@@ -1,0 +1,98 @@
+<!-- @dsCard group="Brand" viewport="700x340" name="Iconography" subtitle="24px outline · 1.5 stroke · square caps · miter joins · currentColor" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+  body { padding: 14px 16px; background: var(--bg-window); color: var(--text-primary); }
+  .label {
+    font: var(--weight-bold) 9px/1 var(--font-sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+  }
+  .group { margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px 14px; align-items: start; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .nm { font: 9px/1.1 var(--font-mono); color: var(--text-muted); text-align: center; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Icon } = window.NCRPickingDesignSystem_638918;
+function Cell({ name, color }) {
+  return (
+    <div className="cell" style={color ? { color } : null}>
+      <Icon name={name} size={22} />
+      <span className="nm">{name}</span>
+    </div>
+  );
+}
+function App() {
+  return (
+    <>
+      <div className="group">
+        <div className="label">Workflow</div>
+        <div className="grid">
+          <Cell name="dashboard" />
+          <Cell name="setting" />
+          <Cell name="new_file" />
+          <Cell name="edit_file" />
+          <Cell name="reload" />
+          <Cell name="plus_square" />
+          <Cell name="minus_square" />
+          <Cell name="task_add" />
+          <Cell name="task_save" />
+          <Cell name="trash" />
+          <Cell name="search" />
+          <Cell name="filter" />
+        </div>
+      </div>
+      <div className="group">
+        <div className="label">Devices</div>
+        <div className="grid">
+          <Cell name="camera"          color="var(--device-camera)" />
+          <Cell name="plc_icon"        color="var(--device-plc)" />
+          <Cell name="plc_devices"     color="var(--device-plc)" />
+          <Cell name="vision_target"   color="var(--device-output)" />
+          <Cell name="robot_movement"  color="var(--device-robot)" />
+          <Cell name="target" />
+          <Cell name="capture" />
+          <Cell name="pin" />
+          <Cell name="signal"          color="var(--state-info)" />
+          <Cell name="link" />
+          <Cell name="plug_connected"  color="var(--state-success)" />
+          <Cell name="plug_disconnected" color="var(--text-muted)" />
+        </div>
+      </div>
+      <div className="group">
+        <div className="label">Runtime · file · feedback</div>
+        <div className="grid">
+          <Cell name="start" color="var(--state-success)" />
+          <Cell name="stop"  color="var(--state-error)" />
+          <Cell name="file-open" />
+          <Cell name="file-save" />
+          <Cell name="file-close" />
+          <Cell name="file-create" />
+          <Cell name="file-capture" />
+          <Cell name="software_icon" color="var(--accent-primary)" />
+          <Cell name="warning" color="var(--state-warning)" />
+          <Cell name="info"    color="var(--state-info)" />
+          <Cell name="check"   color="var(--state-success)" />
+          <Cell name="close" />
+        </div>
+      </div>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

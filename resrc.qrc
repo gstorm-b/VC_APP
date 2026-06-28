@@ -24,41 +24,87 @@
         <file alias="styles/vision_tcpip_device_widget_light.qss">resrc/styles/vision_tcpip_device_widget_light.qss</file>
         <file alias="styles/vision_tcpip_client_device_widget_dark.qss">resrc/styles/vision_tcpip_client_device_widget_dark.qss</file>
         <file alias="styles/vision_tcpip_client_device_widget_light.qss">resrc/styles/vision_tcpip_client_device_widget_light.qss</file>
+        <file>resrc/icon/camera.svg</file>
+        <file>resrc/icon/camera_dark.svg</file>
+        <file>resrc/icon/capture.svg</file>
+        <file>resrc/icon/capture_dark.svg</file>
+        <file>resrc/icon/check.svg</file>
+        <file>resrc/icon/check_dark.svg</file>
+        <file>resrc/icon/chevron-down.svg</file>
+        <file>resrc/icon/chevron-down_dark.svg</file>
+        <file>resrc/icon/chevron-left.svg</file>
+        <file>resrc/icon/chevron-left_dark.svg</file>
+        <file>resrc/icon/chevron-right.svg</file>
+        <file>resrc/icon/chevron-right_dark.svg</file>
+        <file>resrc/icon/chevron-up.svg</file>
+        <file>resrc/icon/chevron-up_dark.svg</file>
+        <file>resrc/icon/close.svg</file>
+        <file>resrc/icon/close_dark.svg</file>
         <file>resrc/icon/dashboard.svg</file>
         <file>resrc/icon/dashboard_dark.svg</file>
+        <file>resrc/icon/drag.svg</file>
+        <file>resrc/icon/drag_dark.svg</file>
         <file>resrc/icon/edit_file.svg</file>
         <file>resrc/icon/edit_file_dark.svg</file>
+        <file>resrc/icon/file-capture.svg</file>
+        <file>resrc/icon/file-capture_dark.svg</file>
+        <file>resrc/icon/file-close.svg</file>
+        <file>resrc/icon/file-close_dark.svg</file>
+        <file>resrc/icon/file-create.svg</file>
+        <file>resrc/icon/file-create_dark.svg</file>
+        <file>resrc/icon/file-open.svg</file>
+        <file>resrc/icon/file-open_dark.svg</file>
+        <file>resrc/icon/file-save.svg</file>
+        <file>resrc/icon/file-save_dark.svg</file>
+        <file>resrc/icon/filter.svg</file>
+        <file>resrc/icon/filter_dark.svg</file>
+        <file>resrc/icon/info.svg</file>
+        <file>resrc/icon/info_dark.svg</file>
+        <file>resrc/icon/link.svg</file>
+        <file>resrc/icon/link_dark.svg</file>
         <file>resrc/icon/minus_square.svg</file>
         <file>resrc/icon/minus_square_dark.svg</file>
         <file>resrc/icon/new_file.svg</file>
         <file>resrc/icon/new_file_dark.svg</file>
+        <file>resrc/icon/pin.svg</file>
+        <file>resrc/icon/pin_dark.svg</file>
+        <file>resrc/icon/plc_devices.svg</file>
+        <file>resrc/icon/plc_devices_dark.svg</file>
         <file>resrc/icon/plc_icon.svg</file>
         <file>resrc/icon/plc_icon_dark.svg</file>
+        <file>resrc/icon/plug_connected.svg</file>
+        <file>resrc/icon/plug_connected_dark.svg</file>
+        <file>resrc/icon/plug_disconnected.svg</file>
+        <file>resrc/icon/plug_disconnected_dark.svg</file>
         <file>resrc/icon/plus_square.svg</file>
         <file>resrc/icon/plus_square_dark.svg</file>
         <file>resrc/icon/reload.svg</file>
         <file>resrc/icon/reload_dark.svg</file>
         <file>resrc/icon/robot_movement.svg</file>
         <file>resrc/icon/robot_movement_dark.svg</file>
+        <file>resrc/icon/search.svg</file>
+        <file>resrc/icon/search_dark.svg</file>
         <file>resrc/icon/setting.svg</file>
         <file>resrc/icon/setting_dark.svg</file>
+        <file>resrc/icon/signal.svg</file>
+        <file>resrc/icon/signal_dark.svg</file>
         <file>resrc/icon/software_icon.svg</file>
+        <file>resrc/icon/software_icon_dark.svg</file>
+        <file>resrc/icon/start.svg</file>
+        <file>resrc/icon/start_dark.svg</file>
+        <file>resrc/icon/stop.svg</file>
+        <file>resrc/icon/stop_dark.svg</file>
         <file>resrc/icon/target.svg</file>
+        <file>resrc/icon/target_dark.svg</file>
+        <file>resrc/icon/task_add.svg</file>
+        <file>resrc/icon/task_add_dark.svg</file>
+        <file>resrc/icon/task_save.svg</file>
+        <file>resrc/icon/task_save_dark.svg</file>
+        <file>resrc/icon/trash.svg</file>
+        <file>resrc/icon/trash_dark.svg</file>
         <file>resrc/icon/vision_target.svg</file>
         <file>resrc/icon/vision_target_dark.svg</file>
-        <file>resrc/icon/task_add.svg</file>
-        <file>resrc/icon/task_save.svg</file>
-        <file>resrc/set/close.svg</file>
-        <file>resrc/set/create.svg</file>
-        <file>resrc/set/open.svg</file>
-        <file>resrc/set/save.svg</file>
-        <file>resrc/set/capture.svg</file>
-        <file>resrc/icon/camera.svg</file>
-        <file>resrc/icon/plc_devices.svg</file>
-        <file>resrc/icon/capture.svg</file>
-        <file>resrc/icon/plug_connected.svg</file>
-        <file>resrc/icon/plug_disconnected.svg</file>
-        <file>resrc/icon/start.svg</file>
-        <file>resrc/icon/stop.svg</file>
+        <file>resrc/icon/warning.svg</file>
+        <file>resrc/icon/warning_dark.svg</file>
     </qresource>
 </RCC>

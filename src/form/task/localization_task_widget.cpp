@@ -216,7 +216,7 @@ void LocalizationTaskWidget::initNavPanel()
     ui->btn_nav_dashboard->setIconSize({14, 14});
 
     ui->btn_nav_patterns->setText(tr("  Patterns"));
-    ui->btn_nav_patterns->setIcon(svgIcon(":/resrc/icon/setting.svg", 14));
+    ui->btn_nav_patterns->setIcon(svgIcon(":/resrc/icon/target.svg", 14));
     ui->btn_nav_patterns->setIconSize({14, 14});
 
     ui->btn_nav_settings->setText(tr("  Settings"));

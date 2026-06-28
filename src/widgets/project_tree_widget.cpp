@@ -258,8 +258,14 @@ void ProjectTreeWidget::buildDeviceItem(QStandardItem *taskItem,
     case vc::device::DeviceType::Camera:
         icon = svgIcon(":/resrc/icon/camera.svg");
         break;
+    case vc::device::DeviceType::PLC:
+        icon = svgIcon(":/resrc/icon/plc_devices.svg");
+        break;
+    case vc::device::DeviceType::VisionOutput:
+        icon = svgIcon(":/resrc/icon/vision_target.svg");
+        break;
     default:
-        icon = QApplication::style()->standardIcon(QStyle::SP_ComputerIcon);
+        icon = svgIcon(":/resrc/icon/filter.svg");
         break;
     }
 

@@ -1,0 +1,331 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Segoe UI, Inter, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Current MainWindow with Localization Dashboard
+       Reflects: mainwindow.ui + localization_task_widget.ui +
+                 localization_dashboard_widget.ui
+       ============================================================ -->
+  <defs>
+    <linearGradient id="lampGreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2eff98"/><stop offset="100%" stop-color="#40c870"/></linearGradient>
+    <linearGradient id="lampOrange" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd060"/><stop offset="100%" stop-color="#e87c00"/></linearGradient>
+  </defs>
+
+  <!-- Window chrome -->
+  <rect width="1440" height="900" fill="#1a1c20"/>
+
+  <!-- Title bar -->
+  <rect x="0" y="0" width="1440" height="28" fill="#0f1114"/>
+  <text x="14" y="19" fill="#e0e4ea" font-size="12">NCR_PICKING — project_alpha.ncrproj  •  Standard</text>
+  <g transform="translate(1360,4)" fill="#7a8898" font-size="14">
+    <rect x="0" y="0" width="24" height="20" fill="transparent"/><text x="9" y="14">—</text>
+    <rect x="26" y="0" width="24" height="20" fill="transparent"/><text x="33" y="14">▢</text>
+    <rect x="52" y="0" width="24" height="20" fill="#7a1010"/><text x="60" y="14" fill="#ffffff">✕</text>
+  </g>
+
+  <!-- Menu bar -->
+  <rect x="0" y="28" width="1440" height="26" fill="#22252a"/>
+  <g fill="#e0e4ea" font-size="12">
+    <text x="14" y="46">File</text>
+    <text x="48" y="46">View</text>
+    <text x="86" y="46">Access Level</text>
+    <text x="170" y="46">Help</text>
+  </g>
+
+  <!-- Toolbars (toolBar_file + toolBar_task, both TopToolBarArea) -->
+  <rect x="0" y="54" width="1440" height="40" fill="#22252a" stroke="#3a3f48"/>
+  <g transform="translate(8,60)" fill="#7a8898" font-size="11">
+    <g><rect width="28" height="28" rx="3" fill="transparent"/><text x="14" y="18" text-anchor="middle" fill="#e0e4ea">📄</text></g>
+    <g transform="translate(32,0)"><rect width="28" height="28" rx="3" fill="transparent"/><text x="14" y="18" text-anchor="middle" fill="#e0e4ea">📂</text></g>
+    <g transform="translate(64,0)"><rect width="28" height="28" rx="3" fill="transparent"/><text x="14" y="18" text-anchor="middle" fill="#e0e4ea">💾</text></g>
+    <g transform="translate(96,0)"><rect width="28" height="28" rx="3" fill="transparent"/><text x="14" y="18" text-anchor="middle" fill="#e0e4ea">✕</text></g>
+    <line x1="132" y1="2" x2="132" y2="26" stroke="#3a3f48"/>
+    <g transform="translate(142,0)"><rect width="28" height="28" rx="3" fill="#3d2e10"/><text x="14" y="18" text-anchor="middle" fill="#e87c00">＋</text></g>
+    <g transform="translate(174,0)"><rect width="28" height="28" rx="3" fill="transparent"/><text x="14" y="18" text-anchor="middle" fill="#e0e4ea">▶</text></g>
+    <g transform="translate(206,0)"><rect width="28" height="28" rx="3" fill="transparent"/><text x="14" y="18" text-anchor="middle" fill="#e0e4ea">■</text></g>
+  </g>
+
+  <!-- LEFT: ProjectTreeWidget -->
+  <rect x="0" y="94" width="240" height="784" fill="#22252a" stroke="#3a3f48"/>
+  <text x="14" y="116" fill="#7a8898" font-size="10" letter-spacing="1">PROJECT</text>
+  <g transform="translate(14,128)" font-size="12" fill="#e0e4ea">
+    <text y="14">▾ 🗀 project_alpha</text>
+    <text x="14" y="34">▾ 🗀 tasks</text>
+    <text x="28" y="54" font-weight="600" fill="#e87c00">● localize_bin_top</text>
+    <text x="28" y="74">○ localize_bin_side</text>
+    <text x="14" y="94">▸ 🗀 devices</text>
+    <text x="14" y="114">▸ 🗀 calibration</text>
+    <text x="14" y="134">▸ 🗀 patterns</text>
+  </g>
+
+  <!-- ============================================================
+       RIGHT (wg_dock): LocalizationTaskWidget
+       ============================================================ -->
+
+  <!-- nav_panel (~250 wide) -->
+  <rect x="240" y="94" width="250" height="784" fill="#1e1c16"/>
+  <line x1="490" y1="94" x2="490" y2="878" stroke="#3a3f48"/>
+
+  <!-- frame_task_header -->
+  <g transform="translate(252,108)">
+    <text y="0" fill="#7a8898" font-size="10" letter-spacing="1">ACTIVE TASK</text>
+    <text y="20" fill="#e0e4ea" font-size="16" font-weight="700">localize_bin_top</text>
+    <g transform="translate(0,28)">
+      <rect width="92" height="20" rx="3" fill="rgba(232,124,0,0.12)" stroke="#e87c00"/>
+      <text x="46" y="14" text-anchor="middle" fill="#e87c00" font-size="10" font-weight="600">LOCALIZATION</text>
+    </g>
+  </g>
+
+  <!-- frame_status_lamps -->
+  <g transform="translate(252,180)">
+    <circle cx="10" cy="10" r="7" fill="url(#lampGreen)"/>
+    <text x="22" y="14" fill="#e0e4ea" font-size="11">Task</text>
+    <circle cx="62" cy="10" r="7" fill="url(#lampGreen)"/>
+    <text x="74" y="14" fill="#e0e4ea" font-size="11">Cam</text>
+    <circle cx="116" cy="10" r="7" fill="url(#lampOrange)"/>
+    <text x="128" y="14" fill="#e0e4ea" font-size="11">Patt</text>
+    <circle cx="170" cy="10" r="7" fill="#3a3f48"/>
+    <text x="182" y="14" fill="#7a8898" font-size="11">Cycle</text>
+  </g>
+
+  <!-- nav buttons (Dashboard active) -->
+  <g transform="translate(252,212)">
+    <rect width="226" height="36" rx="4" fill="#3d2e10"/>
+    <rect x="0" y="0" width="3" height="36" fill="#e87c00"/>
+    <text x="14" y="22" fill="#e87c00" font-size="13" font-weight="600">▦  Dashboard</text>
+    <rect y="40" width="226" height="36" rx="4" fill="transparent"/>
+    <text x="14" y="62" fill="#e0e4ea" font-size="13">◇  Patterns</text>
+    <rect y="80" width="226" height="36" rx="4" fill="transparent"/>
+    <text x="14" y="102" fill="#e0e4ea" font-size="13">⚙  Settings</text>
+  </g>
+
+  <!-- Devices section header -->
+  <g transform="translate(252,338)">
+    <text y="0" fill="#7a8898" font-size="10" letter-spacing="1">DEVICES</text>
+    <g transform="translate(198,-8)">
+      <rect width="22" height="22" rx="3" fill="transparent" stroke="#3a3f48"/>
+      <text x="11" y="16" text-anchor="middle" fill="#e0e4ea" font-size="14">＋</text>
+    </g>
+  </g>
+
+  <!-- Device nav items -->
+  <g transform="translate(252,352)">
+    <!-- Camera item -->
+    <rect width="226" height="50" rx="4" fill="rgba(58,155,217,0.12)" stroke="rgba(58,155,217,0.40)"/>
+    <circle cx="14" cy="14" r="5" fill="#3a9bd9"/>
+    <text x="28" y="18" fill="#e0e4ea" font-size="12" font-weight="600">basler_top</text>
+    <text x="28" y="34" fill="#7a8898" font-size="10">BaslerGigE · Camera</text>
+    <circle cx="210" cy="14" r="5" fill="url(#lampGreen)"/>
+
+    <!-- PLC item -->
+    <g transform="translate(0,58)">
+      <rect width="226" height="50" rx="4" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+      <circle cx="14" cy="14" r="5" fill="#3ac98a"/>
+      <text x="28" y="18" fill="#e0e4ea" font-size="12" font-weight="600">mitsu_mc_01</text>
+      <text x="28" y="34" fill="#7a8898" font-size="10">MitsubishiMC · PLC</text>
+      <circle cx="210" cy="14" r="5" fill="url(#lampGreen)"/>
+    </g>
+
+    <!-- Vision Output item -->
+    <g transform="translate(0,116)">
+      <rect width="226" height="50" rx="4" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)"/>
+      <circle cx="14" cy="14" r="5" fill="#a87de0"/>
+      <text x="28" y="18" fill="#e0e4ea" font-size="12" font-weight="600">tcpip_server_01</text>
+      <text x="28" y="34" fill="#7a8898" font-size="10">TCP/IP Server · Output</text>
+      <circle cx="210" cy="14" r="5" fill="url(#lampOrange)"/>
+    </g>
+
+    <!-- Robot advisory item -->
+    <g transform="translate(0,174)">
+      <rect width="226" height="50" rx="4" fill="rgba(224,176,32,0.12)" stroke="rgba(224,176,32,0.40)"/>
+      <circle cx="14" cy="14" r="5" fill="#e0b020"/>
+      <text x="28" y="18" fill="#e0e4ea" font-size="12" font-weight="600">kinematics_check</text>
+      <text x="28" y="34" fill="#7a8898" font-size="10">RobotKinematics · Advisory</text>
+      <circle cx="210" cy="14" r="5" fill="#3a3f48"/>
+    </g>
+  </g>
+
+  <!-- ============================================================
+       Content (right of nav)
+       ============================================================ -->
+
+  <!-- Breadcrumb bar -->
+  <rect x="490" y="94" width="950" height="36" fill="#22252a"/>
+  <line x1="490" y1="130" x2="1440" y2="130" stroke="#3a3f48"/>
+  <g transform="translate(506,114)" font-size="12">
+    <text fill="#7a8898">localize_bin_top</text>
+    <text x="100" fill="#7a8898">›</text>
+    <text x="116" fill="#e0e4ea" font-weight="600">Dashboard</text>
+  </g>
+  <g transform="translate(1280,99)">
+    <rect width="146" height="26" rx="3" fill="#e87c00"/>
+    <text x="73" y="18" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">▶  Enter Runtime</text>
+  </g>
+
+  <!-- =========== DASHBOARD =========== -->
+  <!-- Left column (scroll_left) -->
+  <g transform="translate(498,140)">
+    <!-- frame_task_context -->
+    <rect width="386" height="142" fill="#22252a" stroke="#3a3f48" rx="4"/>
+    <text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">TASK CONTEXT</text>
+    <line x1="14" y1="30" x2="372" y2="30" stroke="#3a3f48"/>
+    <g font-size="12">
+      <text x="14" y="52" fill="#7a8898">Vision output</text>
+      <text x="372" y="52" text-anchor="end" fill="#e0e4ea">tcpip_server_01</text>
+      <text x="14" y="74" fill="#7a8898">PLC</text>
+      <text x="372" y="74" text-anchor="end" fill="#e0e4ea">mitsu_mc_01</text>
+      <text x="14" y="96" fill="#7a8898">Active camera</text>
+      <text x="372" y="96" text-anchor="end" fill="#e0e4ea">basler_top</text>
+      <text x="14" y="118" fill="#7a8898">Pattern group</text>
+      <text x="372" y="118" text-anchor="end" fill="#e0e4ea">group_default (4)</text>
+    </g>
+
+    <!-- hl_state_strip (lamp_task / camera / pattern / cycle) -->
+    <g transform="translate(0,154)">
+      <rect width="386" height="36" fill="#22252a" stroke="#3a3f48" rx="4"/>
+      <g transform="translate(12,8)">
+        <circle cx="10" cy="10" r="7" fill="url(#lampGreen)"/><text x="22" y="14" fill="#e0e4ea" font-size="11">Task</text>
+        <circle cx="84" cy="10" r="7" fill="url(#lampGreen)"/><text x="96" y="14" fill="#e0e4ea" font-size="11">Cam</text>
+        <circle cx="158" cy="10" r="7" fill="url(#lampOrange)"/><text x="170" y="14" fill="#e0e4ea" font-size="11">Pattern</text>
+        <circle cx="252" cy="10" r="7" fill="#3a3f48"/><text x="264" y="14" fill="#7a8898" font-size="11">Cycle</text>
+      </g>
+    </g>
+
+    <!-- hl_state_connection -->
+    <g transform="translate(0,198)">
+      <rect width="386" height="36" fill="#22252a" stroke="#3a3f48" rx="4"/>
+      <g transform="translate(12,8)" font-size="11">
+        <circle cx="10" cy="10" r="7" fill="url(#lampGreen)"/><text x="22" y="14" fill="#e0e4ea">PLC ok</text>
+        <circle cx="98" cy="10" r="7" fill="url(#lampGreen)"/><text x="110" y="14" fill="#e0e4ea">Cam ok</text>
+        <circle cx="200" cy="10" r="7" fill="#ff5252"/><text x="212" y="14" fill="#ff5252" font-weight="600">Output retry…</text>
+      </g>
+    </g>
+
+    <!-- frame_fault (active variant) -->
+    <g transform="translate(0,242)">
+      <rect width="386" height="98" fill="rgba(255,82,82,0.10)" stroke="#ff5252" rx="4"/>
+      <text x="14" y="22" fill="#ff5252" font-size="11" letter-spacing="1" font-weight="600">⚠ FAULT</text>
+      <line x1="14" y1="30" x2="372" y2="30" stroke="#ff5252" opacity="0.4"/>
+      <g font-size="12">
+        <text x="14" y="52" fill="#7a8898">Task fault</text>
+        <text x="372" y="52" text-anchor="end" fill="#ff5252" font-weight="600">true</text>
+        <text x="14" y="74" fill="#7a8898">Fault code</text>
+        <text x="372" y="74" text-anchor="end" fill="#e0e4ea">11 — VISION_OUTPUT_DOWN</text>
+      </g>
+    </g>
+
+    <!-- SIGNAL MONITOR section -->
+    <g transform="translate(0,352)">
+      <text y="0" fill="#7a8898" font-size="11" letter-spacing="1">SIGNAL MONITOR</text>
+      <rect y="8" width="386" height="92" fill="#22252a" stroke="#3a3f48" rx="4"/>
+      <!-- signal rows -->
+      <g transform="translate(8,16)" font-size="11">
+        <rect width="60" height="18" rx="3" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+        <text x="30" y="12" text-anchor="middle" fill="#3ac98a" font-weight="600">M100=1</text>
+        <text x="72" y="13" fill="#7a8898">TriggerReq</text>
+        <circle cx="156" cy="9" r="4" fill="#40c870"/>
+
+        <rect y="22" width="60" height="18" rx="3" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+        <text x="30" y="34" text-anchor="middle" fill="#3ac98a" font-weight="600">M101=0</text>
+        <text x="72" y="35" fill="#7a8898">Busy</text>
+        <circle cx="156" cy="31" r="4" fill="#3a3f48"/>
+
+        <rect y="44" width="60" height="18" rx="3" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+        <text x="30" y="56" text-anchor="middle" fill="#3ac98a" font-weight="600">D200=4</text>
+        <text x="72" y="57" fill="#7a8898">DetectedCnt</text>
+
+        <rect x="194" y="0" width="60" height="18" rx="3" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)"/>
+        <text x="224" y="12" text-anchor="middle" fill="#a87de0" font-weight="600">SEND</text>
+        <text x="262" y="13" fill="#7a8898">last @ 12:04:18</text>
+
+        <rect x="194" y="22" width="60" height="18" rx="3" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)"/>
+        <text x="224" y="34" text-anchor="middle" fill="#a87de0" font-weight="600">QUEUE</text>
+        <text x="262" y="35" fill="#7a8898">0 pending</text>
+      </g>
+    </g>
+
+    <!-- TASK LOG -->
+    <g transform="translate(0,464)">
+      <text y="0" fill="#7a8898" font-size="11" letter-spacing="1">TASK LOG</text>
+      <rect y="8" width="386" height="240" fill="#1a1c20" stroke="#3a3f48" rx="4"/>
+      <g transform="translate(10,22)" font-size="11" font-family="Consolas, Menlo, monospace">
+        <text fill="#7a8898">12:04:18</text><text x="64" fill="#40c870">INFO </text><text x="108" fill="#e0e4ea">cycle 248 → 4 pts sent</text>
+        <text y="16" fill="#7a8898">12:04:17</text><text x="64" y="16" fill="#40c870">INFO </text><text x="108" y="16" fill="#e0e4ea">match 82 ms (4/4 above thresh)</text>
+        <text y="32" fill="#7a8898">12:04:16</text><text x="64" y="32" fill="#40a8e0">DBG  </text><text x="108" y="32" fill="#e0e4ea">trigger M100 ↑ at PLC</text>
+        <text y="48" fill="#7a8898">12:04:09</text><text x="64" y="48" fill="#ffb020">WARN </text><text x="108" y="48" fill="#e0e4ea">low contrast pat=#3 score 0.42</text>
+        <text y="64" fill="#7a8898">12:04:00</text><text x="64" y="64" fill="#ff5252">ERR  </text><text x="108" y="64" fill="#e0e4ea">output socket reset — retrying</text>
+        <text y="80" fill="#7a8898">12:03:51</text><text x="64" y="80" fill="#40c870">INFO </text><text x="108" y="80" fill="#e0e4ea">cycle 247 → 4 pts sent</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right column (vl_right) -->
+  <g transform="translate(896,140)">
+    <!-- LAST MATCHING VIEW -->
+    <rect width="536" height="380" fill="#22252a" stroke="#3a3f48" rx="4"/>
+    <text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">LAST MATCHING VIEW</text>
+    <rect x="8" y="34" width="520" height="338" fill="#0f1114"/>
+    <!-- Placeholder bin image -->
+    <g transform="translate(8,34)">
+      <rect width="520" height="338" fill="#1a1c20"/>
+      <rect x="40" y="30" width="440" height="280" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="260" y="20" text-anchor="middle" fill="#7a8898" font-size="11">cam basler_top · 2048×1536 · last 12:04:17</text>
+      <!-- fake parts -->
+      <g fill="none" stroke="#3ac98a" stroke-width="2">
+        <rect x="92" y="74" width="58" height="58" transform="rotate(8 121 103)"/>
+        <rect x="200" y="98" width="58" height="58" transform="rotate(-12 229 127)"/>
+        <rect x="298" y="74" width="58" height="58" transform="rotate(4 327 103)"/>
+        <rect x="170" y="200" width="58" height="58" transform="rotate(22 199 229)"/>
+      </g>
+      <g fill="#40c870" font-size="10" font-family="Consolas, Menlo, monospace">
+        <text x="96" y="70">#1 0.94</text>
+        <text x="204" y="94">#2 0.91</text>
+        <text x="302" y="70">#3 0.88</text>
+        <text x="174" y="196">#4 0.86</text>
+      </g>
+    </g>
+
+    <!-- KPI row -->
+    <g transform="translate(0,392)">
+      <rect width="128" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">DETECTED</text><text x="14" y="60" fill="#e0e4ea" font-size="26" font-weight="700">4</text>
+      <g transform="translate(136,0)"><rect width="128" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">SENT</text><text x="14" y="60" fill="#e0e4ea" font-size="26" font-weight="700">4</text></g>
+      <g transform="translate(272,0)"><rect width="128" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">MATCH TIME</text><text x="14" y="60" fill="#e0e4ea" font-size="26" font-weight="700">82 ms</text></g>
+      <g transform="translate(408,0)"><rect width="128" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="22" fill="#7a8898" font-size="11" letter-spacing="1">LOW AREA</text><text x="14" y="60" fill="#e0e4ea" font-size="26" font-weight="700">0</text></g>
+    </g>
+
+    <!-- LAST RESULT TABLE -->
+    <g transform="translate(0,484)">
+      <text y="0" fill="#7a8898" font-size="11" letter-spacing="1">LAST RESULT TABLE</text>
+      <rect y="8" width="536" height="220" fill="#22252a" stroke="#3a3f48" rx="4"/>
+      <!-- table header -->
+      <g transform="translate(0,8)">
+        <rect width="536" height="26" fill="#2c3038"/>
+        <g font-size="11" fill="#7a8898" font-weight="600">
+          <text x="14" y="18">#</text>
+          <text x="50" y="18">Pattern</text>
+          <text x="130" y="18">Score</text>
+          <text x="184" y="18">Img X</text>
+          <text x="244" y="18">Img Y</text>
+          <text x="304" y="18">Img R</text>
+          <text x="358" y="18">Wld X</text>
+          <text x="418" y="18">Wld Y</text>
+          <text x="478" y="18">Wld R</text>
+        </g>
+      </g>
+      <!-- rows -->
+      <g font-size="11" fill="#e0e4ea" font-family="Consolas, Menlo, monospace">
+        <g transform="translate(0,40)"><text x="14" y="14">1</text><text x="50" y="14">part_A</text><text x="130" y="14" fill="#40c870">0.94</text><text x="184" y="14">512.1</text><text x="244" y="14">388.0</text><text x="304" y="14">8.1°</text><text x="358" y="14">126.4</text><text x="418" y="14">88.2</text><text x="478" y="14">8.1°</text></g>
+        <g transform="translate(0,60)"><rect width="536" height="20" fill="#1e2024"/><text x="14" y="14">2</text><text x="50" y="14">part_A</text><text x="130" y="14" fill="#40c870">0.91</text><text x="184" y="14">820.6</text><text x="244" y="14">512.0</text><text x="304" y="14">-12.4°</text><text x="358" y="14">198.1</text><text x="418" y="14">118.5</text><text x="478" y="14">-12.4°</text></g>
+        <g transform="translate(0,80)"><text x="14" y="14">3</text><text x="50" y="14">part_A</text><text x="130" y="14" fill="#40c870">0.88</text><text x="184" y="14">1180.0</text><text x="244" y="14">388.0</text><text x="304" y="14">4.2°</text><text x="358" y="14">274.3</text><text x="418" y="14">88.2</text><text x="478" y="14">4.2°</text></g>
+        <g transform="translate(0,100)"><rect width="536" height="20" fill="#1e2024"/><text x="14" y="14">4</text><text x="50" y="14">part_A</text><text x="130" y="14" fill="#ffb020">0.86</text><text x="184" y="14">735.2</text><text x="244" y="14">820.0</text><text x="304" y="14">22.6°</text><text x="358" y="14">170.4</text><text x="418" y="14">200.4</text><text x="478" y="14">22.6°</text></g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Status bar -->
+  <rect x="0" y="878" width="1440" height="22" fill="#e87c00"/>
+  <text x="14" y="893" fill="#ffffff" font-size="11" font-weight="600">Ready  •  Theme: dark  •  Access: Standard  •  PLC ok  •  Cam ok  •  Output retry…</text>
+
+  <!-- Annotations -->
+  <g fill="#7a8898" font-size="10">
+    <text x="14" y="892" fill="#ffffff" font-weight="600"></text>
+  </g>
+</svg>

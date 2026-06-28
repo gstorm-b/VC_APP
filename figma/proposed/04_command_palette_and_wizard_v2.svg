@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1100" font-family="Inter, Segoe UI, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Two interaction proposals
+       A. Command Palette (Ctrl+K) — replaces having to know which menu
+          a thing lives in. Engineers jump to task/device/signal/log fast.
+       B. Add-Device Wizard v2 — single-page "smart form" with live
+          probe instead of 4-step wizard. Cuts clicks ~3×.
+       ============================================================ -->
+  <rect width="1440" height="1100" fill="#1a1c20"/>
+
+  <!-- ===================== A. Command Palette ===================== -->
+  <text x="32" y="36" fill="#e0e4ea" font-size="16" font-weight="600">A.  Command Palette  (Ctrl + K)</text>
+  <text x="32" y="54" fill="#7a8898" font-size="12">Always-available fuzzy search across tasks, devices, signals, settings, and log lines. Replaces several deep-nested menu paths.</text>
+
+  <!-- Underlying app dimmed -->
+  <rect x="32" y="72" width="1376" height="460" fill="#0f1114" stroke="#3a3f48" rx="6"/>
+  <g opacity="0.35">
+    <rect x="32" y="72" width="1376" height="56" fill="#22252a"/>
+    <rect x="32" y="128" width="280" height="404" fill="#22252a"/>
+    <rect x="312" y="128" width="1096" height="404" fill="#1a1c20"/>
+  </g>
+
+  <!-- Palette modal -->
+  <rect x="380" y="120" width="680" height="380" rx="10" fill="#22252a" stroke="#e87c00"/>
+  <!-- search input -->
+  <g transform="translate(400,140)">
+    <text x="0" y="22" fill="#7a8898" font-size="20">🔎</text>
+    <text x="32" y="26" fill="#e0e4ea" font-size="20" font-weight="600">basler</text>
+    <line x1="100" y1="8" x2="100" y2="30" stroke="#ffa040" stroke-width="2"><animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></line>
+    <rect x="568" y="6" width="56" height="22" rx="3" fill="#2c3038" stroke="#3a3f48"/>
+    <text x="596" y="20" text-anchor="middle" fill="#7a8898" font-size="11">esc to close</text>
+  </g>
+  <line x1="400" y1="178" x2="1040" y2="178" stroke="#3a3f48"/>
+
+  <!-- Results grouped -->
+  <g transform="translate(400,194)" font-size="12">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.2">DEVICES</text>
+    <g transform="translate(0,12)">
+      <rect width="640" height="40" rx="6" fill="#3d2e10"/>
+      <rect width="3" height="40" fill="#e87c00"/>
+      <text x="16" y="18" fill="#3a9bd9" font-size="14">📷</text>
+      <text x="40" y="20" fill="#e87c00" font-weight="700">basler_top</text>
+      <text x="40" y="34" fill="#7a8898" font-size="11">camera · BaslerGigE · 192.168.0.21</text>
+      <text x="624" y="24" text-anchor="end" fill="#7a8898" font-size="11">↵</text>
+    </g>
+    <g transform="translate(0,56)">
+      <rect width="640" height="32" rx="6" fill="transparent"/>
+      <text x="16" y="14" fill="#3a9bd9" font-size="14">📷</text>
+      <text x="40" y="20" fill="#e0e4ea">basler_side</text>
+      <text x="160" y="20" fill="#7a8898" font-size="11">camera · disconnected</text>
+    </g>
+
+    <text y="106" fill="#7a8898" font-size="10" letter-spacing="1.2">TASKS USING basler_top</text>
+    <g transform="translate(0,118)">
+      <rect width="640" height="32" rx="6" fill="transparent"/>
+      <text x="16" y="20" fill="#e87c00">●</text>
+      <text x="40" y="20" fill="#e0e4ea">localize_bin_top</text>
+      <text x="200" y="20" fill="#7a8898" font-size="11">bound as active camera</text>
+    </g>
+
+    <text y="170" fill="#7a8898" font-size="10" letter-spacing="1.2">ACTIONS</text>
+    <g transform="translate(0,182)">
+      <rect width="640" height="32" rx="6" fill="transparent"/>
+      <text x="16" y="20" fill="#e0e4ea">▶  Trigger basler_top</text>
+      <text x="624" y="20" text-anchor="end" fill="#7a8898" font-size="11">Ctrl+T</text>
+    </g>
+    <g transform="translate(0,214)">
+      <rect width="640" height="32" rx="6" fill="transparent"/>
+      <text x="16" y="20" fill="#e0e4ea">⚙  Open basler_top settings</text>
+    </g>
+    <g transform="translate(0,246)">
+      <rect width="640" height="32" rx="6" fill="transparent"/>
+      <text x="16" y="20" fill="#ff5252">🔌  Disconnect basler_top</text>
+    </g>
+  </g>
+
+  <!-- Help footer -->
+  <g transform="translate(400,478)" font-size="10" fill="#7a8898">
+    <text>↑↓ navigate    ↵ select    Tab filter group    Esc close</text>
+  </g>
+
+  <!-- ===================== B. Add Device — Smart Form ===================== -->
+  <text x="32" y="580" fill="#e0e4ea" font-size="16" font-weight="600">B.  Add Device — Smart Form (replaces 4-step wizard)</text>
+  <text x="32" y="598" fill="#7a8898" font-size="12">Single dialog. Probe runs the moment the user fills the connection field; subtype and identity self-populate.</text>
+
+  <!-- Modal scrim -->
+  <rect x="0" y="616" width="1440" height="484" fill="rgba(0,0,0,0.32)"/>
+  <rect x="240" y="636" width="960" height="448" fill="#22252a" stroke="#3a3f48" rx="8"/>
+
+  <!-- Header -->
+  <rect x="240" y="636" width="960" height="56" fill="#2c3038" rx="8"/>
+  <text x="260" y="668" fill="#e0e4ea" font-size="16" font-weight="700">Add Device</text>
+  <text x="260" y="686" fill="#7a8898" font-size="12">Fill what you know — we'll probe the rest.</text>
+  <text x="1180" y="672" text-anchor="end" fill="#7a8898" font-size="16">✕</text>
+
+  <!-- Family chips -->
+  <g transform="translate(260,716)">
+    <text fill="#7a8898" font-size="11" letter-spacing="1.2">FAMILY</text>
+    <g transform="translate(0,14)">
+      <rect width="120" height="40" rx="20" fill="rgba(58,155,217,0.12)" stroke="#3a9bd9" stroke-width="2"/>
+      <text x="60" y="26" text-anchor="middle" fill="#3a9bd9" font-weight="700">📷  Camera</text>
+      <g transform="translate(132,0)"><rect width="100" height="40" rx="20" fill="transparent" stroke="#3a3f48"/><text x="50" y="26" text-anchor="middle" fill="#e0e4ea">⚙  PLC</text></g>
+      <g transform="translate(244,0)"><rect width="172" height="40" rx="20" fill="transparent" stroke="#3a3f48"/><text x="86" y="26" text-anchor="middle" fill="#e0e4ea">⇄  Vision Output</text></g>
+      <g transform="translate(428,0)"><rect width="110" height="40" rx="20" fill="transparent" stroke="#3a3f48"/><text x="55" y="26" text-anchor="middle" fill="#e0e4ea">🤖  Robot</text></g>
+    </g>
+  </g>
+
+  <!-- Form columns -->
+  <g transform="translate(260,790)" font-size="12">
+    <!-- Left column -->
+    <g>
+      <text fill="#7a8898" letter-spacing="1.2">CONNECTION</text>
+      <g transform="translate(0,16)">
+        <text y="0" fill="#7a8898">Address (IP or serial)</text>
+        <rect y="6" width="380" height="32" fill="#2c3038" stroke="#e87c00" rx="4"/>
+        <text x="12" y="26" fill="#e0e4ea" font-family="JetBrains Mono, Consolas, monospace">192.168.0.21</text>
+        <g transform="translate(310,12)"><circle r="6" cx="0" cy="0" fill="#40c870"><animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/></circle><text x="12" y="4" fill="#40c870" font-size="11" font-weight="600">probing…</text></g>
+      </g>
+
+      <g transform="translate(0,68)">
+        <text y="0" fill="#7a8898">Subtype</text>
+        <rect y="6" width="380" height="32" fill="#1e2024" stroke="#3a3f48" rx="4"/>
+        <text x="12" y="26" fill="#e0e4ea">Basler GigE  (detected from probe)</text>
+        <text x="368" y="26" text-anchor="end" fill="#40c870">✓</text>
+      </g>
+
+      <g transform="translate(0,124)">
+        <text y="0" fill="#7a8898">Model · Serial</text>
+        <rect y="6" width="380" height="32" fill="#1e2024" stroke="#3a3f48" rx="4"/>
+        <text x="12" y="26" fill="#e0e4ea" font-family="JetBrains Mono, Consolas, monospace">acA2500-14gm · S/N 22839114</text>
+      </g>
+
+      <g transform="translate(0,180)">
+        <text y="0" fill="#7a8898">Display name</text>
+        <rect y="6" width="380" height="32" fill="#2c3038" stroke="#3a3f48" rx="4"/>
+        <text x="12" y="26" fill="#e0e4ea">basler_top</text>
+        <text x="368" y="26" text-anchor="end" fill="#7a8898">auto</text>
+      </g>
+    </g>
+
+    <!-- Right column: probe panel -->
+    <g transform="translate(440,0)">
+      <text fill="#7a8898" letter-spacing="1.2">LIVE PROBE</text>
+      <g transform="translate(0,16)">
+        <rect width="480" height="218" fill="#1a1c20" stroke="#3a3f48" rx="6"/>
+        <g transform="translate(16,16)" font-size="12">
+          <g><circle cx="6" cy="6" r="6" fill="#40c870"/><text x="20" y="10" fill="#e0e4ea">Reached host  ·  ping 0.8 ms</text></g>
+          <g transform="translate(0,22)"><circle cx="6" cy="6" r="6" fill="#40c870"/><text x="20" y="10" fill="#e0e4ea">Basler GenICam handshake</text></g>
+          <g transform="translate(0,44)"><circle cx="6" cy="6" r="6" fill="#40c870"/><text x="20" y="10" fill="#e0e4ea">Acquired test frame  ·  68 ms</text></g>
+          <g transform="translate(0,66)"><circle cx="6" cy="6" r="6" fill="#ffb020"/><text x="20" y="10" fill="#e0e4ea">PTP sync drift  ·  ±14 µs</text><text x="448" y="10" text-anchor="end" fill="#ffb020">warn</text></g>
+          <!-- preview -->
+          <rect y="86" width="448" height="98" fill="#2c3038" stroke="#3a3f48"/>
+          <text x="224" y="140" text-anchor="middle" fill="#7a8898">test frame preview</text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Footer buttons -->
+  <g transform="translate(244,1024)">
+    <rect width="952" height="48" fill="#2c3038"/>
+    <g transform="translate(20,10)" font-size="11">
+      <circle cx="6" cy="14" r="6" fill="#40c870"/>
+      <text x="20" y="18" fill="#e0e4ea">Ready to add — all probes green except advisory warning above.</text>
+    </g>
+    <g transform="translate(720,10)">
+      <rect width="100" height="28" rx="4" fill="transparent" stroke="#3a3f48"/>
+      <text x="50" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">Cancel</text>
+    </g>
+    <g transform="translate(828,10)">
+      <rect width="100" height="28" rx="4" fill="transparent" stroke="#3a3f48"/>
+      <text x="50" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">Add &amp; map</text>
+    </g>
+    <g transform="translate(720,10)">
+      <rect x="216" width="100" height="28" rx="4" fill="#e87c00"/>
+      <text x="266" y="18" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="700">Add</text>
+    </g>
+  </g>
+</svg>

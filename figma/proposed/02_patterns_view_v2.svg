@@ -1,0 +1,371 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, Segoe UI, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Proposed Patterns view v2
+       Key changes vs. current:
+       1. Toolbar split into Source + Action + State zones with
+          consistent button hierarchy (Primary = Run Matching).
+       2. Image canvas gets a floating left toolbar (zoom, fit,
+          ROI tools, layer toggles) so screen real-estate is reserved
+          for the image, not chrome.
+       3. Inspector pane (right) merges Pattern Tree + Pattern Setting
+          into a tabbed inspector; setting tabs include Threshold,
+          Search Space, Filters, Output mapping.
+       4. Below image: per-pattern result row with thumbnails and
+          inline score gauges — replaces text-only KPI strip.
+       5. Add diff overlay (last cycle vs. now) toggle for tuning.
+       ============================================================ -->
+  <rect width="1440" height="900" fill="#1a1c20"/>
+
+  <!-- Command bar (carried over from v2 system) -->
+  <rect x="0" y="0" width="1440" height="56" fill="#0f1114"/>
+  <text x="20" y="22" fill="#7a8898" font-size="10" letter-spacing="1.4">NCR PICKING</text>
+  <text x="20" y="42" fill="#e0e4ea" font-size="14" font-weight="700">project_alpha</text>
+  <text x="125" y="42" fill="#7a8898" font-size="13">› localize_bin_top › Patterns</text>
+
+  <g transform="translate(680,14)">
+    <rect width="320" height="28" rx="6" fill="#1a1c20" stroke="#3a3f48"/>
+    <text x="14" y="18" fill="#7a8898" font-size="12">🔎  Find pattern, signal, log…</text>
+  </g>
+
+  <g transform="translate(1160,14)" font-size="11">
+    <rect width="80" height="28" rx="14" fill="rgba(64,200,112,0.10)" stroke="#40c870"/><circle cx="14" cy="14" r="5" fill="#40c870"/><text x="24" y="18" fill="#40c870" font-weight="700">CAM</text><text x="50" y="18" fill="#e0e4ea">68 ms</text>
+  </g>
+
+  <!-- left rail -->
+  <rect x="0" y="56" width="64" height="844" fill="#0f1114"/>
+  <rect x="64" y="56" width="280" height="844" fill="#22252a"/>
+  <line x1="344" y1="56" x2="344" y2="900" stroke="#3a3f48"/>
+
+  <!-- task header -->
+  <g transform="translate(80,72)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">ACTIVE TASK</text>
+    <text y="20" fill="#e0e4ea" font-size="18" font-weight="700">localize_bin_top</text>
+  </g>
+
+  <!-- section nav (Patterns active) -->
+  <g transform="translate(72,140)" font-size="13">
+    <rect width="264" height="40" rx="6" fill="transparent"/>
+    <text x="18" y="20" fill="#e0e4ea" font-size="16">▦</text>
+    <text x="44" y="22" fill="#e0e4ea">Dashboard</text>
+    <g transform="translate(0,48)">
+      <rect width="264" height="40" rx="6" fill="#3d2e10"/>
+      <rect width="3" height="40" fill="#e87c00"/>
+      <text x="18" y="20" fill="#e87c00" font-size="16">◇</text>
+      <text x="44" y="22" fill="#e87c00" font-weight="700">Patterns</text>
+    </g>
+    <g transform="translate(0,96)">
+      <rect width="264" height="40" rx="6" fill="transparent"/>
+      <text x="18" y="20" fill="#e0e4ea" font-size="16">⚙</text>
+      <text x="44" y="22" fill="#e0e4ea">Settings</text>
+    </g>
+  </g>
+
+  <!-- Pattern groups list (replaces small tree in current) -->
+  <g transform="translate(80,304)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">PATTERN GROUPS</text>
+    <g transform="translate(204,-6)">
+      <rect width="44" height="22" rx="3" fill="transparent" stroke="#3a3f48"/>
+      <text x="22" y="16" text-anchor="middle" fill="#e0e4ea" font-size="11">＋ New</text>
+    </g>
+  </g>
+
+  <g transform="translate(72,324)" font-size="12">
+    <!-- group_default active -->
+    <rect width="264" height="56" rx="6" fill="#3d2e10"/>
+    <rect width="3" height="56" fill="#e87c00"/>
+    <text x="14" y="20" fill="#e87c00" font-weight="700">group_default</text>
+    <text x="14" y="38" fill="#7a8898" font-size="10">3 patterns · used by 1 task</text>
+    <circle cx="248" cy="16" r="5" fill="#40c870"/>
+
+    <g transform="translate(0,64)">
+      <rect width="264" height="44" rx="6" fill="transparent" stroke="#3a3f48"/>
+      <text x="14" y="20" fill="#e0e4ea">group_fallback</text>
+      <text x="14" y="36" fill="#7a8898" font-size="10">1 pattern · unused</text>
+    </g>
+  </g>
+
+  <!-- Patterns in active group -->
+  <g transform="translate(80,452)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">PATTERNS IN GROUP</text>
+  </g>
+  <g transform="translate(72,472)" font-size="12">
+    <rect width="264" height="56" rx="6" fill="#1a1c20" stroke="#e87c00"/>
+    <rect x="10" y="10" width="36" height="36" fill="#2c3038" stroke="#3a3f48"/>
+    <text x="56" y="22" fill="#e0e4ea" font-weight="600">part_A</text>
+    <text x="56" y="38" fill="#7a8898" font-size="10">t≥0.80 · ±45° · max 8</text>
+    <rect x="200" y="32" width="48" height="6" fill="#2c3038" rx="3"/>
+    <rect x="200" y="32" width="44" height="6" fill="#40c870" rx="3"/>
+
+    <g transform="translate(0,64)">
+      <rect width="264" height="56" rx="6" fill="#1a1c20" stroke="#3a3f48"/>
+      <rect x="10" y="10" width="36" height="36" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="56" y="22" fill="#e0e4ea">part_B</text>
+      <text x="56" y="38" fill="#7a8898" font-size="10">t≥0.80 · ±45° · max 4</text>
+      <rect x="200" y="32" width="48" height="6" fill="#2c3038" rx="3"/>
+      <rect x="200" y="32" width="40" height="6" fill="#40c870" rx="3"/>
+    </g>
+    <g transform="translate(0,128)">
+      <rect width="264" height="56" rx="6" fill="#1a1c20" stroke="#3a3f48"/>
+      <rect x="10" y="10" width="36" height="36" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="56" y="22" fill="#e0e4ea">part_C</text>
+      <text x="56" y="38" fill="#ffb020" font-size="10">! low contrast on last 2 runs</text>
+      <rect x="200" y="32" width="48" height="6" fill="#2c3038" rx="3"/>
+      <rect x="200" y="32" width="20" height="6" fill="#ffb020" rx="3"/>
+    </g>
+
+    <g transform="translate(0,200)" font-size="11">
+      <rect width="264" height="32" rx="6" fill="transparent" stroke="#3a3f48" stroke-dasharray="4 4"/>
+      <text x="132" y="20" text-anchor="middle" fill="#7a8898">＋ Drag image or capture to add pattern</text>
+    </g>
+  </g>
+
+  <!-- =================== CENTER: Toolbar + Canvas + Result row =================== -->
+  <!-- Toolbar (3 zones) -->
+  <g transform="translate(360,72)" font-size="12">
+    <!-- Source zone -->
+    <g>
+      <text fill="#7a8898" font-size="10" letter-spacing="1.2">SOURCE</text>
+      <g transform="translate(0,12)">
+        <rect width="140" height="32" rx="6" fill="#e87c00"/>
+        <text x="70" y="20" text-anchor="middle" fill="#ffffff" font-weight="600">▶  Trigger Camera</text>
+      </g>
+      <g transform="translate(148,12)">
+        <rect width="120" height="32" rx="6" fill="transparent" stroke="#3a3f48"/>
+        <text x="60" y="20" text-anchor="middle" fill="#e0e4ea">📂  Open Image…</text>
+      </g>
+      <g transform="translate(276,12)">
+        <rect width="60" height="32" rx="6" fill="transparent" stroke="#3a3f48"/>
+        <text x="30" y="20" text-anchor="middle" fill="#e0e4ea">▾</text>
+        <text x="14" y="20" fill="#e0e4ea" font-size="11">cam</text>
+      </g>
+    </g>
+
+    <!-- Action zone -->
+    <g transform="translate(360,0)">
+      <text fill="#7a8898" font-size="10" letter-spacing="1.2">ACTION</text>
+      <g transform="translate(0,12)">
+        <rect width="160" height="32" rx="6" fill="#3ac98a"/>
+        <text x="80" y="20" text-anchor="middle" fill="#1a1c20" font-weight="700">▶  Run Matching</text>
+      </g>
+      <g transform="translate(168,12)">
+        <rect width="96" height="32" rx="6" fill="transparent" stroke="#3a3f48"/>
+        <text x="48" y="20" text-anchor="middle" fill="#e0e4ea">⟲ Reset</text>
+      </g>
+      <g transform="translate(272,12)">
+        <rect width="120" height="32" rx="6" fill="transparent" stroke="#3a3f48"/>
+        <text x="60" y="20" text-anchor="middle" fill="#e0e4ea">💾 Save Run</text>
+      </g>
+    </g>
+
+    <!-- State zone -->
+    <g transform="translate(820,0)">
+      <text fill="#7a8898" font-size="10" letter-spacing="1.2">STATE</text>
+      <g transform="translate(0,12)">
+        <rect width="90" height="32" rx="16" fill="rgba(232,124,0,0.12)" stroke="#e87c00"/>
+        <text x="45" y="20" text-anchor="middle" fill="#e87c00" font-weight="700">● IDLE</text>
+      </g>
+      <g transform="translate(96,12)" font-size="11">
+        <text fill="#7a8898">last: 82 ms  ·  4/4 match  ·  1 low</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Canvas frame -->
+  <g transform="translate(360,132)">
+    <rect width="780" height="540" fill="#0f1114" stroke="#3a3f48" rx="6"/>
+    <!-- floating canvas toolbar (left) -->
+    <g transform="translate(8,8)">
+      <rect width="36" height="232" rx="6" fill="rgba(34,37,42,0.92)" stroke="#3a3f48"/>
+      <g fill="#e0e4ea" font-size="14" text-anchor="middle">
+        <text x="18" y="22">+</text>
+        <text x="18" y="46">−</text>
+        <text x="18" y="74">⊡</text>
+        <text x="18" y="102" fill="#e87c00">▭</text>
+        <text x="18" y="130">⊞</text>
+        <text x="18" y="158">◑</text>
+        <text x="18" y="186">↺</text>
+        <text x="18" y="214">⊕</text>
+      </g>
+    </g>
+    <!-- layers toggle (top-right) -->
+    <g transform="translate(620,12)" font-size="11">
+      <rect width="148" height="100" rx="6" fill="rgba(34,37,42,0.92)" stroke="#3a3f48"/>
+      <text x="10" y="18" fill="#7a8898" letter-spacing="1">LAYERS</text>
+      <g fill="#e0e4ea">
+        <text x="10" y="36">✓ ROI</text>
+        <text x="10" y="52">✓ Matches</text>
+        <text x="10" y="68">✓ Scores</text>
+        <text x="10" y="84">○ Last-cycle diff</text>
+      </g>
+    </g>
+
+    <!-- image content -->
+    <g transform="translate(60,30)">
+      <rect width="700" height="480" fill="#1a1c20"/>
+      <rect x="40" y="30" width="620" height="420" fill="#2c3038" stroke="#3a3f48"/>
+      <!-- ROI -->
+      <rect x="40" y="30" width="620" height="420" fill="none" stroke="#e87c00" stroke-dasharray="6 4"/>
+      <text x="46" y="24" fill="#e87c00" font-size="10" font-weight="600">workspace ROI · 620×420 px · 75% of bin</text>
+      <!-- Detected matches -->
+      <g fill="none" stroke="#3ac98a" stroke-width="2">
+        <rect x="120" y="80" width="80" height="80" transform="rotate(8 160 120)"/>
+        <rect x="300" y="120" width="80" height="80" transform="rotate(-12 340 160)"/>
+        <rect x="480" y="80" width="80" height="80" transform="rotate(4 520 120)"/>
+      </g>
+      <rect x="240" y="290" width="80" height="80" fill="none" stroke="#ffb020" stroke-width="2" transform="rotate(22 280 330)"/>
+      <g font-size="11" font-family="JetBrains Mono, Consolas, monospace">
+        <text x="126" y="74" fill="#40c870">#1 · 0.94</text>
+        <text x="306" y="114" fill="#40c870">#2 · 0.91</text>
+        <text x="486" y="74" fill="#40c870">#3 · 0.88</text>
+        <text x="246" y="286" fill="#ffb020">#4 · 0.74</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Result row with thumbnails -->
+  <g transform="translate(360,684)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">RESULTS · click a thumbnail to inspect</text>
+  </g>
+  <g transform="translate(360,704)">
+    <!-- card 1 -->
+    <g>
+      <rect width="186" height="120" fill="#22252a" stroke="#3a3f48" rx="6"/>
+      <rect x="8" y="8" width="50" height="50" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="68" y="22" fill="#e0e4ea" font-size="12" font-weight="600">#1 part_A</text>
+      <text x="68" y="38" fill="#7a8898" font-size="10">score 0.94 · 8.1°</text>
+      <text x="68" y="52" fill="#7a8898" font-size="10">wld 126.4, 88.2 mm</text>
+      <rect x="8" y="78" width="170" height="6" fill="#2c3038" rx="3"/>
+      <rect x="8" y="78" width="160" height="6" fill="#40c870" rx="3"/>
+      <text x="8" y="104" fill="#40c870" font-size="11" font-weight="600">✓ above threshold</text>
+    </g>
+    <g transform="translate(194,0)">
+      <rect width="186" height="120" fill="#22252a" stroke="#3a3f48" rx="6"/>
+      <rect x="8" y="8" width="50" height="50" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="68" y="22" fill="#e0e4ea" font-size="12" font-weight="600">#2 part_A</text>
+      <text x="68" y="38" fill="#7a8898" font-size="10">score 0.91 · -12.4°</text>
+      <text x="68" y="52" fill="#7a8898" font-size="10">wld 198.1, 118.5 mm</text>
+      <rect x="8" y="78" width="170" height="6" fill="#2c3038" rx="3"/>
+      <rect x="8" y="78" width="155" height="6" fill="#40c870" rx="3"/>
+      <text x="8" y="104" fill="#40c870" font-size="11" font-weight="600">✓ above threshold</text>
+    </g>
+    <g transform="translate(388,0)">
+      <rect width="186" height="120" fill="#22252a" stroke="#3a3f48" rx="6"/>
+      <rect x="8" y="8" width="50" height="50" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="68" y="22" fill="#e0e4ea" font-size="12" font-weight="600">#3 part_A</text>
+      <text x="68" y="38" fill="#7a8898" font-size="10">score 0.88 · 4.2°</text>
+      <text x="68" y="52" fill="#7a8898" font-size="10">wld 274.3, 88.2 mm</text>
+      <rect x="8" y="78" width="170" height="6" fill="#2c3038" rx="3"/>
+      <rect x="8" y="78" width="148" height="6" fill="#40c870" rx="3"/>
+      <text x="8" y="104" fill="#40c870" font-size="11" font-weight="600">✓ above threshold</text>
+    </g>
+    <g transform="translate(582,0)">
+      <rect width="198" height="120" fill="#22252a" stroke="#ffb020" rx="6"/>
+      <rect x="8" y="8" width="50" height="50" fill="#2c3038" stroke="#ffb020"/>
+      <text x="68" y="22" fill="#ffb020" font-size="12" font-weight="700">#4 part_A · LOW</text>
+      <text x="68" y="38" fill="#7a8898" font-size="10">score 0.74 · 22.6°</text>
+      <text x="68" y="52" fill="#7a8898" font-size="10">wld 170.4, 200.4 mm</text>
+      <rect x="8" y="78" width="182" height="6" fill="#2c3038" rx="3"/>
+      <rect x="8" y="78" width="100" height="6" fill="#ffb020" rx="3"/>
+      <text x="8" y="104" fill="#ffb020" font-size="11" font-weight="600">! below threshold 0.80</text>
+    </g>
+  </g>
+
+  <!-- =================== RIGHT: Inspector with tabs =================== -->
+  <g transform="translate(1152,72)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">INSPECTOR · part_A</text>
+  </g>
+  <g transform="translate(1152,92)">
+    <rect width="272" height="732" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <!-- tab bar -->
+    <g font-size="11">
+      <rect x="0" y="0" width="68" height="28" fill="#3d2e10" rx="6"/>
+      <text x="34" y="18" text-anchor="middle" fill="#e87c00" font-weight="700">Threshold</text>
+      <g transform="translate(68,0)"><text x="34" y="18" text-anchor="middle" fill="#e0e4ea">Search</text></g>
+      <g transform="translate(136,0)"><text x="34" y="18" text-anchor="middle" fill="#e0e4ea">Filters</text></g>
+      <g transform="translate(204,0)"><text x="34" y="18" text-anchor="middle" fill="#e0e4ea">Output</text></g>
+    </g>
+    <line x1="0" y1="30" x2="272" y2="30" stroke="#3a3f48"/>
+
+    <!-- threshold pane -->
+    <g transform="translate(16,46)" font-size="11">
+      <text fill="#7a8898" letter-spacing="1">SCORE THRESHOLD</text>
+      <g transform="translate(0,16)">
+        <rect width="240" height="8" rx="4" fill="#2c3038"/>
+        <rect width="192" height="8" rx="4" fill="#e87c00"/>
+        <circle cx="192" cy="4" r="8" fill="#ffa040"/>
+      </g>
+      <text y="44" fill="#e0e4ea" font-size="14" font-weight="700">0.80</text>
+      <text x="64" y="44" fill="#7a8898">recommended ≥ 0.75</text>
+
+      <!-- histogram with last 50 cycles -->
+      <text y="76" fill="#7a8898" letter-spacing="1">SCORE DISTRIBUTION · last 50 cycles</text>
+      <g transform="translate(0,84)">
+        <rect width="240" height="80" fill="#1a1c20" rx="3"/>
+        <g fill="#3a9bd9">
+          <rect x="8" y="60" width="10" height="14"/>
+          <rect x="22" y="50" width="10" height="24"/>
+          <rect x="36" y="36" width="10" height="38"/>
+          <rect x="50" y="28" width="10" height="46"/>
+          <rect x="64" y="20" width="10" height="54"/>
+          <rect x="78" y="10" width="10" height="64"/>
+          <rect x="92" y="14" width="10" height="60"/>
+          <rect x="106" y="22" width="10" height="52"/>
+          <rect x="120" y="32" width="10" height="42"/>
+          <rect x="134" y="50" width="10" height="24"/>
+          <rect x="148" y="60" width="10" height="14"/>
+          <rect x="162" y="64" width="10" height="10"/>
+        </g>
+        <!-- threshold line -->
+        <line x1="160" y1="0" x2="160" y2="80" stroke="#e87c00" stroke-dasharray="3 3"/>
+        <text x="164" y="14" fill="#e87c00" font-size="10">t=0.80</text>
+      </g>
+      <text y="180" fill="#7a8898" font-size="10">4 of 50 fall below threshold (8%).</text>
+
+      <!-- angle range -->
+      <text y="216" fill="#7a8898" letter-spacing="1">ANGLE RANGE</text>
+      <g transform="translate(0,224)">
+        <rect width="240" height="28" fill="#2c3038" stroke="#3a3f48" rx="4"/>
+        <text x="120" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">−45°  ⟷  +45°</text>
+      </g>
+
+      <!-- scale range -->
+      <text y="276" fill="#7a8898" letter-spacing="1">SCALE RANGE</text>
+      <g transform="translate(0,284)">
+        <rect width="240" height="28" fill="#2c3038" stroke="#3a3f48" rx="4"/>
+        <text x="120" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">0.95  ⟷  1.05</text>
+      </g>
+
+      <!-- max instances -->
+      <text y="336" fill="#7a8898" letter-spacing="1">MAX INSTANCES</text>
+      <g transform="translate(0,344)">
+        <rect width="120" height="28" fill="#2c3038" stroke="#3a3f48" rx="4"/>
+        <text x="60" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">8</text>
+      </g>
+
+      <!-- min contrast -->
+      <text y="396" fill="#7a8898" letter-spacing="1">MIN CONTRAST · MIN AREA</text>
+      <g transform="translate(0,404)">
+        <rect width="120" height="28" fill="#2c3038" stroke="#3a3f48" rx="4"/>
+        <text x="60" y="18" text-anchor="middle" fill="#e0e4ea" font-size="12">30 · 1200</text>
+      </g>
+
+      <!-- suggestion -->
+      <g transform="translate(0,444)">
+        <rect width="240" height="60" rx="6" fill="rgba(64,168,224,0.10)" stroke="#40a8e0"/>
+        <text x="12" y="20" fill="#40a8e0" font-weight="700" font-size="11">i  Suggestion</text>
+        <text x="12" y="36" fill="#e0e4ea" font-size="11">Pattern #4 fell below 0.80 twice.</text>
+        <text x="12" y="50" fill="#e0e4ea" font-size="11">Try angle range ±60° or new pattern.</text>
+      </g>
+
+      <!-- save -->
+      <g transform="translate(0,524)">
+        <rect width="100" height="32" rx="4" fill="transparent" stroke="#3a3f48"/>
+        <text x="50" y="20" text-anchor="middle" fill="#e0e4ea" font-size="12">Revert</text>
+        <g transform="translate(108,0)">
+          <rect width="132" height="32" rx="4" fill="#e87c00"/>
+          <text x="66" y="20" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="700">Apply &amp; Re-run</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

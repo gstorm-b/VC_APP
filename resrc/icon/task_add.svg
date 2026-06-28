@@ -1,6 +1,3 @@
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0,0,1024,1024">
-	<desc>note_add icon - Licensed under Apache License v2.0 (http://www.apache.org/licenses/LICENSE-2.0) - Created with Iconfu.com - Derivative work of Material icons (Copyright Google Inc.)</desc>
-	<g fill="#03b8e5" fill-rule="nonzero" style="mix-blend-mode: normal">
-		<path d="M853.33,341.33v512c0,46.93 -38.4,85.34 -85.33,85.34h-512.43c-46.93,0 -84.9,-38.41 -84.9,-85.34l0.42,-682.66c0,-46.93 37.98,-85.34 84.91,-85.34h341.33zM682.67,597.33h-128v-128h-85.34v128h-128v85.34h128v128h85.34v-128h128zM789.33,384l-234.66,-234.67v234.67z"/>
-	</g>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e0e4ea" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" data-token="--text-primary">
+<path d="M4 6.5 L14 6.5"></path><path d="M4 12 L20 12"></path><path d="M4 17.5 L20 17.5"></path><rect x="14" y="2.5" width="8" height="8"></rect><path d="M18 4.5 L18 8.5 M16 6.5 L20 6.5"></path>
 </svg>

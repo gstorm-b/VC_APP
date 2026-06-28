@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>952</width>
-    <height>618</height>
+    <width>1032</width>
+    <height>603</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -85,6 +85,43 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="label_active_camera">
+        <property name="text">
+         <string>Active camera</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox_camera"/>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="cbx_show_match_area">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string>Show ROI</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="cbx_use_match_area">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string>Use ROI</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="sep2">
+        <property name="frameShape">
+         <enum>QFrame::Shape::VLine</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="hsp_toolbar">
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>
@@ -123,106 +160,6 @@
         </property>
         <property name="text">
          <string>▶  Run Matching</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QFrame" name="frame_operate">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>22</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>22</height>
-      </size>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::NoFrame</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Plain</enum>
-     </property>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <property name="spacing">
-       <number>14</number>
-      </property>
-      <property name="leftMargin">
-       <number>10</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>10</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
-      <item>
-       <widget class="QLabel" name="label_active_camera">
-        <property name="text">
-         <string>Active camera</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="comboBox_camera"/>
-      </item>
-      <item>
-       <widget class="QFrame" name="sep2">
-        <property name="frameShape">
-         <enum>QFrame::Shape::VLine</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_active_group">
-        <property name="text">
-         <string>Active group</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="NoWheelComboBox" name="comboBox_pattern_group">
-        <property name="minimumSize">
-         <size>
-          <width>180</width>
-          <height>0</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QFrame" name="sep3">
-        <property name="frameShape">
-         <enum>QFrame::Shape::VLine</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="cbx_show_match_area">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="text">
-         <string>Show ROI</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="cbx_use_match_area">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="text">
-         <string>Use ROI</string>
         </property>
        </widget>
       </item>
@@ -661,7 +598,7 @@
       </layout>
      </widget>
      <widget class="QWidget" name="pane_library">
-      <layout class="QVBoxLayout" name="libraryLayout" stretch="0">
+      <layout class="QVBoxLayout" name="libraryLayout" stretch="0,0">
        <property name="spacing">
         <number>4</number>
        </property>
@@ -677,6 +614,30 @@
        <property name="bottomMargin">
         <number>0</number>
        </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_active_group">
+           <property name="text">
+            <string>Active group</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="NoWheelComboBox" name="comboBox_pattern_group">
+           <property name="minimumSize">
+            <size>
+             <width>180</width>
+             <height>0</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item>
         <widget class="FrameBox" name="frame_library">
          <property name="frameShape">

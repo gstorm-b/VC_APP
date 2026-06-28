@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1400" font-family="Segoe UI, Inter, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Current Design System (Hybrid: Graphite + Orange)
+       Source: docs/rules/ui_theme_tokens.md, resrc/styles/dark.qss
+       ============================================================ -->
+  <defs>
+    <linearGradient id="lampOn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2eff98"/>
+      <stop offset="100%" stop-color="#40c870"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="1400" fill="#1a1c20"/>
+
+  <!-- Header -->
+  <text x="32" y="48" fill="#e0e4ea" font-size="24" font-weight="700">NCR_PICKING — Current Design System</text>
+  <text x="32" y="72" fill="#7a8898" font-size="13">Theme: Hybrid (Graphite Vision base + Navy Ops Orange accent) — as implemented in resrc/styles/dark.qss</text>
+
+  <!-- Color tokens grid -->
+  <text x="32" y="116" fill="#e0e4ea" font-size="16" font-weight="600">1. Color tokens (dark)</text>
+
+  <g transform="translate(32,136)">
+    <!-- Backgrounds -->
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">BACKGROUND</text>
+    <g transform="translate(0,12)">
+      <rect width="180" height="48" fill="#1a1c20" stroke="#3a3f48"/>
+      <text x="10" y="20" fill="#e0e4ea" font-size="11" font-weight="600">bg.window</text>
+      <text x="10" y="36" fill="#7a8898" font-size="10">#1a1c20</text>
+    </g>
+    <g transform="translate(190,12)">
+      <rect width="180" height="48" fill="#22252a" stroke="#3a3f48"/>
+      <text x="10" y="20" fill="#e0e4ea" font-size="11" font-weight="600">bg.surface</text>
+      <text x="10" y="36" fill="#7a8898" font-size="10">#22252a</text>
+    </g>
+    <g transform="translate(380,12)">
+      <rect width="180" height="48" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="10" y="20" fill="#e0e4ea" font-size="11" font-weight="600">bg.elevated / input</text>
+      <text x="10" y="36" fill="#7a8898" font-size="10">#2c3038</text>
+    </g>
+    <g transform="translate(570,12)">
+      <rect width="180" height="48" fill="#1e2024" stroke="#3a3f48"/>
+      <text x="10" y="20" fill="#e0e4ea" font-size="11" font-weight="600">bg.disabled</text>
+      <text x="10" y="36" fill="#7a8898" font-size="10">#1e2024</text>
+    </g>
+  </g>
+
+  <g transform="translate(32,210)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">TEXT</text>
+    <g transform="translate(0,12)"><rect width="180" height="48" fill="#22252a" stroke="#3a3f48"/><text x="10" y="22" fill="#e0e4ea" font-size="13" font-weight="600">text.primary</text><text x="10" y="38" fill="#7a8898" font-size="10">#e0e4ea</text></g>
+    <g transform="translate(190,12)"><rect width="180" height="48" fill="#22252a" stroke="#3a3f48"/><text x="10" y="22" fill="#7a8898" font-size="13">text.muted</text><text x="10" y="38" fill="#7a8898" font-size="10">#7a8898</text></g>
+    <g transform="translate(380,12)"><rect width="180" height="48" fill="#22252a" stroke="#3a3f48"/><text x="10" y="22" fill="#4a5260" font-size="13">text.disabled</text><text x="10" y="38" fill="#7a8898" font-size="10">#4a5260</text></g>
+    <g transform="translate(570,12)"><rect width="180" height="48" fill="#e87c00" stroke="#3a3f48"/><text x="10" y="22" fill="#ffffff" font-size="13" font-weight="600">text.on-accent</text><text x="10" y="38" fill="#ffffff" font-size="10">#ffffff</text></g>
+  </g>
+
+  <g transform="translate(32,284)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">ACCENT — Navy Ops Orange</text>
+    <g transform="translate(0,12)"><rect width="180" height="48" fill="#e87c00"/><text x="10" y="22" fill="#ffffff" font-size="13" font-weight="600">accent.primary</text><text x="10" y="38" fill="#ffffff" font-size="10">#e87c00</text></g>
+    <g transform="translate(190,12)"><rect width="180" height="48" fill="#ffa040"/><text x="10" y="22" fill="#1a1c20" font-size="13" font-weight="600">accent.bright</text><text x="10" y="38" fill="#1a1c20" font-size="10">#ffa040</text></g>
+    <g transform="translate(380,12)"><rect width="180" height="48" fill="#b05a00"/><text x="10" y="22" fill="#ffffff" font-size="13" font-weight="600">accent.pressed</text><text x="10" y="38" fill="#ffffff" font-size="10">#b05a00</text></g>
+    <g transform="translate(570,12)"><rect width="180" height="48" fill="#3d2e10" stroke="#3a3f48"/><text x="10" y="22" fill="#e0e4ea" font-size="13" font-weight="600">selection.bg</text><text x="10" y="38" fill="#7a8898" font-size="10">#3d2e10</text></g>
+  </g>
+
+  <g transform="translate(32,358)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">STATE</text>
+    <g transform="translate(0,12)"><rect width="180" height="48" fill="#40c870"/><text x="10" y="22" fill="#1a1c20" font-size="13" font-weight="600">state.success</text><text x="10" y="38" fill="#1a1c20" font-size="10">#40c870</text></g>
+    <g transform="translate(190,12)"><rect width="180" height="48" fill="#ffb020"/><text x="10" y="22" fill="#1a1c20" font-size="13" font-weight="600">state.warning</text><text x="10" y="38" fill="#1a1c20" font-size="10">#ffb020</text></g>
+    <g transform="translate(380,12)"><rect width="180" height="48" fill="#ff5252"/><text x="10" y="22" fill="#ffffff" font-size="13" font-weight="600">state.error</text><text x="10" y="38" fill="#ffffff" font-size="10">#ff5252</text></g>
+    <g transform="translate(570,12)"><rect width="180" height="48" fill="#40a8e0"/><text x="10" y="22" fill="#1a1c20" font-size="13" font-weight="600">state.info</text><text x="10" y="38" fill="#1a1c20" font-size="10">#40a8e0</text></g>
+  </g>
+
+  <g transform="translate(32,432)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">DEVICE IDENTITY</text>
+    <g transform="translate(0,12)"><rect width="180" height="48" fill="#3a9bd9"/><text x="10" y="22" fill="#ffffff" font-size="13" font-weight="600">device.camera</text><text x="10" y="38" fill="#ffffff" font-size="10">#3a9bd9</text></g>
+    <g transform="translate(190,12)"><rect width="180" height="48" fill="#3ac98a"/><text x="10" y="22" fill="#1a1c20" font-size="13" font-weight="600">device.plc</text><text x="10" y="38" fill="#1a1c20" font-size="10">#3ac98a</text></g>
+    <g transform="translate(380,12)"><rect width="180" height="48" fill="#a87de0"/><text x="10" y="22" fill="#ffffff" font-size="13" font-weight="600">device.output</text><text x="10" y="38" fill="#ffffff" font-size="10">#a87de0</text></g>
+    <g transform="translate(570,12)"><rect width="180" height="48" fill="#e0b020"/><text x="10" y="22" fill="#1a1c20" font-size="13" font-weight="600">device.robot</text><text x="10" y="38" fill="#1a1c20" font-size="10">#e0b020</text></g>
+  </g>
+
+  <!-- 2. Typography -->
+  <text x="32" y="540" fill="#e0e4ea" font-size="16" font-weight="600">2. Typography</text>
+  <g transform="translate(32,560)">
+    <rect width="720" height="180" fill="#22252a" stroke="#3a3f48"/>
+    <text x="20" y="32" fill="#e0e4ea" font-size="24" font-weight="700">Heading / 24-700 — Section banner</text>
+    <text x="20" y="62" fill="#e0e4ea" font-size="16" font-weight="600">Subhead / 16-600 — Card title</text>
+    <text x="20" y="86" fill="#e0e4ea" font-size="13">Body / 13-400 — Default UI text, labels, values</text>
+    <text x="20" y="108" fill="#7a8898" font-size="11" letter-spacing="1">CAPTION / 11-400 — UPPERCASE section headers</text>
+    <text x="20" y="132" fill="#e0e4ea" font-size="20" font-weight="700" font-family="Consolas, Menlo, monospace">12,345 ← KPI value</text>
+    <text x="20" y="158" fill="#7a8898" font-size="11">No system font tokens shipped — relies on Qt default (Segoe UI on Windows).</text>
+  </g>
+
+  <!-- 3. Component states -->
+  <text x="32" y="780" fill="#e0e4ea" font-size="16" font-weight="600">3. Core components (as styled by dark.qss / per-form QSS)</text>
+
+  <!-- Buttons row -->
+  <g transform="translate(32,800)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">BUTTONS — QPushButton, GhostButton variants</text>
+    <g transform="translate(0,16)">
+      <rect width="140" height="32" fill="#e87c00" rx="3"/>
+      <text x="70" y="20" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Primary</text>
+    </g>
+    <g transform="translate(152,16)">
+      <rect width="140" height="32" fill="transparent" stroke="#3a3f48" rx="5"/>
+      <text x="70" y="20" text-anchor="middle" fill="#e0e4ea" font-size="12">Ghost</text>
+    </g>
+    <g transform="translate(304,16)">
+      <rect width="140" height="32" fill="rgba(232,124,0,0.12)" stroke="#e87c00" rx="5"/>
+      <text x="70" y="20" text-anchor="middle" fill="#e0e4ea" font-size="12">Ghost — Hover</text>
+    </g>
+    <g transform="translate(456,16)">
+      <rect width="140" height="32" fill="#1e2024" stroke="#2e3238" rx="3"/>
+      <text x="70" y="20" text-anchor="middle" fill="#4a5260" font-size="12">Disabled</text>
+    </g>
+    <g transform="translate(608,16)">
+      <rect width="140" height="32" fill="#3d2e10" rx="3"/>
+      <text x="70" y="20" text-anchor="middle" fill="#e87c00" font-size="12" font-weight="600">▶ Toggled</text>
+    </g>
+  </g>
+
+  <!-- Inputs row -->
+  <g transform="translate(32,870)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">INPUTS — QLineEdit / QComboBox / QSpinBox</text>
+    <g transform="translate(0,16)">
+      <rect width="220" height="28" fill="#2c3038" stroke="#3a3f48" rx="3"/>
+      <text x="10" y="18" fill="#e0e4ea" font-size="12">Default value</text>
+    </g>
+    <g transform="translate(232,16)">
+      <rect width="220" height="28" fill="#2c3038" stroke="#e87c00" rx="3"/>
+      <text x="10" y="18" fill="#e0e4ea" font-size="12">Focused</text>
+    </g>
+    <g transform="translate(464,16)">
+      <rect width="220" height="28" fill="#1e2024" stroke="#2e3238" rx="3"/>
+      <text x="10" y="18" fill="#4a5260" font-size="12">Disabled</text>
+    </g>
+  </g>
+
+  <!-- Status lamps -->
+  <g transform="translate(32,940)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">STATUS LAMPS — StatusLamp / StatusLampDot</text>
+    <g transform="translate(0,12)">
+      <circle cx="14" cy="14" r="9" fill="url(#lampOn)" stroke="#22252a" stroke-width="2"/>
+      <text x="32" y="18" fill="#e0e4ea" font-size="12">ON  (success)</text>
+    </g>
+    <g transform="translate(140,12)">
+      <circle cx="14" cy="14" r="9" fill="#ff5252" stroke="#22252a" stroke-width="2"/>
+      <text x="32" y="18" fill="#e0e4ea" font-size="12">FAULT</text>
+    </g>
+    <g transform="translate(260,12)">
+      <circle cx="14" cy="14" r="9" fill="#ffb020" stroke="#22252a" stroke-width="2"/>
+      <text x="32" y="18" fill="#e0e4ea" font-size="12">WARN</text>
+    </g>
+    <g transform="translate(370,12)">
+      <circle cx="14" cy="14" r="9" fill="#3a3f48" stroke="#22252a" stroke-width="2"/>
+      <text x="32" y="18" fill="#e0e4ea" font-size="12">OFF</text>
+    </g>
+  </g>
+
+  <!-- Pills & chips -->
+  <g transform="translate(32,1010)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">PILLS / CHIPS — StatePillLabel, TypeChipLabel</text>
+    <g transform="translate(0,12)">
+      <rect width="86" height="22" rx="11" fill="rgba(64,200,112,0.10)" stroke="#40c870"/>
+      <circle cx="14" cy="11" r="4" fill="#40c870"/>
+      <text x="26" y="15" fill="#40c870" font-size="11" font-weight="600">CONNECTED</text>
+    </g>
+    <g transform="translate(96,12)">
+      <rect width="74" height="22" rx="11" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/>
+      <circle cx="14" cy="11" r="4" fill="#ff5252"/>
+      <text x="26" y="15" fill="#ff5252" font-size="11" font-weight="600">FAULT</text>
+    </g>
+    <g transform="translate(180,12)">
+      <rect width="64" height="22" rx="11" fill="rgba(232,124,0,0.12)" stroke="#e87c00"/>
+      <text x="32" y="15" text-anchor="middle" fill="#e87c00" font-size="11" font-weight="600">● IDLE</text>
+    </g>
+    <g transform="translate(254,12)">
+      <rect width="86" height="22" rx="3" fill="rgba(58,155,217,0.12)" stroke="rgba(58,155,217,0.40)"/>
+      <text x="43" y="15" text-anchor="middle" fill="#3a9bd9" font-size="11" font-weight="600">CAMERA</text>
+    </g>
+    <g transform="translate(350,12)">
+      <rect width="70" height="22" rx="3" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+      <text x="35" y="15" text-anchor="middle" fill="#3ac98a" font-size="11" font-weight="600">PLC</text>
+    </g>
+    <g transform="translate(430,12)">
+      <rect width="118" height="22" rx="3" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)"/>
+      <text x="59" y="15" text-anchor="middle" fill="#a87de0" font-size="11" font-weight="600">VISION OUTPUT</text>
+    </g>
+  </g>
+
+  <!-- Frame box (card) -->
+  <g transform="translate(32,1080)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">CARDS / FRAMEBOX — Dashboard panels</text>
+    <g transform="translate(0,12)">
+      <rect width="340" height="120" fill="#22252a" stroke="#3a3f48" rx="4"/>
+      <text x="14" y="24" fill="#7a8898" font-size="11" letter-spacing="1">TASK CONTEXT</text>
+      <line x1="14" y1="34" x2="326" y2="34" stroke="#3a3f48"/>
+      <text x="14" y="56" fill="#7a8898" font-size="12">Vision output</text>
+      <text x="326" y="56" text-anchor="end" fill="#e0e4ea" font-size="12">tcpip_server_01</text>
+      <text x="14" y="78" fill="#7a8898" font-size="12">PLC</text>
+      <text x="326" y="78" text-anchor="end" fill="#e0e4ea" font-size="12">mitsu_mc_01</text>
+      <text x="14" y="100" fill="#7a8898" font-size="12">Active camera</text>
+      <text x="326" y="100" text-anchor="end" fill="#e0e4ea" font-size="12">basler_top</text>
+    </g>
+    <g transform="translate(356,12)">
+      <rect width="340" height="120" fill="rgba(255,82,82,0.10)" stroke="#ff5252" rx="4"/>
+      <text x="14" y="24" fill="#ff5252" font-size="11" letter-spacing="1" font-weight="600">⚠ FAULT (active)</text>
+      <line x1="14" y1="34" x2="326" y2="34" stroke="#ff5252" opacity="0.4"/>
+      <text x="14" y="56" fill="#7a8898" font-size="12">Task fault</text>
+      <text x="326" y="56" text-anchor="end" fill="#ff5252" font-size="12" font-weight="600">true</text>
+      <text x="14" y="78" fill="#7a8898" font-size="12">Fault code</text>
+      <text x="326" y="78" text-anchor="end" fill="#e0e4ea" font-size="12">11 — PLC_DISCONNECTED</text>
+    </g>
+  </g>
+
+  <!-- KPI tile -->
+  <g transform="translate(32,1240)">
+    <text x="0" y="0" fill="#7a8898" font-size="11" letter-spacing="1">KPI TILE — Dashboard counters</text>
+    <g transform="translate(0,12)"><rect width="160" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="24" fill="#7a8898" font-size="11" letter-spacing="1">DETECTED</text><text x="14" y="60" fill="#e0e4ea" font-size="28" font-weight="700">128</text></g>
+    <g transform="translate(172,12)"><rect width="160" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="24" fill="#7a8898" font-size="11" letter-spacing="1">SENT</text><text x="14" y="60" fill="#e0e4ea" font-size="28" font-weight="700">120</text></g>
+    <g transform="translate(344,12)"><rect width="160" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="24" fill="#7a8898" font-size="11" letter-spacing="1">MATCHING TIME</text><text x="14" y="60" fill="#e0e4ea" font-size="28" font-weight="700">82 ms</text></g>
+    <g transform="translate(516,12)"><rect width="160" height="74" fill="#22252a" stroke="#3a3f48" rx="4"/><text x="14" y="24" fill="#7a8898" font-size="11" letter-spacing="1">LOW AREA</text><text x="14" y="60" fill="#e0e4ea" font-size="28" font-weight="700">3</text></g>
+  </g>
+
+  <!-- Notes -->
+  <text x="32" y="1360" fill="#7a8898" font-size="11">Tokens live in docs/rules/ui_theme_tokens.md and src/utils/theme_manager.cpp tokenTable(). QSS uses @{group.token} placeholders resolved by ThemeManager.</text>
+</svg>

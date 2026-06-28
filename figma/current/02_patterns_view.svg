@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Segoe UI, Inter, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Current Localization Patterns view
+       Reflects: localization_patterns_widget.ui + pattern_canvas + pattern_setting_panel
+       ============================================================ -->
+  <rect width="1440" height="900" fill="#1a1c20"/>
+
+  <!-- Title bar / menu (compressed; focus is on content) -->
+  <rect x="0" y="0" width="1440" height="28" fill="#0f1114"/>
+  <text x="14" y="19" fill="#e0e4ea" font-size="12">NCR_PICKING — project_alpha.ncrproj  •  Standard</text>
+  <rect x="0" y="28" width="1440" height="26" fill="#22252a"/>
+  <text x="14" y="46" fill="#e0e4ea" font-size="12">File   View   Access Level   Help</text>
+  <rect x="0" y="54" width="1440" height="40" fill="#22252a"/>
+
+  <!-- Project tree (left) -->
+  <rect x="0" y="94" width="240" height="784" fill="#22252a" stroke="#3a3f48"/>
+  <text x="14" y="116" fill="#7a8898" font-size="10" letter-spacing="1">PROJECT</text>
+  <g transform="translate(14,128)" font-size="12" fill="#e0e4ea">
+    <text y="14">▾ 🗀 project_alpha</text>
+    <text x="14" y="34">▾ 🗀 tasks</text>
+    <text x="28" y="54" font-weight="600" fill="#e87c00">● localize_bin_top</text>
+    <text x="28" y="74">○ localize_bin_side</text>
+  </g>
+
+  <!-- Nav panel + selected Patterns -->
+  <rect x="240" y="94" width="250" height="784" fill="#1e1c16"/>
+  <line x1="490" y1="94" x2="490" y2="878" stroke="#3a3f48"/>
+  <g transform="translate(252,108)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1">ACTIVE TASK</text>
+    <text y="20" fill="#e0e4ea" font-size="16" font-weight="700">localize_bin_top</text>
+  </g>
+  <g transform="translate(252,160)">
+    <rect width="226" height="36" rx="4" fill="transparent"/>
+    <text x="14" y="22" fill="#e0e4ea" font-size="13">▦  Dashboard</text>
+    <rect y="40" width="226" height="36" rx="4" fill="#3d2e10"/>
+    <rect x="0" y="40" width="3" height="36" fill="#e87c00"/>
+    <text x="14" y="62" fill="#e87c00" font-size="13" font-weight="600">◇  Patterns</text>
+    <rect y="80" width="226" height="36" rx="4" fill="transparent"/>
+    <text x="14" y="102" fill="#e0e4ea" font-size="13">⚙  Settings</text>
+  </g>
+
+  <!-- Devices header -->
+  <g transform="translate(252,300)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1">DEVICES</text>
+  </g>
+  <g transform="translate(252,316)" font-size="12">
+    <rect width="226" height="32" rx="4" fill="rgba(58,155,217,0.12)" stroke="rgba(58,155,217,0.40)"/>
+    <text x="12" y="20" fill="#e0e4ea">📷 basler_top</text>
+    <g transform="translate(0,40)">
+      <rect width="226" height="32" rx="4" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+      <text x="12" y="20" fill="#e0e4ea">⚙ mitsu_mc_01</text>
+    </g>
+    <g transform="translate(0,80)">
+      <rect width="226" height="32" rx="4" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)"/>
+      <text x="12" y="20" fill="#e0e4ea">⇄ tcpip_server_01</text>
+    </g>
+  </g>
+
+  <!-- Breadcrumb -->
+  <rect x="490" y="94" width="950" height="36" fill="#22252a"/>
+  <line x1="490" y1="130" x2="1440" y2="130" stroke="#3a3f48"/>
+  <g transform="translate(506,114)" font-size="12">
+    <text fill="#7a8898">localize_bin_top</text>
+    <text x="100" fill="#7a8898">›</text>
+    <text x="116" fill="#e0e4ea" font-weight="600">Patterns</text>
+  </g>
+
+  <!-- =============== Patterns toolbar (frame_toolbar) =============== -->
+  <rect x="490" y="130" width="950" height="48" fill="#22252a"/>
+  <line x1="490" y1="178" x2="1440" y2="178" stroke="#3a3f48"/>
+  <g transform="translate(502,142)" font-size="12">
+    <!-- Trigger Camera (primary action) -->
+    <rect width="148" height="28" rx="3" fill="#e87c00"/>
+    <text x="74" y="18" text-anchor="middle" fill="#ffffff" font-weight="600">▶  Trigger Camera</text>
+    <!-- Open Image -->
+    <g transform="translate(156,0)"><rect width="120" height="28" rx="3" fill="transparent" stroke="#3a3f48"/><text x="60" y="18" text-anchor="middle" fill="#e0e4ea">📂  Open Image…</text></g>
+    <!-- Set Workspace -->
+    <g transform="translate(282,0)"><rect width="130" height="28" rx="3" fill="transparent" stroke="#3a3f48"/><text x="65" y="18" text-anchor="middle" fill="#e0e4ea">⊞  Set Workspace</text></g>
+    <!-- Separator -->
+    <line x1="420" y1="2" x2="420" y2="26" stroke="#3a3f48"/>
+    <!-- Active camera combo -->
+    <text x="430" y="18" fill="#7a8898">Active camera</text>
+    <g transform="translate(518,0)"><rect width="150" height="28" rx="3" fill="#2c3038" stroke="#3a3f48"/><text x="10" y="18" fill="#e0e4ea">basler_top ▾</text></g>
+    <!-- Checkboxes -->
+    <g transform="translate(680,4)"><rect width="12" height="12" fill="#e87c00"/><text x="18" y="11" fill="#e0e4ea" font-size="11">Show ROI</text></g>
+    <g transform="translate(680,16)"><rect width="12" height="12" fill="transparent" stroke="#3a3f48"/><text x="18" y="11" fill="#e0e4ea" font-size="11">Use ROI</text></g>
+    <line x1="780" y1="2" x2="780" y2="26" stroke="#3a3f48"/>
+    <!-- IDLE pill -->
+    <g transform="translate(792,4)"><rect width="78" height="20" rx="10" fill="rgba(232,124,0,0.12)" stroke="#e87c00"/><text x="39" y="14" text-anchor="middle" fill="#e87c00" font-size="11" font-weight="600">● IDLE</text></g>
+    <!-- Run Matching -->
+    <g transform="translate(880,0)"><rect width="140" height="28" rx="3" fill="#3ac98a"/><text x="70" y="18" text-anchor="middle" fill="#1a1c20" font-weight="700">▶  Run Matching</text></g>
+  </g>
+
+  <!-- =============== Monitor pane (left of splitter) =============== -->
+  <!-- view header tabs -->
+  <g transform="translate(498,188)">
+    <text fill="#7a8898" font-size="11" letter-spacing="1">MONITOR</text>
+    <g transform="translate(82,-10)" font-size="11">
+      <rect width="60" height="22" rx="3" fill="#3d2e10"/><text x="30" y="15" text-anchor="middle" fill="#e87c00" font-weight="600">Raw</text>
+      <g transform="translate(64,0)"><rect width="60" height="22" rx="3" fill="transparent" stroke="#3a3f48"/><text x="30" y="15" text-anchor="middle" fill="#e0e4ea">Result</text></g>
+      <g transform="translate(128,0)"><rect width="60" height="22" rx="3" fill="transparent" stroke="#3a3f48"/><text x="30" y="15" text-anchor="middle" fill="#e0e4ea">Binary</text></g>
+    </g>
+  </g>
+
+  <!-- Image view -->
+  <g transform="translate(498,204)">
+    <rect width="640" height="500" fill="#0f1114" stroke="#3a3f48"/>
+    <rect x="0" y="0" width="640" height="500" fill="#1a1c20"/>
+    <!-- ROI -->
+    <rect x="80" y="50" width="480" height="400" fill="none" stroke="#e87c00" stroke-dasharray="6 4"/>
+    <text x="84" y="44" fill="#e87c00" font-size="10" font-weight="600">workspace ROI</text>
+    <!-- Parts -->
+    <g fill="#2c3038" stroke="#3a3f48">
+      <rect x="120" y="100" width="80" height="80"/>
+      <rect x="260" y="140" width="80" height="80"/>
+      <rect x="420" y="100" width="80" height="80"/>
+      <rect x="200" y="300" width="80" height="80"/>
+      <rect x="380" y="320" width="80" height="80"/>
+    </g>
+  </g>
+
+  <!-- KPI strip below monitor -->
+  <g transform="translate(498,716)">
+    <rect width="640" height="60" fill="#22252a" stroke="#3a3f48" rx="4"/>
+    <g font-size="11">
+      <g transform="translate(20,10)"><text fill="#7a8898" letter-spacing="1">TOTAL</text><text y="30" fill="#e0e4ea" font-size="22" font-weight="700">4</text></g>
+      <g transform="translate(120,10)"><text fill="#7a8898" letter-spacing="1">POSSIBLE OBJECTS</text><text y="30" fill="#e0e4ea" font-size="22" font-weight="700">5</text></g>
+      <g transform="translate(290,10)"><text fill="#7a8898" letter-spacing="1">MATCH TIME</text><text y="30" fill="#e0e4ea" font-size="22" font-weight="700">82 ms</text></g>
+      <g transform="translate(440,10)"><text fill="#7a8898" letter-spacing="1">BELOW THRESH</text><text y="30" fill="#ffb020" font-size="22" font-weight="700">1</text></g>
+    </g>
+  </g>
+
+  <!-- =============== Right pane: Pattern tree + setting panel =============== -->
+  <g transform="translate(1148,188)">
+    <text fill="#7a8898" font-size="11" letter-spacing="1">PATTERN GROUPS</text>
+    <g transform="translate(140,-8)">
+      <rect width="22" height="22" rx="3" fill="transparent" stroke="#3a3f48"/><text x="11" y="16" text-anchor="middle" fill="#e0e4ea">＋</text>
+      <g transform="translate(28,0)"><rect width="22" height="22" rx="3" fill="transparent" stroke="#3a3f48"/><text x="11" y="16" text-anchor="middle" fill="#e0e4ea">✎</text></g>
+      <g transform="translate(56,0)"><rect width="22" height="22" rx="3" fill="transparent" stroke="#3a3f48"/><text x="11" y="16" text-anchor="middle" fill="#ff5252">🗑</text></g>
+    </g>
+  </g>
+  <g transform="translate(1148,204)">
+    <rect width="284" height="240" fill="#22252a" stroke="#3a3f48" rx="4"/>
+    <g font-size="12" fill="#e0e4ea">
+      <text x="12" y="22">▾ group_default</text>
+      <g transform="translate(0,32)">
+        <rect width="284" height="22" fill="#3d2e10"/>
+        <text x="28" y="16" fill="#e87c00" font-weight="600">● part_A   t=0.80</text>
+        <circle cx="266" cy="11" r="4" fill="#40c870"/>
+      </g>
+      <text x="28" y="70">○ part_B   t=0.80</text>
+      <circle cx="266" cy="65" r="4" fill="#40c870"/>
+      <text x="28" y="90">○ part_C   t=0.75</text>
+      <circle cx="266" cy="85" r="4" fill="#ffb020"/>
+      <text x="12" y="120">▸ group_fallback</text>
+    </g>
+  </g>
+
+  <!-- Pattern setting panel -->
+  <g transform="translate(1148,460)">
+    <text fill="#7a8898" font-size="11" letter-spacing="1">PATTERN SETTING — part_A</text>
+    <rect y="8" width="284" height="316" fill="#22252a" stroke="#3a3f48" rx="4"/>
+    <g transform="translate(12,24)" font-size="11">
+      <text fill="#7a8898">Score threshold</text>
+      <g transform="translate(0,18)">
+        <rect width="260" height="6" fill="#2c3038" rx="3"/>
+        <rect width="208" height="6" fill="#e87c00" rx="3"/>
+        <circle cx="208" cy="3" r="6" fill="#ffa040"/>
+      </g>
+      <text y="44" fill="#e0e4ea">0.80</text>
+
+      <text y="80" fill="#7a8898">Angle range</text>
+      <g transform="translate(0,90)"><rect width="120" height="24" rx="3" fill="#2c3038" stroke="#3a3f48"/><text x="60" y="16" text-anchor="middle" fill="#e0e4ea">−45° … +45°</text></g>
+
+      <text y="138" fill="#7a8898">Scale range</text>
+      <g transform="translate(0,148)"><rect width="120" height="24" rx="3" fill="#2c3038" stroke="#3a3f48"/><text x="60" y="16" text-anchor="middle" fill="#e0e4ea">0.95 … 1.05</text></g>
+
+      <text y="196" fill="#7a8898">Max instances</text>
+      <g transform="translate(0,206)"><rect width="120" height="24" rx="3" fill="#2c3038" stroke="#3a3f48"/><text x="60" y="16" text-anchor="middle" fill="#e0e4ea">8</text></g>
+
+      <text y="252" fill="#7a8898">Min contrast / area</text>
+      <g transform="translate(0,262)"><rect width="120" height="24" rx="3" fill="#2c3038" stroke="#3a3f48"/><text x="60" y="16" text-anchor="middle" fill="#e0e4ea">30 / 1200</text></g>
+    </g>
+  </g>
+
+  <!-- Status bar -->
+  <rect x="0" y="878" width="1440" height="22" fill="#e87c00"/>
+  <text x="14" y="893" fill="#ffffff" font-size="11" font-weight="600">Patterns · IDLE  •  ROI: 480×400 px  •  Active group: group_default (3 patterns)</text>
+</svg>

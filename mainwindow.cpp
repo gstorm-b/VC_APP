@@ -114,16 +114,16 @@ void MainWindow::createToolBarActions() {
     tbar->setIconSize(QSize(20, 20));
 
     m_actNewProject = tbar->addAction("New Project");
-    m_actNewProject->setIcon(svgIcon(":/resrc/set/create.svg"));
+    m_actNewProject->setIcon(svgIcon(":/resrc/icon/file-create.svg"));
 
     m_actOpenProject = tbar->addAction("Open Project");
-    m_actOpenProject->setIcon(svgIcon(":/resrc/set/open.svg"));
+    m_actOpenProject->setIcon(svgIcon(":/resrc/icon/file-open.svg"));
 
     m_actSaveProject = tbar->addAction("Save Project");
-    m_actSaveProject->setIcon(svgIcon(":/resrc/set/save.svg"));
+    m_actSaveProject->setIcon(svgIcon(":/resrc/icon/file-save.svg"));
 
     m_actCloseProject = tbar->addAction("Close Project");
-    m_actCloseProject->setIcon(svgIcon(":/resrc/set/close.svg"));
+    m_actCloseProject->setIcon(svgIcon(":/resrc/icon/file-close.svg"));
 
     connect(m_actNewProject,   &QAction::triggered, this, &MainWindow::onNewProject);
     connect(m_actOpenProject,  &QAction::triggered, this, &MainWindow::onOpenProject);
@@ -136,7 +136,7 @@ void MainWindow::createToolBarActions() {
     tbarTask->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
     m_actCaptureImage = tbarTask->addAction("Capture Image");
-    m_actCaptureImage->setIcon(svgIcon(":/resrc/set/capture.svg"));
+    m_actCaptureImage->setIcon(svgIcon(":/resrc/icon/file-capture.svg"));
 
     connect(ui->actionNew_Pproject,   &QAction::triggered, this, &MainWindow::onNewProject);
     connect(ui->actionOpen_Project,   &QAction::triggered, this, &MainWindow::onOpenProject);

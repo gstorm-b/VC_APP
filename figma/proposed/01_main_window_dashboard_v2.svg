@@ -1,0 +1,311 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, Segoe UI, system-ui, sans-serif">
+  <!-- ============================================================
+       NCR_PICKING — Proposed MainWindow + Dashboard v2
+       Key changes vs. current:
+       1. Replace top menubar + 2 toolbars with a single Command Bar
+          that fuses File actions, Run controls, mode toggle, search.
+       2. Collapse left ProjectTree into a slimmer rail with named
+          tasks visible at a glance; full tree opens on demand.
+       3. Promote nav from text+icon QPushButtons to icon-rail with
+          breadcrumb header — saves ~70 px horizontal.
+       4. Dashboard: hero "Now" panel on top (Live state at a glance),
+          then KPI strip, then evidence (match image + table).
+       5. Fault becomes a full-width banner above content — impossible
+          to miss in operator mode.
+       ============================================================ -->
+  <defs>
+    <linearGradient id="okLamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2eff98"/><stop offset="100%" stop-color="#40c870"/></linearGradient>
+  </defs>
+  <rect width="1440" height="900" fill="#1a1c20"/>
+
+  <!-- ============== Single Command Bar (replaces title+menu+toolbars) ============== -->
+  <rect x="0" y="0" width="1440" height="56" fill="#0f1114"/>
+  <text x="20" y="22" fill="#7a8898" font-size="10" letter-spacing="1.4">NCR PICKING</text>
+  <text x="20" y="42" fill="#e0e4ea" font-size="14" font-weight="700">project_alpha</text>
+  <text x="125" y="42" fill="#7a8898" font-size="13">› localize_bin_top</text>
+
+  <!-- Mode segmented control -->
+  <g transform="translate(420,14)">
+    <rect width="220" height="28" rx="14" fill="#1a1c20" stroke="#3a3f48"/>
+    <rect x="2" y="2" width="108" height="24" rx="12" fill="#e87c00"/>
+    <text x="56" y="18" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="700">COMMISSION</text>
+    <text x="164" y="18" text-anchor="middle" fill="#7a8898" font-size="12" font-weight="600">RUNTIME</text>
+  </g>
+
+  <!-- Global search / command palette trigger -->
+  <g transform="translate(680,14)">
+    <rect width="320" height="28" rx="6" fill="#1a1c20" stroke="#3a3f48"/>
+    <text x="14" y="18" fill="#7a8898" font-size="12">🔎  Search tasks, devices, signals…</text>
+    <g transform="translate(266,4)">
+      <rect width="42" height="20" rx="3" fill="#2c3038" stroke="#3a3f48"/>
+      <text x="21" y="14" text-anchor="middle" fill="#7a8898" font-size="11">Ctrl K</text>
+    </g>
+  </g>
+
+  <!-- Run controls -->
+  <g transform="translate(1030,14)">
+    <rect width="36" height="28" rx="4" fill="#3ac98a"/><text x="18" y="20" text-anchor="middle" fill="#1a1c20" font-size="14" font-weight="700">▶</text>
+    <g transform="translate(40,0)"><rect width="36" height="28" rx="4" fill="#2c3038" stroke="#3a3f48"/><text x="18" y="20" text-anchor="middle" fill="#e0e4ea" font-size="14">■</text></g>
+    <g transform="translate(80,0)"><rect width="36" height="28" rx="4" fill="#7a1010"/><text x="18" y="20" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">E-STP</text></g>
+  </g>
+
+  <!-- Live status pills (replaces statusbar) -->
+  <g transform="translate(1160,14)" font-size="11">
+    <g><rect width="80" height="28" rx="14" fill="rgba(64,200,112,0.10)" stroke="#40c870"/><circle cx="14" cy="14" r="5" fill="url(#okLamp)"/><text x="24" y="18" fill="#40c870" font-weight="700">PLC</text><text x="48" y="18" fill="#e0e4ea">12 ms</text></g>
+    <g transform="translate(88,0)"><rect width="80" height="28" rx="14" fill="rgba(64,200,112,0.10)" stroke="#40c870"/><circle cx="14" cy="14" r="5" fill="url(#okLamp)"/><text x="24" y="18" fill="#40c870" font-weight="700">CAM</text><text x="50" y="18" fill="#e0e4ea">68 ms</text></g>
+    <g transform="translate(176,0)"><rect width="100" height="28" rx="14" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/><circle cx="14" cy="14" r="5" fill="#ff5252"/><text x="24" y="18" fill="#ff5252" font-weight="700">OUT</text><text x="48" y="18" fill="#ff5252">retry 3/5</text></g>
+  </g>
+
+  <!-- ============== LEFT RAIL — slim, icon-first ============== -->
+  <rect x="0" y="56" width="64" height="844" fill="#0f1114"/>
+  <g transform="translate(8,72)" font-size="11">
+    <!-- Active task entry -->
+    <g><rect width="48" height="48" rx="6" fill="#3d2e10"/><text x="24" y="22" text-anchor="middle" fill="#e87c00" font-size="20">▦</text><text x="24" y="42" text-anchor="middle" fill="#e87c00" font-weight="600">Tasks</text></g>
+    <g transform="translate(0,56)"><rect width="48" height="48" rx="6" fill="transparent"/><text x="24" y="22" text-anchor="middle" fill="#e0e4ea" font-size="18">🗀</text><text x="24" y="42" text-anchor="middle" fill="#e0e4ea">Project</text></g>
+    <g transform="translate(0,112)"><rect width="48" height="48" rx="6" fill="transparent"/><text x="24" y="22" text-anchor="middle" fill="#e0e4ea" font-size="18">🧮</text><text x="24" y="42" text-anchor="middle" fill="#e0e4ea">Calib</text></g>
+    <g transform="translate(0,168)"><rect width="48" height="48" rx="6" fill="transparent"/><text x="24" y="22" text-anchor="middle" fill="#e0e4ea" font-size="18">≡</text><text x="24" y="42" text-anchor="middle" fill="#e0e4ea">Logs</text></g>
+    <!-- Theme toggle pinned to bottom -->
+    <g transform="translate(0,700)"><rect width="48" height="48" rx="6" fill="transparent"/><text x="24" y="22" text-anchor="middle" fill="#e0e4ea" font-size="18">☾</text><text x="24" y="42" text-anchor="middle" fill="#7a8898">Theme</text></g>
+    <g transform="translate(0,756)"><rect width="48" height="48" rx="6" fill="transparent"/><text x="24" y="22" text-anchor="middle" fill="#e0e4ea" font-size="18">⚙</text><text x="24" y="42" text-anchor="middle" fill="#7a8898">Pref</text></g>
+  </g>
+
+  <!-- ============== TASK SIDEBAR — replaces nav_panel ============== -->
+  <rect x="64" y="56" width="280" height="844" fill="#22252a"/>
+  <line x1="344" y1="56" x2="344" y2="900" stroke="#3a3f48"/>
+
+  <!-- Task selector header -->
+  <g transform="translate(80,72)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">ACTIVE TASK</text>
+    <text y="20" fill="#e0e4ea" font-size="18" font-weight="700">localize_bin_top</text>
+    <g transform="translate(0,28)">
+      <rect width="104" height="22" rx="3" fill="rgba(232,124,0,0.12)" stroke="#e87c00"/>
+      <text x="52" y="15" text-anchor="middle" fill="#e87c00" font-size="10" font-weight="700">LOCALIZATION</text>
+    </g>
+    <g transform="translate(112,28)">
+      <rect width="20" height="22" rx="3" fill="transparent" stroke="#3a3f48"/>
+      <text x="10" y="16" text-anchor="middle" fill="#e0e4ea" font-size="12">▾</text>
+    </g>
+  </g>
+
+  <!-- Big section nav with icons -->
+  <g transform="translate(72,156)" font-size="13">
+    <rect width="264" height="44" rx="6" fill="#3d2e10"/>
+    <rect width="3" height="44" fill="#e87c00"/>
+    <text x="18" y="20" fill="#e87c00" font-size="16">▦</text>
+    <text x="44" y="22" fill="#e87c00" font-weight="700">Dashboard</text>
+    <text x="44" y="36" fill="#7a8898" font-size="10">Live + last run</text>
+
+    <g transform="translate(0,52)">
+      <rect width="264" height="44" rx="6" fill="transparent"/>
+      <text x="18" y="20" fill="#e0e4ea" font-size="16">◇</text>
+      <text x="44" y="22" fill="#e0e4ea">Patterns</text>
+      <text x="44" y="36" fill="#7a8898" font-size="10">group_default · 3 patterns</text>
+    </g>
+    <g transform="translate(0,104)">
+      <rect width="264" height="44" rx="6" fill="transparent"/>
+      <text x="18" y="20" fill="#e0e4ea" font-size="16">⚙</text>
+      <text x="44" y="22" fill="#e0e4ea">Settings</text>
+      <text x="44" y="36" fill="#7a8898" font-size="10">Bindings, signals</text>
+    </g>
+  </g>
+
+  <!-- Devices panel -->
+  <g transform="translate(80,348)">
+    <text fill="#7a8898" font-size="10" letter-spacing="1.4">DEVICES</text>
+    <g transform="translate(212,-6)">
+      <rect width="36" height="22" rx="3" fill="transparent" stroke="#3a3f48"/>
+      <text x="18" y="16" text-anchor="middle" fill="#e0e4ea" font-size="11">＋ Add</text>
+    </g>
+  </g>
+
+  <g transform="translate(72,368)">
+    <!-- camera -->
+    <rect width="264" height="56" rx="6" fill="rgba(58,155,217,0.12)" stroke="rgba(58,155,217,0.40)"/>
+    <rect x="0" y="0" width="3" height="56" fill="#3a9bd9"/>
+    <text x="16" y="20" fill="#3a9bd9" font-size="14">📷</text>
+    <text x="40" y="22" fill="#e0e4ea" font-size="13" font-weight="600">basler_top</text>
+    <text x="40" y="38" fill="#7a8898" font-size="10">Basler GigE · 192.168.0.21 · 30 fps</text>
+    <circle cx="248" cy="16" r="5" fill="url(#okLamp)"/>
+    <text x="240" y="46" text-anchor="end" fill="#7a8898" font-size="10">68 ms</text>
+
+    <!-- plc -->
+    <g transform="translate(0,64)">
+      <rect width="264" height="56" rx="6" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/>
+      <rect x="0" y="0" width="3" height="56" fill="#3ac98a"/>
+      <text x="16" y="20" fill="#3ac98a" font-size="14">⚙</text>
+      <text x="40" y="22" fill="#e0e4ea" font-size="13" font-weight="600">mitsu_mc_01</text>
+      <text x="40" y="38" fill="#7a8898" font-size="10">MitsubishiMC · 192.168.0.10:5007</text>
+      <circle cx="248" cy="16" r="5" fill="url(#okLamp)"/>
+      <text x="240" y="46" text-anchor="end" fill="#7a8898" font-size="10">12 ms</text>
+    </g>
+
+    <!-- output (faulted) -->
+    <g transform="translate(0,128)">
+      <rect width="264" height="56" rx="6" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/>
+      <rect x="0" y="0" width="3" height="56" fill="#ff5252"/>
+      <text x="16" y="20" fill="#ff5252" font-size="14">⇄</text>
+      <text x="40" y="22" fill="#e0e4ea" font-size="13" font-weight="600">tcpip_server_01</text>
+      <text x="40" y="38" fill="#ff5252" font-size="10">DOWN · retry 3 of 5 · last err 19:04:00</text>
+      <circle cx="248" cy="16" r="5" fill="#ff5252"/>
+    </g>
+
+    <!-- robot advisory -->
+    <g transform="translate(0,192)">
+      <rect width="264" height="56" rx="6" fill="rgba(224,176,32,0.12)" stroke="rgba(224,176,32,0.40)"/>
+      <rect x="0" y="0" width="3" height="56" fill="#e0b020"/>
+      <text x="16" y="20" fill="#e0b020" font-size="14">🤖</text>
+      <text x="40" y="22" fill="#e0e4ea" font-size="13" font-weight="600">kinematics_check</text>
+      <text x="40" y="38" fill="#7a8898" font-size="10">RobotKinematics advisory · idle</text>
+      <circle cx="248" cy="16" r="5" fill="#3a3f48"/>
+    </g>
+  </g>
+
+  <!-- ============== MAIN CONTENT ============== -->
+
+  <!-- Breadcrumb / page heading replaced by combined Page Header -->
+  <g transform="translate(360,72)">
+    <text fill="#7a8898" font-size="11">DASHBOARD</text>
+    <text y="28" fill="#e0e4ea" font-size="22" font-weight="700">Now</text>
+    <text x="92" y="28" fill="#7a8898" font-size="12">·  Cycle #248  ·  last run 2 s ago</text>
+  </g>
+  <g transform="translate(900,72)" font-size="12">
+    <g><rect width="100" height="28" rx="4" fill="transparent" stroke="#3a3f48"/><text x="50" y="18" text-anchor="middle" fill="#e0e4ea">⤓ Export run</text></g>
+    <g transform="translate(108,0)"><rect width="120" height="28" rx="4" fill="transparent" stroke="#3a3f48"/><text x="60" y="18" text-anchor="middle" fill="#e0e4ea">⏵ Replay last</text></g>
+    <g transform="translate(236,0)"><rect width="120" height="28" rx="4" fill="#3ac98a"/><text x="60" y="18" text-anchor="middle" fill="#1a1c20" font-weight="700">▶ Trigger now</text></g>
+  </g>
+
+  <!-- FAULT BANNER (full width — operator can't miss) -->
+  <g transform="translate(360,112)">
+    <rect width="1064" height="44" fill="rgba(255,82,82,0.10)" stroke="#ff5252" rx="6"/>
+    <circle cx="22" cy="22" r="10" fill="#ff5252"/>
+    <text x="22" y="27" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="700">!</text>
+    <text x="44" y="20" fill="#ff5252" font-size="13" font-weight="700">Fault 11 · VISION_OUTPUT_DOWN</text>
+    <text x="44" y="36" fill="#e0e4ea" font-size="11">tcpip_server_01 socket reset at 19:04:00. Retrying 3 of 5. Cycle blocked.</text>
+    <g transform="translate(820,8)">
+      <rect width="100" height="28" rx="4" fill="transparent" stroke="#ff5252"/>
+      <text x="50" y="19" text-anchor="middle" fill="#ff5252" font-size="12" font-weight="600">Reconnect</text>
+    </g>
+    <g transform="translate(932,8)">
+      <rect width="120" height="28" rx="4" fill="transparent" stroke="#3a3f48"/>
+      <text x="60" y="19" text-anchor="middle" fill="#e0e4ea" font-size="12">Acknowledge ⌥A</text>
+    </g>
+  </g>
+
+  <!-- KPI strip -->
+  <g transform="translate(360,176)">
+    <!-- Detected -->
+    <rect width="252" height="118" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <text x="16" y="22" fill="#7a8898" font-size="11" letter-spacing="1">DETECTED · last 5 cycles</text>
+    <text x="16" y="64" fill="#e0e4ea" font-size="36" font-weight="700">4</text>
+    <text x="16" y="86" fill="#40c870" font-size="11">▲ stable</text>
+    <polyline points="16,108 60,98 100,104 140,96 180,100 220,90" fill="none" stroke="#e87c00" stroke-width="1.5"/>
+
+    <!-- Sent -->
+    <g transform="translate(260,0)">
+      <rect width="252" height="118" fill="#22252a" stroke="#ff5252" rx="6"/>
+      <text x="16" y="22" fill="#ff5252" font-size="11" letter-spacing="1" font-weight="600">✕ SENT · queue full</text>
+      <text x="16" y="64" fill="#ff5252" font-size="36" font-weight="700">0<tspan font-size="16" fill="#7a8898"> / 4</tspan></text>
+      <text x="16" y="86" fill="#e0e4ea" font-size="11">12 results buffered locally</text>
+    </g>
+
+    <!-- Match time -->
+    <g transform="translate(520,0)">
+      <rect width="252" height="118" fill="#22252a" stroke="#3a3f48" rx="6"/>
+      <text x="16" y="22" fill="#7a8898" font-size="11" letter-spacing="1">MATCH TIME · target ≤ 120 ms</text>
+      <text x="16" y="64" fill="#e0e4ea" font-size="36" font-weight="700">82<tspan font-size="16" fill="#7a8898"> ms</tspan></text>
+      <rect x="16" y="86" width="220" height="6" fill="#2c3038" rx="3"/>
+      <rect x="16" y="86" width="150" height="6" fill="#40c870" rx="3"/>
+      <text x="16" y="108" fill="#7a8898" font-size="10">avg 76 ms · p95 104 ms</text>
+    </g>
+
+    <!-- Low area -->
+    <g transform="translate(780,0)">
+      <rect width="252" height="118" fill="#22252a" stroke="#ffb020" rx="6"/>
+      <text x="16" y="22" fill="#ffb020" font-size="11" letter-spacing="1" font-weight="600">! LOW AREA</text>
+      <text x="16" y="64" fill="#ffb020" font-size="36" font-weight="700">1</text>
+      <text x="16" y="86" fill="#e0e4ea" font-size="11">Pat #4 · 2 cycles in a row</text>
+      <text x="16" y="104" fill="#7a8898" font-size="10">consider re-lighting bin corner</text>
+    </g>
+  </g>
+
+  <!-- Last match — full width with thumbnail + result table side by side -->
+  <g transform="translate(360,310)">
+    <rect width="700" height="384" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <text x="16" y="22" fill="#7a8898" font-size="11" letter-spacing="1">LAST MATCHING VIEW · basler_top · 12:04:17</text>
+    <rect x="16" y="34" width="668" height="334" fill="#0f1114" rx="3"/>
+    <g transform="translate(16,34)">
+      <rect width="668" height="334" fill="#1a1c20"/>
+      <rect x="40" y="30" width="588" height="280" fill="#2c3038" stroke="#3a3f48"/>
+      <g fill="none" stroke="#3ac98a" stroke-width="2">
+        <rect x="92" y="74" width="58" height="58" transform="rotate(8 121 103)"/>
+        <rect x="280" y="98" width="58" height="58" transform="rotate(-12 309 127)"/>
+        <rect x="430" y="74" width="58" height="58" transform="rotate(4 459 103)"/>
+        <rect x="220" y="220" width="58" height="58" transform="rotate(22 249 249)"/>
+      </g>
+      <g fill="#40c870" font-size="11" font-family="JetBrains Mono, Consolas, monospace">
+        <text x="96" y="70">#1 · 0.94</text>
+        <text x="284" y="94">#2 · 0.91</text>
+        <text x="434" y="70">#3 · 0.88</text>
+        <text x="224" y="216" fill="#ffb020">#4 · 0.74 low</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Side panel: result table + per-part timeline -->
+  <g transform="translate(1072,310)">
+    <rect width="352" height="384" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <text x="16" y="22" fill="#7a8898" font-size="11" letter-spacing="1">RESULT</text>
+    <line x1="0" y1="32" x2="352" y2="32" stroke="#3a3f48"/>
+    <g transform="translate(0,40)" font-size="11" font-family="JetBrains Mono, Consolas, monospace">
+      <g><text x="16" fill="#7a8898" y="14">#</text><text x="40" fill="#7a8898" y="14">part</text><text x="120" fill="#7a8898" y="14">score</text><text x="180" fill="#7a8898" y="14">wld X</text><text x="240" fill="#7a8898" y="14">wld Y</text><text x="300" fill="#7a8898" y="14">R°</text></g>
+      <g transform="translate(0,22)"><text x="16" fill="#e0e4ea" y="14">1</text><text x="40" fill="#e0e4ea" y="14">part_A</text><text x="120" fill="#40c870" y="14">0.94</text><text x="180" fill="#e0e4ea" y="14">126.4</text><text x="240" fill="#e0e4ea" y="14">88.2</text><text x="300" fill="#e0e4ea" y="14">8.1</text></g>
+      <g transform="translate(0,42)"><rect width="352" height="20" fill="#1e2024"/><text x="16" fill="#e0e4ea" y="14">2</text><text x="40" fill="#e0e4ea" y="14">part_A</text><text x="120" fill="#40c870" y="14">0.91</text><text x="180" fill="#e0e4ea" y="14">198.1</text><text x="240" fill="#e0e4ea" y="14">118.5</text><text x="300" fill="#e0e4ea" y="14">-12.4</text></g>
+      <g transform="translate(0,62)"><text x="16" fill="#e0e4ea" y="14">3</text><text x="40" fill="#e0e4ea" y="14">part_A</text><text x="120" fill="#40c870" y="14">0.88</text><text x="180" fill="#e0e4ea" y="14">274.3</text><text x="240" fill="#e0e4ea" y="14">88.2</text><text x="300" fill="#e0e4ea" y="14">4.2</text></g>
+      <g transform="translate(0,82)"><rect width="352" height="20" fill="#1e2024"/><text x="16" fill="#e0e4ea" y="14">4</text><text x="40" fill="#e0e4ea" y="14">part_A</text><text x="120" fill="#ffb020" y="14">0.74</text><text x="180" fill="#e0e4ea" y="14">170.4</text><text x="240" fill="#e0e4ea" y="14">200.4</text><text x="300" fill="#e0e4ea" y="14">22.6</text></g>
+    </g>
+
+    <!-- cycle timeline -->
+    <line x1="0" y1="178" x2="352" y2="178" stroke="#3a3f48"/>
+    <text x="16" y="198" fill="#7a8898" font-size="11" letter-spacing="1">CYCLE PHASES · 82 ms</text>
+    <g transform="translate(16,212)">
+      <rect width="320" height="14" fill="#1a1c20" rx="3"/>
+      <rect width="60" height="14" fill="#40a8e0" rx="3"/>
+      <rect x="60" width="140" height="14" fill="#3a9bd9"/>
+      <rect x="200" width="80" height="14" fill="#e87c00"/>
+      <rect x="280" width="40" height="14" fill="#a87de0" rx="3"/>
+      <text y="32" fill="#7a8898" font-size="10">trig 14 ms · capture 32 ms · match 26 ms · send 10 ms</text>
+    </g>
+
+    <!-- Activity feed -->
+    <line x1="0" y1="262" x2="352" y2="262" stroke="#3a3f48"/>
+    <text x="16" y="282" fill="#7a8898" font-size="11" letter-spacing="1">ACTIVITY</text>
+    <g transform="translate(16,294)" font-size="11">
+      <rect width="76" height="18" rx="10" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/>
+      <text x="38" y="13" text-anchor="middle" fill="#ff5252" font-weight="700">✕ FAULT</text>
+      <text x="86" y="13" fill="#e0e4ea">output socket reset</text>
+      <g transform="translate(0,24)"><rect width="76" height="18" rx="10" fill="rgba(255,176,32,0.10)" stroke="#ffb020"/><text x="38" y="13" text-anchor="middle" fill="#ffb020" font-weight="700">! WARN</text><text x="86" y="13" fill="#e0e4ea">pat #4 low score 0.74</text></g>
+      <g transform="translate(0,48)"><rect width="76" height="18" rx="10" fill="rgba(64,200,112,0.10)" stroke="#40c870"/><text x="38" y="13" text-anchor="middle" fill="#40c870" font-weight="700">✓ OK</text><text x="86" y="13" fill="#e0e4ea">cycle 248 · 82 ms</text></g>
+      <g transform="translate(0,72)"><rect width="76" height="18" rx="10" fill="rgba(64,200,112,0.10)" stroke="#40c870"/><text x="38" y="13" text-anchor="middle" fill="#40c870" font-weight="700">✓ OK</text><text x="86" y="13" fill="#e0e4ea">cycle 247 · 76 ms</text></g>
+    </g>
+  </g>
+
+  <!-- Signal monitor strip (compact, full-width footer) -->
+  <g transform="translate(360,710)">
+    <rect width="1064" height="80" fill="#22252a" stroke="#3a3f48" rx="6"/>
+    <text x="16" y="22" fill="#7a8898" font-size="11" letter-spacing="1">SIGNAL MONITOR · mitsu_mc_01</text>
+    <g transform="translate(16,36)" font-size="11" font-family="JetBrains Mono,Consolas,monospace">
+      <!-- 6 signals as compact tiles -->
+      <g><rect width="160" height="34" rx="4" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/><text x="8" y="14" fill="#7a8898">M100 TriggerReq</text><text x="8" y="28" fill="#3ac98a" font-weight="700">1</text></g>
+      <g transform="translate(168,0)"><rect width="160" height="34" rx="4" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/><text x="8" y="14" fill="#7a8898">M101 Busy</text><text x="8" y="28" fill="#3ac98a" font-weight="700">0</text></g>
+      <g transform="translate(336,0)"><rect width="160" height="34" rx="4" fill="rgba(58,201,138,0.12)" stroke="rgba(58,201,138,0.40)"/><text x="8" y="14" fill="#7a8898">D200 DetectedCnt</text><text x="8" y="28" fill="#3ac98a" font-weight="700">4</text></g>
+      <g transform="translate(504,0)"><rect width="160" height="34" rx="4" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/><text x="8" y="14" fill="#7a8898">M110 FaultFlag</text><text x="8" y="28" fill="#ff5252" font-weight="700">1</text></g>
+      <g transform="translate(672,0)"><rect width="160" height="34" rx="4" fill="rgba(255,82,82,0.10)" stroke="#ff5252"/><text x="8" y="14" fill="#7a8898">D110 FaultCode</text><text x="8" y="28" fill="#ff5252" font-weight="700">11</text></g>
+      <g transform="translate(840,0)"><rect width="208" height="34" rx="4" fill="rgba(168,125,224,0.12)" stroke="rgba(168,125,224,0.40)"/><text x="8" y="14" fill="#7a8898">tcpip queue</text><text x="8" y="28" fill="#a87de0" font-weight="700">12 pending</text></g>
+    </g>
+  </g>
+
+  <!-- Footer help -->
+  <g transform="translate(360,806)" font-size="10" fill="#7a8898">
+    <text>↵  trigger    Ctrl+K  command palette    G  jump device    Esc  acknowledge fault    F  fullscreen runtime</text>
+  </g>
+</svg>

@@ -58,8 +58,3 @@ QSpinBox#spb_conn_timeout:focus,
 QSpinBox#spb_resp_timeout:focus {
     border-color: @{accent.primary};
 }
-
-/* ── Splitter ────────────────────────────────────────────────── */
-
-QSplitter#splitter_device_table::handle       { background-color: @{bg.window}; }
-QSplitter#splitter_device_table::handle:hover { background-color: @{accent.primary}; }

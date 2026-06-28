@@ -19,7 +19,6 @@ QWidget#LocalizationTaskWidget {
     color: @{text.primary};
     font-family: 'Segoe UI';
 }
-QSplitter::handle { background: @{border.default}; }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────── */
 QScrollBar:vertical              { background: @{bg.window}; width: 8px; }

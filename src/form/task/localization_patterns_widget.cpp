@@ -1926,17 +1926,8 @@ bool LocalizationPatternsWidget::runMatchingTest(mtc::MatchResult &outResult) {
 
 void LocalizationPatternsWidget::buildResultTable() {
     if (!ui->pane_monitor) return;
-    auto *layoutMon = qobject_cast<QVBoxLayout*>(ui->pane_monitor->layout());
-    if (!layoutMon) return;
-
-    // Section header
-    auto *hd = new QLabel(tr("MATCH RESULTS"));
-    hd->setObjectName(QStringLiteral("resultSectionHeader"));
-    hd->setMinimumHeight(22);
-    layoutMon->addWidget(hd);
 
     // Table
-    // m_resultTable = new QTableWidget(0, 8, ui->pane_monitor);
     m_resultTable = ui->result_table;
     m_resultTable->setColumnCount(8);
     m_resultTable->setRowCount(0);
@@ -1959,9 +1950,6 @@ void LocalizationPatternsWidget::buildResultTable() {
     const int widths[8] = { 36, 48, 0 /* stretch */, 70, 70, 70, 60 , 100 };
     for (int i = 0; i < 7; ++i)
         if (widths[i] > 0) m_resultTable->setColumnWidth(i, widths[i]);
-
-    // Styled via QSS by objectName "patternResultTable" in per-form QSS file.
-    layoutMon->addWidget(m_resultTable);
 
     connect(m_resultTable, &QTableWidget::itemSelectionChanged,
             this, &LocalizationPatternsWidget::syncResultSelectionFromTable);

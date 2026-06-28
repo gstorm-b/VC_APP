@@ -418,7 +418,8 @@ QSlider::handle:horizontal {
 
 /* ── Misc ────────────────────────────────────────────────────────── */
 
-QSplitter::handle { background-color: @{border.default}; }
+QSplitter#splitter_device_table::handle       { background-color: @{bg.window}; }
+QSplitter#splitter_device_table::handle:hover { background-color: @{accent.primary}; }
 
 QMainWindow { background-color: @{bg.window}; }
 QDialog     { background-color: @{bg.window}; }

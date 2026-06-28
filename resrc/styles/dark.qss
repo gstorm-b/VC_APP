@@ -415,8 +415,8 @@ QSlider::handle:horizontal {
 }
 
 /* ── Misc ────────────────────────────────────────────────────────── */
-
-QSplitter::handle { background-color: @{border.default}; }
+QSplitter::handle { background-color: @{bg.window}; }
+QSplitter::handle:hover { background-color: @{accent.primary}; }
 
 QMainWindow { background-color: @{bg.window}; }
 QDialog     { background-color: @{bg.surface}; }

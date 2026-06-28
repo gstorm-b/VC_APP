@@ -1,5 +1,8 @@
 #include "item_roi_rotated.h"
 
+#include <QGraphicsScene>
+#include <QGraphicsView>
+
 ItemRoiRotated::ItemRoiRotated(const QRectF &rect, QGraphicsItem *parent,
                                bool *ignore_flag)
     : QGraphicsRectItem(rect, parent),
@@ -27,6 +30,7 @@ void ItemRoiRotated::paint(QPainter *painter,
   // Draw ROI
   QPen pen(Qt::red);
   pen.setWidth(2);
+  pen.setCosmetic(true);
   painter->setPen(pen);
   painter->setBrush(Qt::NoBrush);
   painter->drawEllipse(this->rect().center(), 5, 5);
@@ -50,7 +54,9 @@ void ItemRoiRotated::paint(QPainter *painter,
     QColor handler_color(0x8F87F1);
     handler_color.setAlpha(100);
     painter->setBrush(handler_color);
-    painter->setPen(Qt::black);
+    QPen handlePen(Qt::black);
+    handlePen.setCosmetic(true);
+    painter->setPen(handlePen);
     painter->drawRect(handleRect(TopLeft));
     painter->drawRect(handleRect(TopRight));
     painter->drawRect(handleRect(BottomLeft));
@@ -61,7 +67,9 @@ void ItemRoiRotated::paint(QPainter *painter,
     painter->drawEllipse(rotateHandleRect());
     // Tùy chọn: vẽ một đường nối từ cạnh trên của ROI đến handle xoay
     QPointF topCenter = QPointF(rect().center().x(), rect().top());
-    painter->setPen(QPen(Qt::blue, 1, Qt::DashLine));
+    QPen linkPen(Qt::blue, 1, Qt::DashLine);
+    linkPen.setCosmetic(true);
+    painter->setPen(linkPen);
     painter->drawLine(topCenter, rotateHandleRect().center());
   } else {
     // draw ROI in mode not selected
@@ -143,6 +151,7 @@ QVariant ItemRoiRotated::itemChange(QGraphicsItem::GraphicsItemChange change, co
 QRectF ItemRoiRotated::handleRect(HandlePosition pos) const {
   QRectF r = rect();
   QPointF point;
+  const qreal handleSize = effectiveHandleSize();
   switch(pos) {
     case TopLeft:
       point = r.topLeft();
@@ -161,18 +170,19 @@ QRectF ItemRoiRotated::handleRect(HandlePosition pos) const {
       break;
   }
   // draw rectangle handle with center at corner
-  return QRectF(point.x() - m_handle_size/2, point.y() - m_handle_size/2,
-                m_handle_size, m_handle_size);
+  return QRectF(point.x() - handleSize/2, point.y() - handleSize/2,
+                handleSize, handleSize);
 }
 
 QRectF ItemRoiRotated::rotateHandleRect() const {
   QRectF r = rect();
   // calculate center of top edge
   QPointF topCenter(r.center().x(), r.top());
-  QPointF handleCenter = topCenter - QPointF(0, m_rotation_handle_offset);
-  return QRectF(handleCenter.x() - m_handle_size/2.0,
-                handleCenter.y() - m_handle_size/2.0,
-                m_handle_size, m_handle_size);
+  const qreal handleSize = effectiveHandleSize();
+  QPointF handleCenter = topCenter - QPointF(0, effectiveRotationHandleOffset());
+  return QRectF(handleCenter.x() - handleSize/2.0,
+                handleCenter.y() - handleSize/2.0,
+                handleSize, handleSize);
 }
 
 ItemRoiRotated::HandlePosition ItemRoiRotated::getHandleAt(const QPointF &pos) const {
@@ -187,6 +197,28 @@ ItemRoiRotated::HandlePosition ItemRoiRotated::getHandleAt(const QPointF &pos) c
   if (rotateHandleRect().contains(pos))
     return RotateHandle;
   return None;
+}
+
+qreal ItemRoiRotated::currentLevelOfDetail() const
+{
+  if (scene() && !scene()->views().isEmpty()) {
+    return qMax<qreal>(0.05,
+                       QStyleOptionGraphicsItem::levelOfDetailFromTransform(
+                           scene()->views().first()->viewportTransform()));
+  }
+  return 1.0;
+}
+
+qreal ItemRoiRotated::effectiveHandleSize() const
+{
+  const qreal lod = currentLevelOfDetail();
+  return qBound<qreal>(10.0 / lod, 14.0 / lod, 22.0 / lod);
+}
+
+qreal ItemRoiRotated::effectiveRotationHandleOffset() const
+{
+  const qreal lod = currentLevelOfDetail();
+  return qBound<qreal>(18.0 / lod, 24.0 / lod, 36.0 / lod);
 }
 
 bool ItemRoiRotated::isInsideParent(QRectF &new_rect) {
@@ -321,4 +353,3 @@ void ItemRoiRotated::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
   event->accept();
   QGraphicsRectItem::mouseReleaseEvent(event);
 }
-

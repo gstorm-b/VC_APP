@@ -128,6 +128,8 @@ private:
     void setupAddRow();
     void addMappingRow(const QString &cameraId, int number);
     void wireRow(CameraRowWidget *row, SortableCameraItem *item);
+    void applyDuplicateWarnings();
+    void setDuplicateWarning(CameraRowWidget *row, bool on, const QString &tooltip);
     int getSmallestAvailableNumber() const;
     QStringList getAvailableCameraIds() const;
     QList<int> getAvailableNumbers() const;

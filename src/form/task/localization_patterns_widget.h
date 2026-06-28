@@ -13,6 +13,7 @@
 #include "model/task_localization.h"
 #include "form/task_widget.h"
 #include "widgets/pattern_tree_widget.h"
+#include "widgets/vision/vision_overlay_types.h"
 
 #include "form/pattern/add_pattern_image_dialog.h"
 #include "matching/match_config_property_adapter.h"
@@ -21,6 +22,9 @@
 namespace Ui {
 class LocalizationPatternsWidget;
 }
+
+class VisionCanvas;
+class VisionResultViewerWidget;
 
 // ---------------------------------------------------------------------------
 // LocalizationPatternsWidget
@@ -116,9 +120,15 @@ private:
     void rebuildTreeFromManager();   // pull full library state into the tree
     void buildResultTable();         // build & insert result-table widget
     void populateResultTable(const mtc::MatchResult &result);
-    void drawConditionRoiOverlay(int imgW, int imgH);
     void clearResultTable();
     void clearPropertyBrowserState();
+    void installVisionWidgets();
+    void syncEditorImageForSelection();
+    QVector<VisionRoi> buildWorkspaceOverlayRois() const;
+    void syncResultSelectionFromTable();
+    void syncResultSelectionFromViewer(int objectIndex);
+    void clearResultSelection();
+    int resultOverlayIndexForRow(int row) const;
 
     // ── Property browser construction ───────────────────────────────────
     void buildGroupProperties();      // group-level (picking box etc.)
@@ -173,9 +183,9 @@ private:
 
     // ── Image display ───────────────────────────────────────────────────
     void displayRawImage(const cv::Mat &image);
-    void displayResultImage(const cv::Mat &image);
+    void displayResultOverlay(const cv::Mat &image, const mtc::MatchResult &result);
     void displayBinaryImage();       // binarize m_currentImage at the threshold
-    void setMonitorPage(int page);   // 0 = raw, 1 = result, 2 = binary
+    void setMonitorPage(int page);   // raw, result, binary
 
     // ── Matching test runner ────────────────────────────────────────────
     bool runMatchingTest(mtc::MatchResult &outResult);
@@ -228,6 +238,10 @@ private:
 
     // ── Test image ──────────────────────────────────────────────────────
     cv::Mat m_currentImage;
+    mtc::MatchResult m_lastMatchResult;
+    bool m_hasLastMatchResult{false};
+    VisionCanvas *m_rawPreview{nullptr};
+    VisionResultViewerWidget *m_resultViewer{nullptr};
 
     // ── Pattern thumbnail scene ────────────────────────────────────────
     QGraphicsScene      *m_thumbScene  {nullptr};

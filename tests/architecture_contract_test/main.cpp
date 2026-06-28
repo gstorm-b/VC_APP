@@ -26,6 +26,7 @@
 #include "runtime/plc_runner.h"
 #include "runtime/task_runner.h"
 #include "runtime/vision_output_runner.h"
+#include "widgets/vision/vision_result_adapter.h"
 
 using namespace vc::device;
 using namespace vc::model;
@@ -483,12 +484,20 @@ struct LocalizationRuntimeFixture {
         object.pattern_name = L"Pattern 1";
         object.pattern_index = 1;
         object.matched_Score = 0.95;
+        object.point_LT = cv::Point2f(10.0f, 20.0f);
+        object.point_RT = cv::Point2f(30.0f, 20.0f);
+        object.point_RB = cv::Point2f(30.0f, 40.0f);
+        object.point_LB = cv::Point2f(10.0f, 40.0f);
         object.point_Center = cv::Point2f(20.0f, 30.0f);
+        object.matched_Angle = 5.0;
         object.point_angle = 10.0;
         object.setPossibleToPick(true);
         result.Objects.push_back(object);
         result.totalPossiblePicking = 1;
         result.ExecutionTime = 4.2;
+        result.cropOffsetPoint = cv::Point2f(7.0f, 9.0f);
+        result.imageCols = 64;
+        result.imageRows = 48;
         result.Image = cv::Mat(32, 32, CV_8UC3, cv::Scalar(0, 255, 0));
         return result;
     }
@@ -1191,6 +1200,51 @@ private slots:
 
         task.endCommission();
         QCOMPARE(task.taskState(), TaskState::Idle);
+    }
+
+    void test_vision_result_adapter_maps_match_result_with_crop_offset()
+    {
+        const mtc::MatchResult result = LocalizationRuntimeFixture::makeMatchResult();
+        vc::model::CameraWorkspace workspace;
+        workspace.conditionRoi = cv::Rect2f(5.0f, 6.0f, 20.0f, 18.0f);
+        workspace.useConditionWorkspace = true;
+
+        const VisionResultOverlay overlay = VisionResultAdapter::fromMatchResult(
+            result, QSize(64, 48), &workspace);
+
+        QCOMPARE(overlay.sourceImageSize, QSize(64, 48));
+        QCOMPARE(overlay.acceptedObjects.size(), 1);
+        const VisionResultObject object = overlay.acceptedObjects.front();
+        QCOMPARE(object.center, QPointF(27.0, 39.0));
+        QCOMPARE(object.corners.at(0), QPointF(17.0, 29.0));
+        QCOMPARE(object.corners.at(2), QPointF(37.0, 49.0));
+        QCOMPARE(object.pointAngleDeg, 10.0);
+        QVERIFY(!overlay.roiOverlays.isEmpty());
+    }
+
+    void test_vision_result_adapter_marks_sent_runtime_objects()
+    {
+        vc::model::LocalizationRuntimeController::CycleResult cycleResult;
+        cycleResult.rawImage = cv::Mat(48, 64, CV_8UC1, cv::Scalar(42));
+        cycleResult.matchResult = LocalizationRuntimeFixture::makeMatchResult();
+
+        vc::model::LocalizationRuntimeController::ResultRow row;
+        row.index = 1;
+        row.patternName = QStringLiteral("Pattern 1");
+        row.score = 0.95;
+        row.status = QStringLiteral("Sent");
+        cycleResult.rows.append(row);
+
+        QMap<QString, QVariant> runtimeSignals;
+        runtimeSignals.insert(QStringLiteral("nDetectedNumber"), 1);
+        runtimeSignals.insert(QStringLiteral("bMatchingFinished"), true);
+
+        const VisionResultOverlay overlay = VisionResultAdapter::fromCycleResult(
+            cycleResult, nullptr, &runtimeSignals);
+
+        QCOMPARE(overlay.acceptedObjects.size(), 1);
+        QVERIFY(overlay.acceptedObjects.front().sentToOutput);
+        QCOMPARE(overlay.runtimeSignalValues.value(QStringLiteral("nDetectedNumber")).toInt(), 1);
     }
 
     void test_task_localization_runtime_signals_drive_recovering_and_faulted_states()

@@ -40,6 +40,9 @@ protected:
   QRectF handleRect(HandlePosition pos) const;
   QRectF rotateHandleRect() const;
   HandlePosition getHandleAt(const QPointF &pos) const;
+  qreal currentLevelOfDetail() const;
+  qreal effectiveHandleSize() const;
+  qreal effectiveRotationHandleOffset() const;
 
   bool isInsideParent(QRectF &new_rect);
   bool correctRectItem(QRectF &moved_rect, QPointF &corrected);

@@ -15,6 +15,10 @@ QWidget#cmwRow {
     border: 1px solid @{border.default};
     border-radius: 5px;
 }
+QWidget#cmwRow[duplicateCamera="true"] {
+    background-color: @{state.warning.surface};
+    border-color: @{state.warning};
+}
 QLabel#cmwRowFieldLabel {
     color: @{text.muted};
     font-size: 9pt;
@@ -31,6 +35,11 @@ QLabel#cmwEditableLabel {
 QLabel#cmwEditableLabel:hover {
     border-color: @{accent.primary};
     background-color: @{bg.elevated};
+}
+QLabel#cmwEditableLabel[mappingWarning="duplicate"] {
+    color: @{state.warning};
+    background-color: @{state.warning.surface};
+    border-color: @{state.warning};
 }
 
 QComboBox#cmwEditableCombo,

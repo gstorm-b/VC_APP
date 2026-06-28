@@ -258,9 +258,14 @@ context.
 
 ### 4.3 Icons follow the theme
 
-**Rule 4.4 — Theme-aware icons go through `ThemeManager::themedIcon()`.**
-Icons named `foo.svg` carry light-on-dark paths; `foo_dark.svg` carry
-dark-on-light paths. Ask the manager for the right variant; never hard-code one.
+**Rule 4.4 — Theme-aware icons go through the theme-aware icon helper.**
+In this codebase that means `svgIcon(basePath)` for ordinary `QIcon` consumers,
+or `ThemeManager::themedIcon(basePath)` when code explicitly needs the resolved
+resource path. Icons named `foo.svg` carry light-on-dark paths; `foo_dark.svg`
+carry dark-on-light paths. When no `_dark` sibling exists, the base asset is
+treated as theme-neutral and reused in both themes. Any widget that converts an
+icon to a `QPixmap` and stores it in a label must refresh that pixmap on
+`themeChanged`, because a stored pixmap does not re-resolve variants by itself.
 
 ### 4.4 Repolish after a property change
 
@@ -383,7 +388,8 @@ A UI change is not ready to merge unless all of these hold:
       with `this` as context.
 - [ ] Variant styling uses dynamic properties + attribute selectors, with a
       repolish after every `setProperty`.
-- [ ] Theme-aware icons go through `themedIcon()`.
+- [ ] Theme-aware icons go through `svgIcon()` or `themedIcon()`; direct
+      `QPixmap` consumers refresh on `themeChanged`.
 - [ ] Custom-painted surfaces read colours from a theme token header, not raw
       `QColor` literals, and repaint on `themeChanged`.
 - [ ] Reusable button/control variants are thin subclasses in `src/form/widgets/`,

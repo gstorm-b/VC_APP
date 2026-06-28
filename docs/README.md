@@ -31,6 +31,7 @@ task; do not load the whole tree by default.
 | Active technical-debt backlog | [backlog/technical_debt_and_next_steps.md](backlog/technical_debt_and_next_steps.md) |
 | Deferred TODO list | [backlog/later_todo_list.md](backlog/later_todo_list.md) |
 | Long-form architecture backlog | [backlog/architecture_improvement_todo.md](backlog/architecture_improvement_todo.md) |
+| Vision widget implementation handoff | [backlog/vision_widgets_implementation_plan.md](backlog/vision_widgets_implementation_plan.md) |
 | Closed restructure roadmap and source-of-truth hierarchy | [architecture/project_restructure_plan.md](architecture/project_restructure_plan.md) |
 
 ## Product And Packaging

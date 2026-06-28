@@ -65,9 +65,9 @@
         </spacer>
        </item>
        <item>
-        <widget class="QLabel" name="lbl_working_group">
+       <widget class="QLabel" name="lbl_working_group">
          <property name="text">
-          <string>Working ROI</string>
+          <string>Workspace ROI</string>
          </property>
         </widget>
        </item>

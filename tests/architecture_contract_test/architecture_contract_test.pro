@@ -15,6 +15,7 @@ include($$ROOT_DIR/components/RobotKinematics/robotkinematics.pri)
 
 SOURCES += \
     main.cpp \
+    $$ROOT_DIR/src/app_settings/app_settings.cpp \
     $$ROOT_DIR/src/calibration/calibration_board.cpp \
     $$ROOT_DIR/src/calibration/calibration_board_factory.cpp \
     $$ROOT_DIR/src/calibration/calibrator.cpp \
@@ -49,9 +50,13 @@ SOURCES += \
     $$ROOT_DIR/src/model/robot_kinematic_picking_checker.cpp \
     $$ROOT_DIR/src/model/task_factory.cpp \
     $$ROOT_DIR/src/model/task_localization.cpp \
-    $$ROOT_DIR/src/runtime/task_runner.cpp
+    $$ROOT_DIR/src/runtime/task_runner.cpp \
+    $$ROOT_DIR/src/utils/theme_manager.cpp \
+    $$ROOT_DIR/src/widgets/vision/vision_geometry.cpp \
+    $$ROOT_DIR/src/widgets/vision/vision_result_adapter.cpp
 
 HEADERS += \
+    $$ROOT_DIR/src/app_settings/app_settings.h \
     $$ROOT_DIR/src/calibration/calibration_board.h \
     $$ROOT_DIR/src/calibration/calibration_board_factory.h \
     $$ROOT_DIR/src/calibration/calibrator.h \
@@ -137,6 +142,10 @@ HEADERS += \
     $$ROOT_DIR/src/runtime/plc_runner.h \
     $$ROOT_DIR/src/runtime/task_runner.h \
     $$ROOT_DIR/src/runtime/vision_output_runner.h \
-    $$ROOT_DIR/src/utils/meta_utils.h
+    $$ROOT_DIR/src/utils/meta_utils.h \
+    $$ROOT_DIR/src/utils/theme_manager.h \
+    $$ROOT_DIR/src/widgets/vision/vision_geometry.h \
+    $$ROOT_DIR/src/widgets/vision/vision_overlay_types.h \
+    $$ROOT_DIR/src/widgets/vision/vision_result_adapter.h
 
 include($$ROOT_DIR/qmake/local_dependencies.pri)

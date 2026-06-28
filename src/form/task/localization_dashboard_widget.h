@@ -12,6 +12,7 @@ class LocalizationDashboardWidget;
 }
 
 class StatusLamp;
+class VisionResultViewerWidget;
 
 class LocalizationDashboardWidget : public ITaskWidget
 {
@@ -50,11 +51,12 @@ private:
     void updateTaskStateLabel();
     void setupResultTable();
     void updateCycleResult(const vc::model::LocalizationRuntimeController::CycleResult &result);
-    // Overlay the active camera's condition ROI on the result view when the user
-    // has enabled it. imgW/imgH are the displayed result image's dimensions; the
-    // ROI is shifted into the cropped frame when the working workspace is active.
-    void drawConditionRoiOverlay(int imgW, int imgH);
     void appendTaskLog(const vc::model::LocalizationRuntimeController::TaskLogEntry &entry);
+    void installVisionViewer();
+    void syncResultSelectionFromTable();
+    void syncResultSelectionFromViewer(int objectIndex);
+    void clearResultSelection();
+    int resultOverlayIndexForRow(int row) const;
 
     // Route a single live signal value to its dashboard visual (state lamps,
     // fault panel, or context value label). Monitor-list refresh is handled
@@ -71,6 +73,8 @@ private:
 
     int  m_lastFaultCode{0};
     bool m_taskFaultActive{false};
+    QMap<QString, QVariant> m_liveSignalValues;
+    VisionResultViewerWidget *m_resultViewer{nullptr};
 
     // Live nActiveCamera number; -1 = unknown (use first bound camera).
     int m_activeCameraNumber{-1};

@@ -51,6 +51,7 @@ private:
     };
 
     void initCards();
+    void refreshCardIcons();
     void selectCard(vc::device::DeviceType type);
     void reloadStyleSheet();
     void repolish(QWidget *w);

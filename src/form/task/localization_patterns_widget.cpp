@@ -8,6 +8,10 @@
 #include "form/pattern/edit_pattern_wizard.h"
 #include "form/task/workspace_setting_dialog.h"
 #include "widgets/qtpropertybrowser/qtvariantproperty.h"
+#include "widgets/vision/vision_canvas.h"
+#include "widgets/vision/vision_geometry.h"
+#include "widgets/vision/vision_result_adapter.h"
+#include "widgets/vision/vision_result_viewer_widget.h"
 #include "matching/vision_utils.h"
 
 #include <QTableWidget>
@@ -19,6 +23,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSignalBlocker>
+#include <QShortcut>
 #include <QTimer>
 #include <QFileInfo>
 #include <QDateTime>
@@ -29,6 +34,7 @@
 #include <QCheckBox>
 #include <QFile>
 #include <QLabel>
+#include <QLayout>
 #include <QStackedWidget>
 #include <QFrame>
 #include <QSplitter>
@@ -41,6 +47,8 @@
 #include <opencv2/core/types.hpp>
 
 #include <QImage>
+
+#include <initializer_list>
 
 namespace {
 
@@ -76,6 +84,34 @@ cv::Mat pixmapToMat(const QPixmap &pixmap) {
     }
     }
 }
+
+void replacePageWidget(QLayout *layout, QWidget *oldWidget, QWidget *newWidget)
+{
+    if (!layout || !oldWidget || !newWidget) return;
+    layout->replaceWidget(oldWidget, newWidget);
+    oldWidget->hide();
+    newWidget->show();
+}
+
+QColor themeTokenColor(const QString &token)
+{
+    return QColor(ThemeManager::tokenValue(token, ThemeManager::instance()->isDark()));
+}
+
+const cv::Mat *firstRenderableImage(std::initializer_list<const cv::Mat *> candidates)
+{
+    for (const cv::Mat *candidate : candidates) {
+        if (candidate && !candidate->empty()
+            && !vision::pixmapFromMat(*candidate).isNull()) {
+            return candidate;
+        }
+    }
+    return nullptr;
+}
+
+constexpr int kMonitorPageRaw = 0;
+constexpr int kMonitorPageResult = 1;
+constexpr int kMonitorPageBinary = 2;
 
 } // namespace
 
@@ -332,6 +368,8 @@ void LocalizationPatternsWidget::initWidget() {
     connect(m_configAdapter, &mtc::MatchConfigPropertyAdapter::configModified,
             this, &LocalizationPatternsWidget::onGroupTypeConfigModified);
 
+    installVisionWidgets();
+
     wireToolbar();
     wireTree();
     wireManagerSignals();
@@ -354,7 +392,7 @@ void LocalizationPatternsWidget::initWidget() {
     // rebuildPropertyBrowser() on every selection change (and once here through
     // wirePropertyBrowser() above — no pattern bound yet, so controls start
     // disabled).
-    setMonitorPage(0);
+    setMonitorPage(kMonitorPageRaw);
 }
 
 // ── Wiring helpers ───────────────────────────────────────────────────────────
@@ -725,6 +763,7 @@ void LocalizationPatternsWidget::selectGroup(int groupIndex) {
     }
 
     rebuildPropertyBrowser();
+    syncEditorImageForSelection();
 }
 
 void LocalizationPatternsWidget::selectPattern(int groupIndex, int patternIndex) {
@@ -744,6 +783,7 @@ void LocalizationPatternsWidget::selectPattern(int groupIndex, int patternIndex)
         // build pattern
         bindPatternToBrowser(pattern);
         updatePatternThumb(pattern);
+        syncEditorImageForSelection();
     }
 }
 
@@ -754,6 +794,7 @@ void LocalizationPatternsWidget::clearSelection() {
     m_workingGroupConfig = mtc::MatchGroupConfig{};
     unbindPattern();
     updatePatternThumb(nullptr);
+    syncEditorImageForSelection();
 }
 
 void LocalizationPatternsWidget::updatePatternThumb(mtc::MatchPattern *pattern) {
@@ -1251,42 +1292,19 @@ QString LocalizationPatternsWidget::activeCameraId() const {
 }
 
 void LocalizationPatternsWidget::updateWorkspaceRoiOverlay() {
-    if (!ui->imageView_Raw) return;
+    const QVector<VisionRoi> overlays = buildWorkspaceOverlayRois();
+    if (m_rawPreview) {
+        m_rawPreview->setAuxiliaryRois(overlays);
+    }
+
+    if (m_hasLastMatchResult
+        && m_resultViewer
+        && ui->stackedWidget_ImageView->currentIndex() == kMonitorPageResult) {
+        displayResultOverlay(m_currentImage, m_lastMatchResult);
+    }
+
+    if (m_rawPreview || !ui->imageView_Raw) return;
     ui->imageView_Raw->removeAllROI();
-
-    // "Show ROI" toggle gates the overlay entirely.
-    if (ui->cbx_show_match_area && !ui->cbx_show_match_area->isChecked()) return;
-    if (m_currentImage.empty() || !m_localizeTask) return;
-
-    const QString camId = activeCameraId();
-    if (camId.isEmpty()) return;
-
-    const vc::model::CameraWorkspace ws =
-        m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
-
-    // The raw view shows the full grabbed frame, so both ROIs are drawn in
-    // image-pixel coordinates, clamped to the current image bounds.
-    auto drawRoi = [this](const cv::Rect2f &roi, const QColor &color) {
-        const int tlx = qMax(0, qRound(roi.x));
-        const int tly = qMax(0, qRound(roi.y));
-        const int brx = qMin(m_currentImage.cols, qRound(roi.x + roi.width));
-        const int bry = qMin(m_currentImage.rows, qRound(roi.y + roi.height));
-        if (brx <= tlx || bry <= tly) return;
-        ui->imageView_Raw->addROI(tlx, tly, brx, bry, color);
-    };
-
-    // Working ROI: accent orange while in use, muted grey when only defined.
-    if (ws.hasRoi()) {
-        drawRoi(ws.roi, ws.useWorkspace ? QColor(0xE8, 0x7C, 0x00)
-                                        : QColor(0x7A, 0x88, 0x98));
-    }
-
-    // Condition ROI: shown whenever one is set. Info blue while active, muted
-    // grey when only defined.
-    if (ws.hasConditionRoi()) {
-        drawRoi(ws.conditionRoi, ws.useConditionWorkspace ? QColor(0x40, 0xA8, 0xE0)
-                                                          : QColor(0x7A, 0x88, 0x98));
-    }
 }
 
 void LocalizationPatternsWidget::onUseRoiToggled(bool enabled) {
@@ -1391,16 +1409,19 @@ void LocalizationPatternsWidget::onSetWorkspaceClicked() {
 }
 
 void LocalizationPatternsWidget::onShowRawView() {
-    setMonitorPage(0);
+    setMonitorPage(kMonitorPageRaw);
     updateWorkspaceRoiOverlay();
 }
 
 void LocalizationPatternsWidget::onShowResultView() {
-    setMonitorPage(1);
+    if (m_hasLastMatchResult) {
+        displayResultOverlay(m_currentImage, m_lastMatchResult);
+    }
+    setMonitorPage(kMonitorPageResult);
 }
 
 void LocalizationPatternsWidget::onShowBinaryView() {
-    setMonitorPage(2);
+    setMonitorPage(kMonitorPageBinary);
     displayBinaryImage();
 }
 
@@ -1472,11 +1493,11 @@ void LocalizationPatternsWidget::setCameraImage(const cv::Mat &image) {
     }
 
     m_currentImage = image.clone();
-    displayRawImage(m_currentImage);
+    syncEditorImageForSelection();
     syncUseRoiCheckbox();
     updateWorkspaceRoiOverlay();
     displayBinaryImage();
-    setMonitorPage(0);
+    setMonitorPage(kMonitorPageRaw);
 
     ui->label_status_image->setText(
         tr("Image: %1 × %2 px").arg(image.cols).arg(image.rows));
@@ -1485,6 +1506,88 @@ void LocalizationPatternsWidget::setCameraImage(const cv::Mat &image) {
     ui->btn_run_match->setEnabled(ui->comboBox_pattern_group->count() > 0);
 
     setState(State::Idle, tr("Image ready."));
+}
+
+void LocalizationPatternsWidget::installVisionWidgets()
+{
+    if (m_rawPreview || m_resultViewer) return;
+
+    m_rawPreview = new VisionCanvas(this);
+    m_resultViewer = new VisionResultViewerWidget(this);
+
+    m_rawPreview->setReadOnly(true);
+    m_rawPreview->setToolMode(VisionToolPalette::ToolMode::Pan);
+
+    replacePageWidget(ui->hl_page_raw, ui->imageView_Raw, m_rawPreview);
+    replacePageWidget(ui->hl_page_result, ui->imageView_Result, m_resultViewer);
+    connect(m_resultViewer, &VisionResultViewerWidget::resultObjectSelectionChanged,
+            this, &LocalizationPatternsWidget::syncResultSelectionFromViewer);
+}
+
+void LocalizationPatternsWidget::syncEditorImageForSelection()
+{
+    if (!m_currentImage.empty()) {
+        displayRawImage(m_currentImage);
+        return;
+    }
+
+    if (m_boundPattern && !m_boundPattern->config().m_rawImage.empty()) {
+        displayRawImage(m_boundPattern->config().m_rawImage);
+        return;
+    }
+
+    if (m_rawPreview) {
+        m_rawPreview->clearImage();
+    }
+}
+
+QVector<VisionRoi> LocalizationPatternsWidget::buildWorkspaceOverlayRois() const
+{
+    QVector<VisionRoi> rois;
+    if (!m_localizeTask) return rois;
+    if (m_currentImage.empty()) return rois;
+    if (ui->cbx_show_match_area && !ui->cbx_show_match_area->isChecked()) return rois;
+
+    const QString camId = activeCameraId();
+    if (camId.isEmpty()) return rois;
+
+    const vc::model::CameraWorkspace ws =
+        m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
+
+    auto appendRoi = [&rois](const QString &id,
+                             const QString &label,
+                             const cv::Rect2f &rect,
+                             const QColor &color) {
+        if (rect.width <= 0.0f || rect.height <= 0.0f) return;
+        VisionRoi roi;
+        roi.id = id;
+        roi.label = label;
+        roi.shape = VisionRoiShape::AxisAlignedRect;
+        roi.center = QPointF(rect.x + rect.width * 0.5f, rect.y + rect.height * 0.5f);
+        roi.size = QSizeF(rect.width, rect.height);
+        roi.editable = false;
+        roi.visible = true;
+        roi.color = color;
+        rois.append(roi);
+    };
+
+    if (ws.hasRoi()) {
+        appendRoi(QStringLiteral("workspace"),
+                  QStringLiteral("Workspace ROI"),
+                  ws.roi,
+                  ws.useWorkspace ? themeTokenColor(QStringLiteral("accent.primary"))
+                                  : themeTokenColor(QStringLiteral("text.muted")));
+    }
+
+    if (ws.hasConditionRoi()) {
+        appendRoi(QStringLiteral("condition"),
+                  QStringLiteral("Condition ROI"),
+                  ws.conditionRoi,
+                  ws.useConditionWorkspace ? themeTokenColor(QStringLiteral("state.info"))
+                                           : themeTokenColor(QStringLiteral("text.muted")));
+    }
+
+    return rois;
 }
 
 // ── Property browser change handlers ─────────────────────────────────────────
@@ -1557,7 +1660,9 @@ void LocalizationPatternsWidget::onGroupTypeConfigModified() {
     if (!commitWorkingGroupConfig()) return;
 
     seedBinaryControlsFromConfig();
-    if (ui->stackedWidget_ImageView->currentIndex() == 2) displayBinaryImage();
+    if (ui->stackedWidget_ImageView->currentIndex() == kMonitorPageBinary) {
+        displayBinaryImage();
+    }
 }
 
 void LocalizationPatternsWidget::onPropertyValueChanged(QtProperty *property,
@@ -1589,10 +1694,12 @@ void LocalizationPatternsWidget::onPropertyValueChanged(QtProperty *property,
 // ── Matching commission ─────────────────────────────────────────────
 
 void LocalizationPatternsWidget::onMatchingCommissionDone(mtc::MatchResult result) {
+    m_lastMatchResult = result;
+    m_hasLastMatchResult = true;
     applyKpis(result);
     populateResultTable(result);     // ← fill the new result-table widget
-    displayResultImage(result.Image);
-    setMonitorPage(1);
+    displayResultOverlay(m_currentImage, result);
+    setMonitorPage(kMonitorPageResult);
 
     if (!result.isFoundMatchObject) {
         setState(State::Warning, tr("No match found."));
@@ -1670,14 +1777,46 @@ void LocalizationPatternsWidget::applyKpis(const mtc::MatchResult &result) {
 
 void LocalizationPatternsWidget::displayRawImage(const cv::Mat &image) {
     cv::Mat img = image;
-    ui->imageView_Raw->loadImageOpenCv(img, true);
+    if (m_rawPreview) {
+        m_rawPreview->setImage(img);
+        m_rawPreview->setAuxiliaryRois(buildWorkspaceOverlayRois());
+    }
+    if (!m_rawPreview) {
+        ui->imageView_Raw->loadImageOpenCv(img, true);
+    }
 }
 
-void LocalizationPatternsWidget::displayResultImage(const cv::Mat &image) {
-    cv::Mat img = image;
+void LocalizationPatternsWidget::displayResultOverlay(const cv::Mat &image,
+                                                      const mtc::MatchResult &result) {
+    const QString camId = activeCameraId();
+    vc::model::CameraWorkspace workspaceValue;
+    const vc::model::CameraWorkspace *workspace = nullptr;
+    if (m_localizeTask && !camId.isEmpty()) {
+        workspaceValue = m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
+        workspace = &workspaceValue;
+    }
+
+    if (m_resultViewer) {
+        const cv::Mat *displayImage = firstRenderableImage({&image, &result.Image});
+        if (!displayImage) {
+            m_resultViewer->clearResult();
+            return;
+        }
+
+        VisionResultOverlay overlay = VisionResultAdapter::fromMatchResult(
+            result, QSize(displayImage->cols, displayImage->rows), workspace);
+        if (ui->cbx_show_match_area && !ui->cbx_show_match_area->isChecked()) {
+            overlay.roiOverlays.clear();
+        }
+
+        m_resultViewer->setImage(*displayImage);
+        m_resultViewer->setOverlay(overlay);
+        return;
+    }
+
+    cv::Mat img = result.Image;
     if (img.empty()) return;
     ui->imageView_Result->loadImageOpenCv(img, true);
-    drawConditionRoiOverlay(img.cols, img.rows);
 }
 
 void LocalizationPatternsWidget::displayBinaryImage() {
@@ -1730,9 +1869,9 @@ void LocalizationPatternsWidget::seedBinaryControlsFromConfig() {
 
 void LocalizationPatternsWidget::setMonitorPage(int page) {
     ui->stackedWidget_ImageView->setCurrentIndex(page);
-    ui->btn_view_raw   ->setChecked(page == 0);
-    ui->btn_view_result->setChecked(page == 1);
-    ui->btn_view_binary->setChecked(page == 2);
+    ui->btn_view_raw->setChecked(page == kMonitorPageRaw);
+    ui->btn_view_result->setChecked(page == kMonitorPageResult);
+    ui->btn_view_binary->setChecked(page == kMonitorPageBinary);
 }
 
 // ── Matching test ────────────────────────────────────────────────────────────
@@ -1797,7 +1936,10 @@ void LocalizationPatternsWidget::buildResultTable() {
     layoutMon->addWidget(hd);
 
     // Table
-    m_resultTable = new QTableWidget(0, 8, ui->pane_monitor);
+    // m_resultTable = new QTableWidget(0, 8, ui->pane_monitor);
+    m_resultTable = ui->result_table;
+    m_resultTable->setColumnCount(8);
+    m_resultTable->setRowCount(0);
     m_resultTable->setObjectName(QStringLiteral("patternResultTable"));
     QStringList headers = {tr("#"), tr("Pat #"), tr("Pattern Name"),
                             tr("Score"), tr("X"), tr("Y"), tr("Angle") , tr("OK") };
@@ -1820,15 +1962,25 @@ void LocalizationPatternsWidget::buildResultTable() {
 
     // Styled via QSS by objectName "patternResultTable" in per-form QSS file.
     layoutMon->addWidget(m_resultTable);
+
+    connect(m_resultTable, &QTableWidget::itemSelectionChanged,
+            this, &LocalizationPatternsWidget::syncResultSelectionFromTable);
+
+    auto *clearSelectionShortcut =
+        new QShortcut(QKeySequence(Qt::Key_Escape), m_resultTable);
+    connect(clearSelectionShortcut, &QShortcut::activated,
+            this, &LocalizationPatternsWidget::clearResultSelection);
 }
 
 void LocalizationPatternsWidget::clearResultTable() {
+    clearResultSelection();
     if (m_resultTable) m_resultTable->setRowCount(0);
 }
 
 void LocalizationPatternsWidget::populateResultTable(const mtc::MatchResult &result) {
     if (!m_resultTable) return;
 
+    clearResultSelection();
     m_resultTable->setRowCount(0);
     if (result.Objects.empty()) return;
 
@@ -1858,7 +2010,9 @@ void LocalizationPatternsWidget::populateResultTable(const mtc::MatchResult &res
 
         const bool ok = !obj.hasCollision() && !obj.isOutsideConditionRoi();
 
-        m_resultTable->setItem(row, 0, cell(QString::number(row + 1)));
+        auto *indexCell = cell(QString::number(row + 1));
+        indexCell->setData(Qt::UserRole, row + 1);
+        m_resultTable->setItem(row, 0, indexCell);
         m_resultTable->setItem(row, 1, colored(QString("#%1").arg(obj.pattern_index),
                                                  ptn::OUTPUT, true));
         m_resultTable->setItem(row, 2, cell(QString::fromStdWString(obj.pattern_name)));
@@ -1889,34 +2043,61 @@ void LocalizationPatternsWidget::populateResultTable(const mtc::MatchResult &res
     }
 }
 
-void LocalizationPatternsWidget::drawConditionRoiOverlay(int imgW, int imgH)
+void LocalizationPatternsWidget::syncResultSelectionFromTable()
 {
-    if (!m_localizeTask || imgW <= 0 || imgH <= 0) return;
+    if (!m_resultViewer || !m_resultTable) return;
 
-    const QString camId = activeCameraId();
-    if (camId.isEmpty()) return;
-
-    // Read the workspace fresh from the task: workspace edits made after this
-    // widget was constructed are not mirrored into the cached m_config.
-    const vc::model::CameraWorkspace ws =
-        m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
-    if (!ws.useConditionWorkspace || !ws.hasConditionRoi()) return;
-
-    // The result image is cropped to the working ROI when that workspace is
-    // active, so shift the condition ROI (full-frame coords) into the crop.
-    float ox = 0.0f, oy = 0.0f;
-    if (ws.useWorkspace && ws.hasRoi()) {
-        ox = ws.roi.x;
-        oy = ws.roi.y;
+    const int row = m_resultTable->currentRow();
+    if (row < 0) {
+        m_resultViewer->clearSelectedResultObject();
+        return;
     }
 
-    const int tlx = qMax(0, qRound(ws.conditionRoi.x - ox));
-    const int tly = qMax(0, qRound(ws.conditionRoi.y - oy));
-    const int brx = qMin(imgW, qRound(ws.conditionRoi.x - ox + ws.conditionRoi.width));
-    const int bry = qMin(imgH, qRound(ws.conditionRoi.y - oy + ws.conditionRoi.height));
-    if (brx <= tlx || bry <= tly) return;
+    const int objectIndex = resultOverlayIndexForRow(row);
+    if (objectIndex > 0) {
+        m_resultViewer->setSelectedResultObject(objectIndex);
+    } else {
+        m_resultViewer->clearSelectedResultObject();
+    }
+}
 
-    // Info blue — matches the patterns raw-view condition overlay.
-    ui->imageView_Result->removeAllROI();
-    ui->imageView_Result->addROI(tlx, tly, brx, bry, QColor(0x40, 0xA8, 0xE0));
+void LocalizationPatternsWidget::syncResultSelectionFromViewer(int objectIndex)
+{
+    if (!m_resultTable) return;
+
+    QSignalBlocker blocker(m_resultTable);
+    if (objectIndex <= 0) {
+        m_resultTable->clearSelection();
+        return;
+    }
+
+    for (int row = 0; row < m_resultTable->rowCount(); ++row) {
+        if (resultOverlayIndexForRow(row) == objectIndex) {
+            m_resultTable->selectRow(row);
+            return;
+        }
+    }
+
+    m_resultTable->clearSelection();
+}
+
+void LocalizationPatternsWidget::clearResultSelection()
+{
+    if (m_resultTable) {
+        QSignalBlocker blocker(m_resultTable);
+        m_resultTable->clearSelection();
+    }
+    if (m_resultViewer) {
+        m_resultViewer->clearSelectedResultObject();
+    }
+}
+
+int LocalizationPatternsWidget::resultOverlayIndexForRow(int row) const
+{
+    if (!m_resultTable || row < 0 || row >= m_resultTable->rowCount()) {
+        return -1;
+    }
+
+    const QTableWidgetItem *item = m_resultTable->item(row, 0);
+    return item ? item->data(Qt::UserRole).toInt() : -1;
 }

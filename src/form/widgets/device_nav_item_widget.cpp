@@ -7,6 +7,7 @@
 #include <QVBoxLayout>
 
 #include "form/widgets/device_nav_dot.h"
+#include "utils/theme_manager.h"
 #include "windows_helper.h"
 
 namespace {
@@ -47,6 +48,12 @@ DeviceNavItemWidget::DeviceNavItemWidget(QWidget *parent)
     setDeviceType(vc::device::DeviceType::UserType);
     setSelected(false);
     setIndicatorState(QStringLiteral("off"));
+
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged,
+            this, [this](const QString &, bool) {
+        if (!m_iconPath.isEmpty())
+            setIconPath(m_iconPath, m_iconSize);
+    });
 }
 
 void DeviceNavItemWidget::setDeviceId(const QString &deviceId)
@@ -110,15 +117,17 @@ void DeviceNavItemWidget::setIcon(const QIcon &icon, const QSize &size)
     if (!m_iconLabel)
         return;
 
+    m_iconSize = size.isValid() ? size : QSize(14, 14);
     if (icon.isNull()) {
         m_iconLabel->clear();
         return;
     }
-    m_iconLabel->setPixmap(icon.pixmap(size));
+    m_iconLabel->setPixmap(icon.pixmap(m_iconSize));
 }
 
 void DeviceNavItemWidget::setIconPath(const QString &iconPath, const QSize &size)
 {
+    m_iconPath = iconPath;
     if (iconPath.isEmpty()) {
         setIcon(QIcon(), size);
         return;

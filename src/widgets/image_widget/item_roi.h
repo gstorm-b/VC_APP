@@ -42,6 +42,8 @@ protected:
                       const QVariant &value) override;
   QRectF handleRect(HandlePosition pos) const;
   HandlePosition getHandleAt(const QPointF &pos) const;
+  qreal currentLevelOfDetail() const;
+  qreal effectiveHandleSize() const;
 
   bool isInsideParent(QRectF &new_rect);
   bool correctRectItem(QRectF &moved_rect, QPointF &corrected);

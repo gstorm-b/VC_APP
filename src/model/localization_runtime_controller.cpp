@@ -1041,6 +1041,7 @@ void LocalizationRuntimeController::onCameraGrabFinished(vc::device::GrabResult 
 
     // The robot-pickability checker is built once at runtime setup and rebuilt
     // only on active-camera change (rebuildPickingChecker), not per cycle.
+    m_pendingCycleResult.rawImage = result.frame.clone();
     emit runtimeMatchingRequested(m_activeCycleId, group, m_activeCameraWorkspace,
                                   result.frame.clone(), m_pickingChecker);
 }
@@ -1069,6 +1070,7 @@ void LocalizationRuntimeController::onRuntimeMatchingFinished(int cycleId,
     m_pendingCycleResult.matchingTimeMs = matchResult.ExecutionTime;
     m_pendingCycleResult.lowArea = matchResult.isAreaLessThanLimits;
     m_pendingCycleResult.displayImage = matchResult.Image.clone();
+    m_pendingCycleResult.matchResult = matchResult;
     m_pendingCycleResult.rows = rows;
 
     auto *visionRunner = visionOutputRunner();

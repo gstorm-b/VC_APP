@@ -96,6 +96,14 @@ SOURCES += \
     src/widgets/image_widget/item_picking_pos.cpp \
     src/widgets/image_widget/item_roi.cpp \
     src/widgets/image_widget/item_roi_rotated.cpp \
+    src/widgets/vision/vision_canvas.cpp \
+    src/widgets/vision/vision_geometry.cpp \
+    src/widgets/vision/vision_numeric_inspector.cpp \
+    src/widgets/vision/vision_result_adapter.cpp \
+    src/widgets/vision/vision_result_viewer_widget.cpp \
+    src/widgets/vision/vision_roi_config_adapter.cpp \
+    src/widgets/vision/vision_roi_editor_widget.cpp \
+    src/widgets/vision/vision_tool_palette.cpp \
     src/widgets/no_wheel_combobox.cpp \
     src/widgets/pattern_tree_widget.cpp \
     src/widgets/plc_widget/device_row_delegate.cpp \
@@ -277,6 +285,15 @@ HEADERS += \
     src/widgets/no_wheel_double_spinbox.h \
     src/widgets/no_wheel_spinbox.h \
     src/widgets/pattern_tree_widget.h \
+    src/widgets/vision/vision_canvas.h \
+    src/widgets/vision/vision_geometry.h \
+    src/widgets/vision/vision_numeric_inspector.h \
+    src/widgets/vision/vision_overlay_types.h \
+    src/widgets/vision/vision_result_adapter.h \
+    src/widgets/vision/vision_result_viewer_widget.h \
+    src/widgets/vision/vision_roi_config_adapter.h \
+    src/widgets/vision/vision_roi_editor_widget.h \
+    src/widgets/vision/vision_tool_palette.h \
     src/widgets/plc_widget/device_row_delegate.h \
     src/widgets/plc_widget/devices_monitor_widget.h \
     src/widgets/project_tree_widget.h \

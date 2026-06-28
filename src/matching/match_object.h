@@ -150,6 +150,10 @@ public:
         m_isPossibleToPicking = state;
     }
 
+    const GripperBox& gripperBox() const {
+        return m_gripperBox;
+    }
+
 private:
     void drawMaskIntoImage(cv::Mat &image, cv::Mat &mask, cv::Scalar color) {
         if (mask.empty() || image.empty()) {

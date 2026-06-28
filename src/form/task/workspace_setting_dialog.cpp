@@ -5,9 +5,13 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFrame>
 #include <QGraphicsScene>
+#include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QMessageBox>
+#include <QVBoxLayout>
 
 namespace {
 // ROI bounding colours — working = success green, condition = accent orange
@@ -29,6 +33,43 @@ WorkspaceSettingDialog::WorkspaceSettingDialog(QWidget *parent)
     m_view->setEnableMouseMenu(false);
     ui->stack_wg->addWidget(m_view);
     ui->stack_wg->setCurrentWidget(m_view);
+
+    auto *legendFrame = new QFrame(m_view->viewport());
+    legendFrame->setObjectName(QStringLiteral("workspaceRoiLegend"));
+    legendFrame->setStyleSheet(QStringLiteral(
+        "QFrame#workspaceRoiLegend {"
+        "background: rgba(8, 12, 18, 180);"
+        "border: 1px solid rgba(255, 255, 255, 36);"
+        "border-radius: 8px;"
+        "}"
+        "QFrame#workspaceRoiLegend QLabel { color: white; }"));
+    auto *legendLayout = new QVBoxLayout(legendFrame);
+    legendLayout->setContentsMargins(10, 8, 10, 8);
+    legendLayout->setSpacing(4);
+
+    auto addLegendRow = [legendLayout](const QString &text, const QColor &color) {
+        auto *row = new QHBoxLayout;
+        row->setContentsMargins(0, 0, 0, 0);
+        row->setSpacing(6);
+
+        auto *swatch = new QLabel;
+        swatch->setFixedSize(12, 12);
+        swatch->setStyleSheet(QStringLiteral(
+            "background:%1; border:1px solid rgba(255,255,255,96); border-radius:3px;")
+                                  .arg(color.name()));
+        auto *label = new QLabel(text);
+
+        row->addWidget(swatch);
+        row->addWidget(label);
+        row->addStretch(1);
+        legendLayout->addLayout(row);
+    };
+
+    addLegendRow(tr("Workspace ROI"), kWorkingNormal);
+    addLegendRow(tr("Condition ROI"), kConditionNormal);
+    legendFrame->adjustSize();
+    legendFrame->move(12, 12);
+    legendFrame->raise();
 
     // Both a freshly drawn ROI and a preloaded ROI surface through these
     // signals; onRoiCreated assigns the new item to whichever kind is pending.

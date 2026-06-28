@@ -76,7 +76,9 @@ public:
         int sentNumber{0};
         double matchingTimeMs{0.0};
         bool lowArea{false};
+        cv::Mat rawImage;
         cv::Mat displayImage;
+        mtc::MatchResult matchResult;
         QVector<ResultRow> rows;
     };
 

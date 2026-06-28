@@ -4,6 +4,9 @@
 #include "widgets/signals_monitor_widget.h"
 #include "widgets/task_event_log_widget.h"
 #include "widgets/image_widget/image_view_only.h"
+#include "widgets/vision/vision_geometry.h"
+#include "widgets/vision/vision_result_adapter.h"
+#include "widgets/vision/vision_result_viewer_widget.h"
 #include "form/widgets/status_lamp.h"
 
 #include "logger/app_logger.h"
@@ -14,16 +17,31 @@
 #include "runtime/task_runner.h"
 
 #include <QColor>
+#include <QLayout>
 #include <QMetaProperty>
+#include <QSignalBlocker>
+#include <QShortcut>
 #include <QStyle>
 #include <QTableWidgetItem>
 
+#include <initializer_list>
 #include <utility>
 
 using vc::model::TaskLocalization;
 using vc::model::TaskLocalizeConfig;
 
 namespace {
+
+const cv::Mat *firstRenderableImage(std::initializer_list<const cv::Mat *> candidates)
+{
+    for (const cv::Mat *candidate : candidates) {
+        if (candidate && !candidate->empty()
+            && !vision::pixmapFromMat(*candidate).isNull()) {
+            return candidate;
+        }
+    }
+    return nullptr;
+}
 
 // Schema for the signal monitor — internalName, displayName and type
 // declared inline. Display names live here (per yêu cầu) rather than being
@@ -87,6 +105,14 @@ QString faultCodeText(int code) {
     return QStringLiteral("%1 — %2").arg(code).arg(name);
 }
 
+void replaceDashboardWidget(QLayout *layout, QWidget *oldWidget, QWidget *newWidget)
+{
+    if (!layout || !oldWidget || !newWidget) return;
+    layout->replaceWidget(oldWidget, newWidget);
+    oldWidget->hide();
+    newWidget->show();
+}
+
 } // namespace
 
 LocalizationDashboardWidget::LocalizationDashboardWidget(std::shared_ptr<vc::model::ITask> task,
@@ -116,6 +142,7 @@ void LocalizationDashboardWidget::initWidget() {
 
     setupLamps();
     setupConnectionLamps();
+    installVisionViewer();
     setupResultTable();
     setFaultState(false, 0);
     updateTaskContext();
@@ -164,6 +191,7 @@ void LocalizationDashboardWidget::initWidget() {
     //
     connect(m_localizeTask, &TaskLocalization::signalChanged,
             this, [this](const QString &name, const QVariant &value) {
+        m_liveSignalValues.insert(name, value);
         switch (typeOf(name)) {
         case SignalsMonitorWidget::Type::Bool:
             ui->wg_signal_monitor->refreshBool(name, value.toBool());
@@ -437,6 +465,14 @@ void LocalizationDashboardWidget::setupResultTable()
         tr("Status"),
     });
     ui->tbl_result->setRowCount(0);
+
+    connect(ui->tbl_result, &QTableWidget::itemSelectionChanged,
+            this, &LocalizationDashboardWidget::syncResultSelectionFromTable);
+
+    auto *clearSelectionShortcut =
+        new QShortcut(QKeySequence(Qt::Key_Escape), ui->tbl_result);
+    connect(clearSelectionShortcut, &QShortcut::activated,
+            this, &LocalizationDashboardWidget::clearResultSelection);
 }
 
 void LocalizationDashboardWidget::updateCycleResult(
@@ -447,18 +483,32 @@ void LocalizationDashboardWidget::updateCycleResult(
     ui->lbl_kpi_cycle_time_val->setText(QStringLiteral("%1 ms").arg(result.matchingTimeMs, 0, 'f', 1));
     ui->lbl_kpi_low_area_val->setText(result.lowArea ? tr("Yes") : tr("No"));
 
-    // ImageViewOnly owns its own scene + pixmap item and handles cv::Mat →
-    // QPixmap conversion and fit-to-view internally (same path the patterns
-    // widget uses for imageView_Raw / imageView_Result).
-    ui->gv_match_view->removeAllROI();
-    if (result.displayImage.empty()) {
+    if (m_resultViewer) {
+        const QString camId = resolveActiveCameraDeviceId();
+        vc::model::CameraWorkspace workspaceValue;
+        const vc::model::CameraWorkspace *workspace = nullptr;
+        if (m_localizeTask && !camId.isEmpty()) {
+            workspaceValue = m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
+            workspace = &workspaceValue;
+        }
+
+        const cv::Mat *displayImage = firstRenderableImage(
+            {&result.rawImage, &result.matchResult.Image, &result.displayImage});
+        if (!displayImage) {
+            m_resultViewer->clearResult();
+        } else {
+            m_resultViewer->setImage(*displayImage);
+            m_resultViewer->setOverlay(
+                VisionResultAdapter::fromCycleResult(result, workspace, &m_liveSignalValues));
+        }
+    } else if (result.displayImage.empty()) {
         ui->gv_match_view->clearCurrentImage();
     } else {
-        cv::Mat display = result.displayImage;   // loadImageOpenCv takes a non-const ref
+        cv::Mat display = result.displayImage;
         ui->gv_match_view->loadImageOpenCv(display, true);
-        drawConditionRoiOverlay(display.cols, display.rows);
     }
 
+    clearResultSelection();
     ui->tbl_result->setRowCount(result.rows.size());
     for (int row = 0; row < result.rows.size(); ++row) {
         const auto &r = result.rows.at(row);
@@ -476,40 +526,13 @@ void LocalizationDashboardWidget::updateCycleResult(
             r.status,
         };
         for (int col = 0; col < values.size(); ++col) {
-            ui->tbl_result->setItem(row, col, new QTableWidgetItem(values.at(col)));
+            auto *item = new QTableWidgetItem(values.at(col));
+            if (col == 0) {
+                item->setData(Qt::UserRole, r.index);
+            }
+            ui->tbl_result->setItem(row, col, item);
         }
     }
-}
-
-void LocalizationDashboardWidget::drawConditionRoiOverlay(int imgW, int imgH)
-{
-    if (!m_localizeTask || imgW <= 0 || imgH <= 0) return;
-
-    const QString camId = resolveActiveCameraDeviceId();
-    if (camId.isEmpty()) return;
-
-    // Read the workspace fresh from the task: workspace edits made after this
-    // widget was constructed are not mirrored into the cached m_config.
-    const vc::model::CameraWorkspace ws =
-        m_localizeTask->taskLocalizeConfig().cameraWorkspace(camId);
-    if (!ws.useConditionWorkspace || !ws.hasConditionRoi()) return;
-
-    // The result image is cropped to the working ROI when that workspace is
-    // active, so shift the condition ROI (full-frame coords) into the crop.
-    float ox = 0.0f, oy = 0.0f;
-    if (ws.useWorkspace && ws.hasRoi()) {
-        ox = ws.roi.x;
-        oy = ws.roi.y;
-    }
-
-    const int tlx = qMax(0, qRound(ws.conditionRoi.x - ox));
-    const int tly = qMax(0, qRound(ws.conditionRoi.y - oy));
-    const int brx = qMin(imgW, qRound(ws.conditionRoi.x - ox + ws.conditionRoi.width));
-    const int bry = qMin(imgH, qRound(ws.conditionRoi.y - oy + ws.conditionRoi.height));
-    if (brx <= tlx || bry <= tly) return;
-
-    // Info blue — matches the patterns raw-view condition overlay.
-    ui->gv_match_view->addROI(tlx, tly, brx, bry, QColor(0x40, 0xA8, 0xE0));
 }
 
 void LocalizationDashboardWidget::appendTaskLog(
@@ -521,4 +544,71 @@ void LocalizationDashboardWidget::appendTaskLog(
     ev.message   = entry.message;
     // The operator log is task-scoped; no per-component source tag for now.
     ui->log_task_view->appendEvent(ev);
+}
+
+void LocalizationDashboardWidget::installVisionViewer()
+{
+    if (m_resultViewer) return;
+    m_resultViewer = new VisionResultViewerWidget(this);
+    replaceDashboardWidget(ui->verticalLayout, ui->gv_match_view, m_resultViewer);
+    connect(m_resultViewer, &VisionResultViewerWidget::resultObjectSelectionChanged,
+            this, &LocalizationDashboardWidget::syncResultSelectionFromViewer);
+}
+
+void LocalizationDashboardWidget::syncResultSelectionFromTable()
+{
+    if (!m_resultViewer) return;
+
+    const int row = ui->tbl_result->currentRow();
+    if (row < 0) {
+        m_resultViewer->clearSelectedResultObject();
+        return;
+    }
+
+    const int objectIndex = resultOverlayIndexForRow(row);
+    if (objectIndex > 0) {
+        m_resultViewer->setSelectedResultObject(objectIndex);
+    } else {
+        m_resultViewer->clearSelectedResultObject();
+    }
+}
+
+void LocalizationDashboardWidget::syncResultSelectionFromViewer(int objectIndex)
+{
+    QSignalBlocker blocker(ui->tbl_result);
+    if (objectIndex <= 0) {
+        ui->tbl_result->clearSelection();
+        return;
+    }
+
+    for (int row = 0; row < ui->tbl_result->rowCount(); ++row) {
+        if (resultOverlayIndexForRow(row) == objectIndex) {
+            ui->tbl_result->selectRow(row);
+            return;
+        }
+    }
+
+    ui->tbl_result->clearSelection();
+}
+
+void LocalizationDashboardWidget::clearResultSelection()
+{
+    {
+        QSignalBlocker blocker(ui->tbl_result);
+        ui->tbl_result->clearSelection();
+    }
+
+    if (m_resultViewer) {
+        m_resultViewer->clearSelectedResultObject();
+    }
+}
+
+int LocalizationDashboardWidget::resultOverlayIndexForRow(int row) const
+{
+    if (row < 0 || row >= ui->tbl_result->rowCount()) {
+        return -1;
+    }
+
+    const QTableWidgetItem *item = ui->tbl_result->item(row, 0);
+    return item ? item->data(Qt::UserRole).toInt() : -1;
 }

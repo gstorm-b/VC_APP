@@ -10,6 +10,15 @@
 namespace {
 constexpr int kRowHeight = 40;
 constexpr const char *kAddRowToken = "__cmw_add_row__";  // sentinel, never visible
+
+void repolish(QWidget *widget)
+{
+    if (!widget)
+        return;
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->update();
+}
 } // namespace
 
 // ==========================================
@@ -325,6 +334,7 @@ void CameraMappingWidget::onDataChanged() {
 
     const QStringList availableIds = getAvailableCameraIds();
     m_addRowWidget->setAvailableCameras(displaysFor(availableIds), availableIds);
+    applyDuplicateWarnings();
 
     emit mappingChanged(getCurrentMapping());
 }
@@ -393,6 +403,54 @@ void CameraMappingWidget::setCurrentMapping(const QMap<int, QString> &mapping) {
 
     this->blockSignals(false);
     onDataChanged();
+}
+
+void CameraMappingWidget::applyDuplicateWarnings()
+{
+    QSet<QString> seenCameraIds;
+
+    for (int i = 0; i < count(); ++i) {
+        QListWidgetItem *item = this->item(i);
+        if (item == m_addRowItem) continue;
+
+        CameraRowWidget *rowWidget = qobject_cast<CameraRowWidget*>(itemWidget(item));
+        if (!rowWidget) continue;
+
+        const QString cameraId = rowWidget->nameWidget->userData();
+        const bool duplicate = !cameraId.isEmpty() && seenCameraIds.contains(cameraId);
+        const QString tooltip = duplicate
+            ? tr("This camera is already mapped by an earlier row. "
+                 "Choose a different camera or remove the duplicate entry.")
+            : QString();
+
+        setDuplicateWarning(rowWidget, duplicate, tooltip);
+
+        if (!cameraId.isEmpty() && !duplicate)
+            seenCameraIds.insert(cameraId);
+    }
+}
+
+void CameraMappingWidget::setDuplicateWarning(CameraRowWidget *row,
+                                              bool on,
+                                              const QString &tooltip)
+{
+    if (!row)
+        return;
+
+    row->setProperty("duplicateCamera", on);
+    row->setToolTip(tooltip);
+    repolish(row);
+
+    if (row->nameWidget) {
+        row->nameWidget->setToolTip(tooltip);
+        if (QLabel *nameLabel =
+                row->nameWidget->findChild<QLabel*>(QStringLiteral("cmwEditableLabel"))) {
+            nameLabel->setProperty("mappingWarning", on ? QStringLiteral("duplicate")
+                                                        : QString());
+            nameLabel->setToolTip(tooltip);
+            repolish(nameLabel);
+        }
+    }
 }
 
 QStringList CameraMappingWidget::getAvailableCameraIds() const {

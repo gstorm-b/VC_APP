@@ -1,5 +1,8 @@
 #include "item_roi.h"
 
+#include <QGraphicsScene>
+#include <QGraphicsView>
+
 ItemRoi::ItemRoi(const QRectF &rect,
                  QGraphicsItem *parent,
                  bool *ignore_flag)
@@ -47,6 +50,7 @@ void ItemRoi::paint(QPainter *painter,
   // Draw ROI
   QPen pen(Qt::red);
   pen.setWidth(2);
+  pen.setCosmetic(true);
   painter->setPen(pen);
   painter->setBrush(Qt::NoBrush);
   // painter->drawEllipse(this->rect().center(), 5, 5);
@@ -74,7 +78,9 @@ void ItemRoi::paint(QPainter *painter,
     QColor handler_color(0x8F87F1);
     handler_color.setAlpha(100);
     painter->setBrush(handler_color);
-    painter->setPen(Qt::black);
+    QPen handlePen(Qt::black);
+    handlePen.setCosmetic(true);
+    painter->setPen(handlePen);
     painter->drawRect(handleRect(TopLeft));
     painter->drawRect(handleRect(TopRight));
     painter->drawRect(handleRect(BottomLeft));
@@ -156,6 +162,7 @@ QVariant ItemRoi::itemChange(QGraphicsItem::GraphicsItemChange change, const QVa
 QRectF ItemRoi::handleRect(HandlePosition pos) const {
   QRectF r = rect();
   QPointF point;
+  const qreal handleSize = effectiveHandleSize();
   switch(pos) {
     case TopLeft:
       point = r.topLeft();
@@ -174,8 +181,8 @@ QRectF ItemRoi::handleRect(HandlePosition pos) const {
       break;
   }
   // draw rectangle handle with center at corner
-  return QRectF(point.x() - m_handle_size/2, point.y() - m_handle_size/2,
-                m_handle_size, m_handle_size);
+  return QRectF(point.x() - handleSize/2, point.y() - handleSize/2,
+                handleSize, handleSize);
 }
 
 ItemRoi::HandlePosition ItemRoi::getHandleAt(const QPointF &pos) const {
@@ -188,6 +195,22 @@ ItemRoi::HandlePosition ItemRoi::getHandleAt(const QPointF &pos) const {
   if (handleRect(BottomRight).contains(pos))
     return BottomRight;
   return None;
+}
+
+qreal ItemRoi::currentLevelOfDetail() const
+{
+  if (scene() && !scene()->views().isEmpty()) {
+    return qMax<qreal>(0.05,
+                       QStyleOptionGraphicsItem::levelOfDetailFromTransform(
+                           scene()->views().first()->viewportTransform()));
+  }
+  return 1.0;
+}
+
+qreal ItemRoi::effectiveHandleSize() const
+{
+  const qreal lod = currentLevelOfDetail();
+  return qBound<qreal>(8.0 / lod, 12.0 / lod, 18.0 / lod);
 }
 
 bool ItemRoi::isInsideParent(QRectF &new_rect) {

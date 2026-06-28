@@ -60,7 +60,10 @@ AddDeviceWizard::AddDeviceWizard(std::shared_ptr<vc::device::DeviceManager> mng,
 
     reloadStyleSheet();
     connect(ThemeManager::instance(), &ThemeManager::themeChanged,
-            this, [this](const QString &, bool) { reloadStyleSheet(); });
+            this, [this](const QString &, bool) {
+        reloadStyleSheet();
+        refreshCardIcons();
+    });
 
     selectCard(vc::device::DeviceType::Camera);
 }
@@ -72,7 +75,6 @@ AddDeviceWizard::~AddDeviceWizard() {
 void AddDeviceWizard::initCards() {
     auto bind = [&](vc::device::DeviceType type, CardRefs refs) {
         refs.card->installEventFilter(this);
-        refs.icon->setPixmap(svgIcon(refs.iconPath).pixmap(22, 22));
         refs.icon->setAttribute(Qt::WA_TransparentForMouseEvents);
         refs.name->setAttribute(Qt::WA_TransparentForMouseEvents);
         refs.desc->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -96,6 +98,17 @@ void AddDeviceWizard::initCards() {
         ui->adwCardIcon_visionOutput, ui->adwCardName_visionOutput, ui->adwCardDesc_visionOutput,
         2, "visionOutput", "VisionOut_01", ":/resrc/icon/plug_connected.svg"
     });
+
+    refreshCardIcons();
+}
+
+void AddDeviceWizard::refreshCardIcons()
+{
+    for (auto it = m_cards.cbegin(); it != m_cards.cend(); ++it) {
+        const CardRefs &refs = it.value();
+        if (refs.icon)
+            refs.icon->setPixmap(svgIcon(refs.iconPath).pixmap(22, 22));
+    }
 }
 
 void AddDeviceWizard::selectCard(vc::device::DeviceType type) {

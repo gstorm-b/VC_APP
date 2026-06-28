@@ -63,6 +63,8 @@ private:
 
 private:
     QString m_deviceId;
+    QString m_iconPath;
+    QSize m_iconSize{14, 14};
     vc::device::DeviceType m_deviceType{vc::device::DeviceType::UserType};
     bool m_selected{false};
     QLabel *m_iconLabel{nullptr};

@@ -26,9 +26,12 @@
 #include <QMenu>
 #include <QToolButton>
 #include <QToolBar>
+#include <QIconEngine>
+#include <QPainter>
 #include <QPointer>
 #include <QMap>
 #include <QElapsedTimer>
+#include <QPixmapCache>
 #include <QRandomGenerator>
 
 // #include "DockAreaTabBar.h"
@@ -44,6 +47,7 @@
 
 #include "DockWidget.h"
 // #include "ads_globals.h"
+#include "utils/theme_manager.h"
 
 /**
  * Returns a random number from 0 to highest - 1
@@ -82,13 +86,85 @@ static void appendFeaturStringToWindowTitle(ads::CDockWidget* DockWidget)
 /**
  * Helper function to create an SVG icon
  */
+class ThemedSvgIconEngine final : public QIconEngine
+{
+public:
+    explicit ThemedSvgIconEngine(QString basePath, int intent)
+        : m_basePath(std::move(basePath)), m_intent(intent)
+    {
+    }
+
+    QIconEngine *clone() const override
+    {
+        return new ThemedSvgIconEngine(m_basePath, m_intent);
+    }
+
+    QString key() const override
+    {
+        return QStringLiteral("ThemedSvgIconEngine");
+    }
+
+    QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override
+    {
+        const QString resolvedPath = themedPath();
+        const QSize requestedSize = size.isValid() ? size : QSize(m_intent, m_intent);
+        const QString cacheKey = QStringLiteral("themed-svg:%1:%2:%3:%4:%5x%6")
+                                     .arg(styleKey(),
+                                          resolvedPath,
+                                          QString::number(static_cast<int>(mode)),
+                                          QString::number(static_cast<int>(state)),
+                                          QString::number(requestedSize.width()),
+                                          QString::number(requestedSize.height()));
+
+        QPixmap cached;
+        if (QPixmapCache::find(cacheKey, &cached))
+            return cached;
+
+        QIcon icon(resolvedPath);
+        icon.addPixmap(icon.pixmap(m_intent));
+        const QPixmap pm = icon.pixmap(requestedSize, mode, state);
+        QPixmapCache::insert(cacheKey, pm);
+        return pm;
+    }
+
+    void paint(QPainter *painter, const QRect &rect,
+               QIcon::Mode mode, QIcon::State state) override
+    {
+        if (!painter)
+            return;
+        painter->drawPixmap(rect, pixmap(rect.size(), mode, state));
+    }
+
+    QSize actualSize(const QSize &size, QIcon::Mode mode, QIcon::State state) override
+    {
+        const QIcon icon(themedPath());
+        return icon.actualSize(size, mode, state);
+    }
+
+private:
+    QString themedPath() const
+    {
+        if (!qApp)
+            return m_basePath;
+        return ThemeManager::instance()->themedIcon(m_basePath);
+    }
+
+    QString styleKey() const
+    {
+        if (!qApp)
+            return QStringLiteral("no-app");
+        const QString currentId = ThemeManager::instance()->currentStyleId();
+        return currentId.isEmpty() ? QStringLiteral("uninitialized") : currentId;
+    }
+
+private:
+    QString m_basePath;
+    int m_intent{92};
+};
+
 static QIcon svgIcon(const QString& File, int intent = 92)
 {
-    // This is a workaround, because in item views SVG icons are not
-    // properly scaled and look blurry or pixelate
-    QIcon SvgIcon(File);
-    SvgIcon.addPixmap(SvgIcon.pixmap(intent));
-    return SvgIcon;
+    return QIcon(new ThemedSvgIconEngine(File, intent));
 }
 
 

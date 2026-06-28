@@ -135,6 +135,10 @@ today.
 
 ## 5. `getCurrentMapping()` does not detect duplicate camera ids across rows
 
+**Status (2026-06-27): RESOLVED.** `CameraMappingWidget` now performs a
+duplicate-camera sanity pass after rebuild/sort and marks any later duplicate
+row with a warning state.
+
 **What.** `CameraMappingWidget::provideNameOptions()` filters out cameras
 already used by other rows when *that* row is being edited, so a duplicate
 selection cannot happen via the UI. But if a caller injects a mapping
@@ -142,13 +146,18 @@ through `setCurrentMapping()` that already has two rows pointing to the
 same id (corrupt save file, manual edit), the widget renders both rows
 without warning.
 
-**Why deferred.** Not observed in practice and would require either a
-load-time sanity pass or a per-row warning style. Pick one once a real
-corruption shows up.
+**What was done.**
+- Added `applyDuplicateWarnings()` in
+  `src/widgets/camera_mapping_widget.cpp`, called from `onDataChanged()`.
+- Later rows whose `nameWidget->userData()` repeats an earlier camera id now
+  get `duplicateCamera=true` on the row and `mappingWarning="duplicate"` on the
+  visible camera label.
+- Added matching warning selectors to
+  `resrc/styles/camera_mapping_widget_{dark,light}.qss`.
 
-**How to pick up.** In `setCurrentMapping()`, after the rebuild, walk the
-rows and apply a warning style (similar to `SignalsMapWidget::applyWarning`)
-to any row whose id is also used by an earlier row.
+**Current behavior.** UI editing still prevents duplicates proactively, and
+corrupt / injected mappings loaded through `setCurrentMapping()` now surface a
+warning tint + tooltip on the later duplicate row until the user resolves it.
 
 ---
 
@@ -843,33 +852,31 @@ Track implementation requirements in
 
 ## 24. `svgIcon()` is not theme-aware — Rule 4.4 violation (project-wide)
 
-**What.** Every icon in the project is set via `svgIcon()` (defined in
-`windows_helper.h:85`), a thin wrapper that loads a single SVG path without
-consulting `ThemeManager`. `ThemeManager::themedIcon()` was declared in
-`src/utils/theme_manager.h:43` and implemented in `theme_manager.cpp:75` but
-is **never called anywhere** in the codebase.
+**Status (2026-06-27): RESOLVED.** The icon-loading convention was normalized
+around a theme-aware `svgIcon()` helper backed by `ThemeManager::themedIcon()`.
 
-Affected call sites (representative, not exhaustive):
-- `mainwindow.cpp` lines 117–139 — toolbar action icons
-- `src/form/task/localization_task_widget.cpp` lines 208–448 — nav/breadcrumb icons
-- `src/widgets/project_tree_widget.cpp` lines 132–341 — tree item icons
-- `src/form/camera/basler_camera_widget.cpp` lines 211–412 — connect/trigger icons
-- `src/form/add_device_wizard.cpp` line 74 — device card icons
+**What was done:**
+- `windows_helper.h:85` no longer returns a plain single-path `QIcon`; it now
+  creates a theme-aware SVG icon engine that resolves `foo.svg` vs
+  `foo_dark.svg` against the active `ThemeManager` style at render time.
+- Existing `setIcon(svgIcon(...))` call sites now consult the active theme
+  without needing per-call-site rewrites.
+- Direct pixmap consumers that store icon pixels in `QLabel` were refreshed on
+  `themeChanged`:
+  - `src/form/add_device_wizard.cpp` card icons
+  - `src/form/widgets/device_nav_item_widget.cpp` nav-item icon label
+- `docs/rules/ui_design_rules.md` Rule 4.4 was updated to match the implemented
+  convention: use `svgIcon(basePath)` as the normal entrypoint, fall back to the
+  base asset when no `_dark` sibling exists, and explicitly refresh stored
+  pixmaps on theme changes.
 
-**Why deferred.** The current SVG assets appear to be monochrome/outline style
-that renders acceptably in both themes. Fixing Rule 4.4 requires either:
-(a) auditing whether any icon actually needs a dark/light variant, or
-(b) deciding to drop `themedIcon()` if all icons are theme-neutral (and updating
-Rule 4.4 accordingly).
-
-**How to pick up.**
-1. Audit all icon assets under `resrc/` — identify which ones need per-theme
-   variants (light-on-dark vs dark-on-light).
-2. For icons that need variants: create `_dark.svg` siblings and replace
-   `svgIcon(path)` calls with `ThemeManager::instance()->themedIcon(basePath)`.
-3. For icons that are theme-neutral: document the exemption and consider
-   removing `themedIcon()` if it is never needed, or keeping it for future use.
-4. Update Rule 4.4 in `ui_design_rules.md` to reflect the actual convention.
+**Asset audit outcome:**
+- Several icons already ship with `_dark.svg` light-theme variants under
+  `resrc/icon/` (`dashboard`, `new_file`, `plc_icon`, `plus_square`, `reload`,
+  `robot_movement`, `setting`, `vision_target`, ...).
+- Remaining icons without `_dark` siblings are currently treated as
+  theme-neutral and continue to reuse their base asset in both themes until a
+  future art pass proves they need dedicated light-theme artwork.
 
 ---
 
